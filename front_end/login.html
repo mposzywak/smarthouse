@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<style>
+form {
+    border: 3px solid #f1f1f1;
+}
+
+input[type=text], input[type=password] {
+    width: 30%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+.cancelbtn {
+    width: auto;
+    padding: 10px 18px;
+    background-color: #f44336;
+}
+
+.imgcontainer {
+    text-align: center;
+    margin: 24px 0 12px 0;
+}
+
+img.avatar {
+    width: 40%;
+    border-radius: 50%;
+}
+
+.container {
+    padding: 16px;
+}
+
+span.psw {
+    float: right;
+    padding-top: 16px;
+}
+
+/* Change styles for span and cancel button on extra small screens */
+@media screen and (max-width: 300px) {
+    span.psw {
+       display: block;
+       float: none;
+    }
+    .cancelbtn {
+       width: 100%;
+    }
+}
+
+</style>
+<head>
+<title>SmartHousePC UI Landing Page</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content="HTML KickStart is a ultra–lean set of HTML5, CSS, and jQuery (javascript) files, layouts, and elements designed to give you a headstart and save you a lot of hours on your next web project." />
+<meta name="copyright" content="Joshua Gatcke 99lime.com All Rights Reserved" />
+<link rel="stylesheet" type="text/css" href="css/style.css" media="all" />
+<link rel="stylesheet" type="text/css" href="css/w3c.css" media="all" />
+<link rel="stylesheet" type="text/css" href="css/kickstart.css" media="all" />               <!--  KICKSTART -->
+<link rel="stylesheet" type="text/css" href="header.css" media="all" />        <!--   CUSTOM STYLES
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script type="text/javascript" src="js/kickstart.js"></script>                                  <!-- KICKSTART -->
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script> 
+<script>
+$(document).ready(function(){
+	var email,pass;
+	$("#submit").click(function(){
+		email=$("#email").val();
+		pass=$("#password").val();
+		/*
+		* Perform some validation here.
+		*/
+		$.post("http://duinocloud.org:10080/auth",{email:email,pass:pass},function(data){		
+			if (data==='done')			
+			{
+				window.location.href="/admin";
+			}
+			if (data === 'bad')
+			{
+				console.log("bad received.");
+				document.getElementById('message').innerHTML = 'Login or password incorrect'
+			}
+		});
+	});
+});
+</script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a class="hide-phone" id="logo" href="http://duinocloud.org"><i class="fa fa-angle-right" style="float:right"> duino<span>Cloud.org</span></a></i>
+        <ul  style="overflow:hidden" >
+        <li><a href="index.html" style="float:left"><span>HTML</span>SmartHouse</a></li>
+        <li class="hide-phone" ><a href="blog.html" style="float:right"><span>Bl</span>og</a></li>
+        </ul>
+    </nav>
+<h2>Login Form</h2>
+
+
+  <div class="container">
+    <label><b>Username</b></label>
+    <input id="email" type="text" placeholder="Enter Username" name="uname" required>
+
+    <label><b>Password</b></label>
+    <input id="password" type="password" placeholder="Enter Password" name="psw" required>
+    <font color="red"><label id="message"></label></font>
+    <button id="submit" type="submit">Login</button>
+    <input type="checkbox" checked="checked"> Remember me
+  </div>
+
+  <div class="container" style="background-color:#f1f1f1">
+    <button type="button" class="cancelbtn">Cancel</button>
+    <span class="psw">Forgot <a href="#">password?</a></span>
+  </div>
+
+</body>
+</html>

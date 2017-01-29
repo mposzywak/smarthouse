@@ -24,11 +24,8 @@ var Backend = function() {
 	
 	this.rdbStore   = new this.RDBStore(this.components.getFacility('config').backend.sessionStoreOptions);
 	
-	this.app.set('views', __dirname + '/views');
+	this.app.set('views', __dirname + '/front_end');
 	this.app.engine('html', require('ejs').renderFile);
-	
-	//var EventEmitter = require('events').EventEmitter;
-	//this.emitter     = new EventEmitter();
 	
 	this.app.use(this.session({
 		secret: 'fdsifoa4efioehfrafoeffjisaofew',
@@ -38,10 +35,15 @@ var Backend = function() {
 	}));
 	this.app.use(this.bodyParser.json());      
 	this.app.use(this.bodyParser.urlencoded({extended: true}));
-	this.app.get('/', onRoot);
-	this.app.get('/index.html',onAdmin);
-	this.app.post('/auth', onLogin);
+	this.app.use('/css', this.express.static('front_end/css'));
+	this.app.use('/js', this.express.static('front_end/js'));
 	this.app.get('/admin', onAdmin);
+	//this.app.get('/\*.css', onCSS);
+	//this.app.get('/\*.woff\*', onCSS);
+	this.app.get('/\*.html', onRoot);
+//	this.app.get('/index.html',onAdmin);
+	this.app.post('/auth', onLogin);
+
 	this.app.get('/logout', onLogout);
 	
 	// setup the server for listening on the port
@@ -53,7 +55,8 @@ var Backend = function() {
 	
 
 	//this.app.get('/', onRequest);
-	this.app.use(this.express.static('smarthouse'));
+	//this.app.use(this.express.static('smarthouse'));
+	
 }
 
 var backend = new Backend();
@@ -70,17 +73,40 @@ function onError(err) {
 	process.exit(1);
 }
 
+function onCSS(req, res) {
+	require('./debug.js').log(5, 'backend', 'Backend received GET for CSS URL: ' + req.originalUrl);
+	res.type('text/css');
+	renderFile(req, res);
+}
+
+function renderFile(req, res) {
+	res.render(req.originalUrl.substr(1), function(err, html) {
+		if (err) {
+			require('./debug.js').log(5, 'backend', 'Received GET for unknown file: ' + req.originalUrl + ', sending 404');
+			res.status(303).send('Not found');
+		} else {
+			res.send(html);
+		}
+	});
+}
+
+function onBadURL(res) {
+	res.status(303).send('Not found');
+}
+
 /**
  * Middleware executed on root contains redirect if not login, 
  * should also handle all pages which require login.
  */
 function onRoot(req,res) {
+	//if CSS just give the file
+	
 	var sess = req.session;
-	if(sess.email)
-	{
-		res.redirect('/admin');
+	if(sess.email) {
+		renderFile(req, res);
 	} else {
-	res.render('login.html');
+		res.render('login.html');
+		require('./debug.js').log(5, 'backend', 'Backend received GET for URL w/o cookie: ' + req.originalUrl + ', redirecting');
 	}
 }
 
@@ -92,10 +118,8 @@ function onLogin(req, res) {
 	pass = req.body.pass;
 	require('./debug.js').log(5, 'backend', 'Auth POST received with email: ' + email + ' pass: ' + pass);
 	if (verify(email, pass)) {
-		// good user & pass
 		require('./debug.js').log(5, 'backend', 'Correct login for: ' + email);
-		req.session.email = email;	
-		//sess.email = req.body.email;
+		req.session.email = email;
 		res.end('done');
 	} else {
 		// bad user or pass

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+    font-size: 100%;
+}
+.font_1 {
+    font: 15px arial, sans-serif;
+}
+
+.font2 {
+    font: italic bold 10px Georgia, serif;
+}
+
+p.standard {
+    font-style: normal;
+}
+
+p.italic {
+    font-style: italic;
+}
+
+p.oblique {
+    font-style: oblique;
+}
+
+.biggest_40px {
+    font-size: 40px;
+}
+
+.big_30px{
+    font-size: 30px;
+}
+
+.small_14px {
+    font-size: 14px;
+}
+h1 {
+    font-size: 2.5em; /* 40px/16=2.5em */
+}
+
+h2 {
+    font-size: 1.875em; /* 30px/16=1.875em */
+}
+
+p {
+    font-size: 0.875em; /* 14px/16=0.875em */
+}
+
+p.standard_weight {
+    font-weight: normal;
+}
+
+p.light_weight {
+    font-weight: lighter;
+}
+
+p.thick_weight {
+    font-weight: bold;
+}
+
+p.thicker_weight {
+    font-weight: 900;
+}
+p.normal_variant {
+    font-variant: normal;
+}
+
+p.small_variant {
+    font-variant: small-caps;
+}
+</style>
+</head>
+
+
+
+<body id="mainBody">
+<div id="mySTYLE" class="font_1">
+<p class="standard biggest_40px standard_weight">This is a paragraph in standard big standard_weight style.</p>
+<p class="italic big_30px light_weight">This is a paragraph in italic medium style light_weight.</p>
+<p class="oblique small_14px thick_weight">This is a paragraph in oblique small style thick_weight.</p>
+<p class="oblique small_14px thick_weight">This is a paragraph in oblique small style thicker_weight.</p>
+
+<p class="standard biggest_40px standard_weight">This is a paragraph in standard big standard_weight style.</p>
+<p class="italic big_30px light_weight">This is a paragraph in italic medium style light_weight.</p>
+<p class="oblique small_14px thick_weight">This is a paragraph in oblique small style thick_weight.</p>
+<p class="oblique small_14px thick_weight">This is a paragraph in oblique small style thicker_weight.</p>
+
+<h1>This is heading 1 without use of class.</h1>
+<h2>This is heading 2 without use of class.</h2>
+<p>This is a paragraph without use of class.</p>
+<p>Specifying the font-size in percent and em displays the same size in all major browsers, and allows all browsers to resize the text!</p>	
+
+<p  class="standard biggest_40px">This is a paragraph in standard big style.</p>
+<p  class="italic big_30px">This is a paragraph in italic medium style.</p>
+<p  class="oblique small_14px">This is a paragraph in oblique small style.</p>
+
+
+<p class="normal">This is the font-variant normal .</p>
+<p class="small">This is the font-variant small-caps.</p>
+
+<p>Click the "Try it" button to change the font-family property of the DIV element:</p>
+
+<div/>
+
+<button onclick="myFunction('italic bold 12px/30px Georgia, serif')">Veradana using style.fong</button>
+<button onclick="myFunction('15px arial, sans-serif')">Arial using style.font</button>
+<button onclick="changeFontClass('font_1')">Arial using 15px class font_1</button>
+<button onclick="changeFontClass('font_2')">Arial using 10px class font_2</button>
+
+
+<div id="mySTYLE" class="font_1">
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Typi non habent claritatem insitam; est usus legentis in iis qui facit eorum claritatem. Investigationes demonstraverunt lectores legere me lius quod ii legunt saepius.
+</div>
+
+
+
+<script>
+function myFunction(fontt) {
+    document.getElementById("mySTYLE").className = fontt;
+    window.alert(fontt+":.....");
+}
+function changeFontClass(setClass) {
+    document.getElementById("mySTYLE").className = setClass;
+    window.alert(setClass+":.....");
+}
+
+</script>
+
+</body>
+</html>
