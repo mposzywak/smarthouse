@@ -38,10 +38,8 @@ var Backend = function() {
 	this.app.use('/css', this.express.static('front_end/css'));
 	this.app.use('/js', this.express.static('front_end/js'));
 	this.app.get('/admin', onAdmin);
-	//this.app.get('/\*.css', onCSS);
-	//this.app.get('/\*.woff\*', onCSS);
-	this.app.get('/\*.html', onRoot);
-//	this.app.get('/index.html',onAdmin);
+	this.app.get('/\*.html', onAnyHTML);
+	//executed on login inforamtion
 	this.app.post('/auth', onLogin);
 
 	this.app.get('/logout', onLogout);
@@ -52,10 +50,6 @@ var Backend = function() {
 	this.io.of('/iot').use(onWSAuthorize);
 	//this.io.of('/iot').on('disconnect', onWSDisconnect);
 	this.server.on('error', onError);		// executed when cannot start the backend server
-	
-
-	//this.app.get('/', onRequest);
-	//this.app.use(this.express.static('smarthouse'));
 	
 }
 
@@ -73,32 +67,28 @@ function onError(err) {
 	process.exit(1);
 }
 
-function onCSS(req, res) {
-	require('./debug.js').log(5, 'backend', 'Backend received GET for CSS URL: ' + req.originalUrl);
-	res.type('text/css');
-	renderFile(req, res);
-}
-
+/**
+ * Function that renders the requested HTML file, or sends 404 in case file doesn't exist.
+ * Called by onAnyHTML function.
+ */
 function renderFile(req, res) {
+	sourceIP = req.connection.remoteAddress
 	res.render(req.originalUrl.substr(1), function(err, html) {
 		if (err) {
-			require('./debug.js').log(5, 'backend', 'Received GET for unknown file: ' + req.originalUrl + ', sending 404');
-			res.status(303).send('Not found');
+			require('./debug.js').log(5, 'backend', 'Received GET for unknown file: ' + req.originalUrl + ', sending 404 to: ' + sourceIP);
+			res.status(303).send('File Not found');
 		} else {
+			require('./debug.js').log(5, 'backend', 'Received GET for: ' + req.originalUrl + ' from: ' + sourceIP);
 			res.send(html);
 		}
 	});
-}
-
-function onBadURL(res) {
-	res.status(303).send('Not found');
 }
 
 /**
  * Middleware executed on root contains redirect if not login, 
  * should also handle all pages which require login.
  */
-function onRoot(req,res) {
+function onAnyHTML(req,res) {
 	//if CSS just give the file
 	
 	var sess = req.session;
