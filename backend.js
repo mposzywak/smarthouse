@@ -39,6 +39,7 @@ var Backend = function() {
 	this.app.use('/js', this.express.static('front_end/js'));
 	this.app.get('/admin', onAdmin);
 	this.app.get('/\*.html', onAnyHTML);
+	this.app.get('/', onAnyHTML);       // redirect to login page on '/'
 	//executed on login inforamtion
 	this.app.post('/auth', onLogin);
 
@@ -90,7 +91,7 @@ function renderFile(req, res) {
  */
 function onAnyHTML(req,res) {
 	//if CSS just give the file
-	
+
 	var sess = req.session;
 	if(sess.email) {
 		renderFile(req, res);
@@ -110,6 +111,10 @@ function onLogin(req, res) {
 	if (verify(email, pass)) {
 		require('./debug.js').log(5, 'backend', 'Correct login for: ' + email);
 		req.session.email = email;
+		res.header('Access-Control-Allow-Origin', 'http://duinocloud.com:10080/*');
+		res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+		res.header('Access-Control-Allow-Headers', 'Content-Type');
+
 		res.end('done');
 	} else {
 		// bad user or pass
