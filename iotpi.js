@@ -47,8 +47,9 @@ function onRequest(req, res) {
 	reqDate = new Date();
 	debug.log(4, 'arif', 'Request URL: ' + req.originalUrl + ' from: ' + req.connection.remoteAddress);
 	var result = req.originalUrl.match(urlRegex);
-	debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + result[2]);
+
 	if (result) {
+		debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + result[2]);
 		if (result[2] == 'data') { // if command is data put it into the mem cache, db etc...
 			mem.setDeviceStatus(config.cloud.id, req.originalUrl, reqDate, req.connection.remoteAddress);
 		}
