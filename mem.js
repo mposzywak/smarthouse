@@ -13,6 +13,36 @@ var Mem = function() {
 
 var memory = new Mem();
 
+/* function registers new Arduino to the system, should be called every time registration command is received on the ARIF 
+   it returns arduino ID
+*/
+Mem.prototype.registerArduino = function(client) {
+	// check if the client, device and arduino exists
+	if (typeof(this.devices[client]) == 'undefined') {
+		ardid = '1'; /* if entered this condition it means this is the first arduino, give it ID "1" */
+		this.devices[client] = {};
+		this.devices[client][ardid] = {};
+		this.components.getFacility('debug').log(4, 'mem', 'client id: ' + client + 
+				', new Arduino registered: ' + ardid);
+		return ardid;
+	} else {
+		ardid = '2';
+		while (true) {
+			if (typeof(this.devices[client][ardid]) == 'undefined') {
+				this.devices[client][ardid] = {};
+				this.components.getFacility('debug').log(4, 'mem', 'client id: ' + client + 
+						', new Arduino registered: ' + ardid);
+				return ardid;
+			}
+			ardidDec = parseInt(ardid, 16);
+			ardidDec+=1
+			ardid = ardidDec.toString(16);
+			/* we can register only 250 arduinos */
+			if (ardid == 'fa') return 0; /* fa is 250 */
+		}
+	}
+}
+
 /* the method puts the latest status into the mem cache 
 	Ideally it takes as arguments, URL of the incoming request (should already be validated)
 	IP address and the time the request came. 

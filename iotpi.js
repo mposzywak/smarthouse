@@ -29,6 +29,10 @@ init.setCallback(onInitComplete);
 init.clearInit('main');
 /* end of all initialization actions */
 
+/* ARIF commands */
+const ARIF_REGISTER  = 'a';
+const ARIF_LIGHT_ON  = '1';
+const ARIF_LIGHT_OFF = '2';
 
 /* regex for verification of the incoming URL on ARiF */
 var urlRegex = '(\/[0-9a-fA-F]{1,4}){2}';
@@ -39,13 +43,14 @@ urlRegex += 'dec\/[0-9]{1,7}\\b|'				// 32bit value 0 - FFFFFFFF
 urlRegex += '32bit\/[0-9a-fA-F]{1,8}\\b)';		// dec   value 0 - 99999999
 
 /* accept requests for all URLs, filter later */
-app.get('/*', onRequest);
+app.get('/*', onGetRequest);
+app.post('/*', onPostRequest);
 //app.use(express.static('smarthouse'))
 
 /* Executed each time when an HTTP request comes into ARiF interface */
-function onRequest(req, res) {
+function onGetRequest(req, res) {
 	reqDate = new Date();
-	debug.log(4, 'arif', 'Request URL: ' + req.originalUrl + ' from: ' + req.connection.remoteAddress);
+	debug.log(4, 'arif', 'Request GET URL: ' + req.originalUrl + ' from: ' + req.connection.remoteAddress);
 	var result = req.originalUrl.match(urlRegex);
 
 	if (result) {
@@ -58,6 +63,37 @@ function onRequest(req, res) {
         res.end('Data ack');
 	} else {
 		debug.log(1, 'arif', 'Sending 404, improper URL received: ' + req.originalUrl + ' from: ' + req.connection.remoteAddress);
+		res.writeHead(404, { 'Content-Type' : 'text/plain'});
+        res.end('Error: probably wrong URL');
+	}
+}
+
+/* Execute each time when HTTP POST request comes into ARiF interface */
+function onPostRequest(req, res) {
+	var reqDate = new Date();
+	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + req.connection.remoteAddress);
+	
+	var url = req.originalUrl;
+	var result = url.match("^(\/[0-9a-fA-F]{1,2}){3}");
+	if (result && url.length < 64) {
+		var devid = url.split('/')[1];
+		var ardid = url.split('/')[2];
+		var command = url.split('/')[3];
+		
+		//debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + command);
+		switch (command) {
+			case ARIF_REGISTER:
+				var ardid = mem.registerArduino(config.cloud.id);
+				res.set('X-arduino', ardid);
+				break;
+			default:
+				debug.log(1, 'arif', 'command: ' + command + ' from: ' + req.connection.remoteAddress + ' is unknown!');
+		}
+		debug.log(4, 'arif', 'Sending 200 OK to: ' + req.connection.remoteAddress + ' for GET URL: ' + url);
+		res.writeHead(200, { 'Content-Type' : 'text/plain'});
+        res.end('Data ack');
+	} else {
+		debug.log(1, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + req.connection.remoteAddress);
 		res.writeHead(404, { 'Content-Type' : 'text/plain'});
         res.end('Error: probably wrong URL');
 	}
