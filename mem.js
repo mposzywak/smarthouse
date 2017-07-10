@@ -43,6 +43,14 @@ Mem.prototype.registerArduino = function(client) {
 	}
 }
 
+/* check if Arduino has been registered already */
+Mem.prototype.isArduinoRegistered = function(client, ardid) {
+	if (typeof(this.devices[client][ardid]) == 'undefined') 
+		return true;
+	else
+		return false;
+}
+
 /* the method puts the latest status into the mem cache 
 	Ideally it takes as arguments, URL of the incoming request (should already be validated)
 	IP address and the time the request came. 

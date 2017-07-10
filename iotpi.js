@@ -33,6 +33,7 @@ init.clearInit('main');
 const ARIF_REGISTER  = 'a';
 const ARIF_LIGHT_ON  = '1';
 const ARIF_LIGHT_OFF = '2';
+const ARIF_DATA_TRANSFER = '40';
 
 /* regex for verification of the incoming URL on ARiF */
 var urlRegex = '(\/[0-9a-fA-F]{1,4}){2}';
@@ -86,6 +87,8 @@ function onPostRequest(req, res) {
 				var ardid = mem.registerArduino(config.cloud.id);
 				res.set('X-arduino', ardid);
 				break;
+			case ARIF_DATA_TRANSFER:
+				devType = validateDevType(url.split('/')[3]);
 			default:
 				debug.log(1, 'arif', 'command: ' + command + ' from: ' + req.connection.remoteAddress + ' is unknown!');
 		}
@@ -97,6 +100,18 @@ function onPostRequest(req, res) {
 		res.writeHead(404, { 'Content-Type' : 'text/plain'});
         res.end('Error: probably wrong URL');
 	}
+}
+
+function validateDevType(devType) {
+	return devType;
+}
+
+function validateDataType(dataType) {
+	
+}
+
+function validateDataValue(dataType, value) {
+	
 }
 
 /* execute when ARiF HTTP server succesfully starts to listen on port */
