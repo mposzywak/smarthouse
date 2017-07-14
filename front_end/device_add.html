@@ -6,6 +6,8 @@
 <meta name="description" content="HTML KickStart is a ultra–lean set of HTML5, CSS, and jQuery (javascript) files, layouts, and elements designed to give you a headstart and save you a lot of hours on your next web project." />
 <meta name="copyright" content="Joshua Gatcke 99lime.com All Rights Reserved" />
 <script src="js/sorttable.js"></script>
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
 <link rel="stylesheet" type="text/css" href="css/style.css" media="all" /> 
 <link rel="stylesheet" type="text/css" href="css/w3c.css" media="all" /> 
 <link rel="stylesheet" type="text/css" href="css/kickstart.css" media="all" />               <!--  KICKSTART -->
@@ -49,54 +51,27 @@
 
 	<div class="w3-table-container">
 	  <h4>Device Details</h4>
-
+	  
 		<div class="clear"></div><br/>
+		<div id="status-bar">
+			<p id="status-msg"> ... </p>
+		</div>
 		<div class="clear"></div><br/>	 
-
-	  <table class="sortable w3-table-all w3-large">
+		
+	  <table id="devices" class="sortable w3-table-all w3-large">
 	    <thead>
 	      <tr class="w3-light-grey w3-hover-grey">
-	        <th>Parameter</th>
-	        <th>Value</th>
-	        
+	        <th>Device Type</th>
+			<th>Description</th>
+	        <th>Device Status</th>
+			<th>Device Activated</th>
+	        <th>devID</th>
+			<th>ardID</th>
+			<th>Last updated</th>
+			<th>Actions</th>
 	      </tr>
 	    </thead>
-	    <tr class="w3-hover-grey">
-	      <td>Type</td>
-	      <td></td>
-	      
-	    </tr>
-	    <tr class="w3-hover-grey">
-	      <td>Device ID</td>
-	      <td></td>
-	     
-	    </tr>
-	    <tr class="w3-hover-grey">
-	      <td>Device Location</td>
-	      <td></td>
-	      
-	    </tr>
-	    <tr class="w3-hover-grey">
-	      <td>Device Installation Date</td>
-	      <td></td>
-	      
-	    </tr>
-	    <tr class="w3-hover-grey">
-	      <td>Device Status</td>
-	      <td></td>
-	      
-	    </tr>
-	    <tr class="w3-hover-grey">
-	      <td>Light</td>
-	      <td></td>
-	      
-	    </tr>
-	    <tr class="w3-hover-grey">
-	      <td>Heat</td>
-	      <td></td>
-	      
-	    </tr>
-	   
+
 	  </table>
 	</div>
 
@@ -125,4 +100,114 @@
   <!-- </div> -->
 </div>
 
-</body></html>
+</body>
+<script>
+      var socket = io('/iot');
+	  
+	  // set connection actions
+	  socket.on('connect', onConnect);
+	  socket.on('connect_error', onConnectError);
+	  socket.on('error', onError);
+	  //  <tr class="w3-hover-grey">
+	  //    <td>Temp Sensor</td>   << p1
+	  //    <td>Kitchen</td>
+	  //    <td>23 Degrees Celsius</td>
+	  //  </tr>
+	  // action to be performed on receiving 
+      socket.on('device', setValue);
+	  
+	  function setValue(msg) {
+		devArdID = msg.ardid + "_" + msg.devid;
+		console.log('got value');
+		if (document.getElementById(devArdID) == null) {
+			if (!msg.activated) { /* only put a device if it is not "Activated" */
+				$("#devices").append(getTableRow(msg));
+			}
+		} else {
+			/* the device already reported, structre needs to be filled in with new data */
+			$("#" + devArdID + "_value").text(msg.value);
+		}
+      }
+	  
+	  // color the status-bar div on successful connection
+	  function onConnect(msg) {
+		console.log("connected to server.");
+		$("#status-bar").css( { "background-color": "#1CD935", "border": "3px solid #169126", "width": "95%" } );
+		$("#status-msg").text("Connected to server.");
+		$("#status-msg").css( { "margin": "5px" });
+	  }
+	  
+	  // color the status-bar on connection error
+	  function onConnectError(msg) {
+		console.log("Connection Error!");
+		$("#status-bar").css( { "background-color": "#F02626", "border": "3px solid #911631", "width": "95%" } );
+		$("#status-msg").text("Disconnected from server: " + msg);
+		$("#status-msg").css( { "margin": "5px" });
+	  }
+	  
+	  function onError(msg) {
+		console.log("other error: " + msg);
+		$("#status-bar").css( { "background-color": "#F02626", "border": "3px solid #911631", "width": "95%" } );
+		$("#status-msg").text("Disconnected from server: " + msg);
+		$("#status-msg").css( { "margin": "5px" });
+	  }
+	  
+	  function getTableRow(msg) {
+	    devArdID = msg.ardid + "_" + msg.devid;
+		trDevName = '<tr id="' + devArdID + '" class="w3-hover-grey"><td>' + devTypeGetName(msg.devType) + '</td>';
+		trDesc = '<td><input id="text2" placeholder="Description" /></td>'
+		trDevStatus = '<td>' + devValueGetName(msg.devType, msg.value) + '</td>'
+		trDevActive = '<td>' + msg.activated + '</td>'
+		trDevID = '<td>' + msg.devid + '</td>'
+		trArdID = '<td>' + msg.ardid + '</td>'
+		trLastUpd = '<td>' + formatDate(msg.date) + '</td>'
+		trActions = '<td><button class="small green"><i class="fa fa-plus-square"></i> Activate</button></td></tr>'
+		
+		return trDevName + trDesc + trDevStatus + trDevActive + trDevID + trArdID + trLastUpd + trActions;
+	  }
+	  
+	  function formatDate(date) {
+		return date.y + '-' + date.m + '-' + date.day + ' ' + date.h + ':' + date.min + ':' + date.s + '.' + date.ms ;
+	  }
+	  
+	  function devValueGetName(devType, value) {
+	    switch (devType){
+		  case '1':
+		    if (value == '0') 
+			  return 'OFF';
+			else
+			  return 'ON';
+			break;
+		  default:
+		    return value;
+		}
+	  }
+	  
+	  function devTypeGetName(devType) {
+		switch (devType) {
+		  case '1':
+		    return 'Light';
+			break;
+		  case '2':
+		    return 'Switch';
+			break;
+		  case '3':
+		    return 'Sensor';
+			break;
+		  case '4':
+		    return 'Vent';
+			break;
+		  case '5':
+		    return 'Shade';
+			break;
+		  case '6':
+		    return 'Arduino';
+			break;
+		  default:
+		    return 'Unknown';
+			break;
+		}
+	  }
+	  
+    </script>
+</html>

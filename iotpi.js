@@ -72,7 +72,8 @@ function onGetRequest(req, res) {
 /* Execute each time when HTTP POST request comes into ARiF interface */
 function onPostRequest(req, res) {
 	var reqDate = new Date();
-	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + req.connection.remoteAddress);
+	srcip = req.connection.remoteAddress;
+	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcip);
 	
 	var url = req.originalUrl;
 	var result = url.match("^(\/[0-9a-fA-F]{1,2}){3}");
@@ -84,20 +85,23 @@ function onPostRequest(req, res) {
 		//debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + command);
 		switch (command) {
 			case ARIF_REGISTER:
-				var ardid = mem.registerArduino(config.cloud.id, req.connection.remoteAddress);
+				var ardid = mem.registerArduino(config.cloud.id, srcip);
 				res.set('X-arduino', ardid);
 				break;
 			case ARIF_DATA_TRANSFER:
-				devType = validateDevType(url.split('/')[3]);
+				devType = validateDevType(url.split('/')[4]);
+				dataType = validateDataType(url.split('/')[5]);
+				value = validateValue(url.split('/')[6]);
+				mem.setDeviceStatus(config.cloud.id, devid, ardid, devType, dataType, value, reqDate, srcip);
 				break;
 			default:
-				debug.log(1, 'arif', 'command: ' + command + ' from: ' + req.connection.remoteAddress + ' is unknown!');
+				debug.log(1, 'arif', 'command: ' + command + ' from: ' + srcip + ' is unknown!');
 		}
-		debug.log(4, 'arif', 'Sending 200 OK to: ' + req.connection.remoteAddress + ' for GET URL: ' + url);
+		debug.log(4, 'arif', 'Sending 200 OK to: ' + srcip + ' for GET URL: ' + url);
 		res.writeHead(200, { 'Content-Type' : 'text/plain'});
         res.end('Data ack');
 	} else {
-		debug.log(1, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + req.connection.remoteAddress);
+		debug.log(1, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + srcip);
 		res.writeHead(404, { 'Content-Type' : 'text/plain'});
         res.end('Error: probably wrong URL');
 	}
@@ -108,11 +112,11 @@ function validateDevType(devType) {
 }
 
 function validateDataType(dataType) {
-	
+	return dataType
 }
 
-function validateDataValue(dataType, value) {
-	
+function validateValue(value) {
+	return value;
 }
 
 /* execute when ARiF HTTP server succesfully starts to listen on port */

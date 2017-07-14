@@ -122,7 +122,7 @@
 	  //    <td>23 Degrees Celsius</td>
 	  //  </tr>
 	  // action to be performed on receiving 
-      socket.on('value', setValue);
+      socket.on('device', setValue);
 	  
 	  function setValue(msg) {
 		devArdID = msg.devid + "_" + msg.ardid;

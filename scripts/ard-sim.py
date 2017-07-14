@@ -1,6 +1,6 @@
 import httplib
 
-arduino = { 'id' : '0', 'destip' : '127.0.0.2', 'devs' : { '1' : 1, '2' : 1}};
+arduino = { 'id' : '0', 'destip' : '127.0.0.1', 'devs' : { '1' : 1, '2' : 1}};
 
 def createArduino(arduino, destip):
 	conn = httplib.HTTPConnection(destip, "32300");
@@ -23,7 +23,7 @@ def createArduino(arduino, destip):
 
 def deviceSendStatus(arduino, destip, devid):
 	conn = httplib.HTTPConnection(destip, "32300")
-	conn.putrequest("POST", "/" + str(devid) + "/" + arduino['id'] + "/40/1/1/0")
+	conn.putrequest("POST", "/" + str(devid) + "/" + arduino['id'] + "/40/1/1/1")
 	conn.endheaders()
 
 	res = conn.getresponse()

@@ -231,7 +231,7 @@ function pushAllDevices(socket, client) {
 			//initialization function
 			//io.of('/iot').to(client).emit('value', devices[ardid][devid]);
 			
-			socket.emit('value', devices[ardid][devid]);
+			socket.emit('device', devices[ardid][devid]);
 		}
 	}
 	

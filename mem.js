@@ -22,11 +22,11 @@ Mem.prototype.registerArduino = function(client, ardIP) {
 		ardid = '1'; /* if entered this condition it means this is the first arduino, give it ID "1" */
 		this.devices[client] = {};
 		this.devices[client][ardid] = {};
-		this.devices[client][ardid]['ip'] = ardIP;
+		this.devices[client][ardid].ip = ardIP; 
 		this.components.getFacility('debug').log(4, 'mem', 'client id: ' + client + 
-				', new Arduino registered: ' + ardid);
+				', new Arduino registered: ' + ardid + ' from: ' + ardIP);
 		return ardid;
-	} else { /* if at least one Arduino already registered */
+	} else { /* if at least one Arduino already registered (check by IP) */
 	
 		ardidRegistered = this.isArduinoIPRegistered(client, ardIP);
 		if (ardidRegistered) {
@@ -38,13 +38,13 @@ Mem.prototype.registerArduino = function(client, ardIP) {
 			while (true) {
 				if (typeof(this.devices[client][ardid]) == 'undefined') {
 					this.devices[client][ardid] = {};
-					this.devices[client][ardid]['ip'] = ardIP;
+					this.devices[client][ardid].ip = ardIP;
 					this.components.getFacility('debug').log(4, 'mem', 'client id: ' + client + 
-							', new Arduino registered: ' + ardid);
+							', new Arduino registered: ' + ardid + ' from: ' + ardIP);
 					return ardid;
 				}
 				ardidDec = parseInt(ardid, 16);
-				ardidDec+=1
+				ardidDec += 1
 				ardid = ardidDec.toString(16);
 				/* we can register only 250 arduinos */
 				if (ardid == 'fa') return 0; /* fa is 250 */
@@ -66,7 +66,7 @@ Mem.prototype.isArdIDRegistered = function(client, ardid) {
 Mem.prototype.isArduinoIPRegistered = function(client, ip) {
 	for (var ardid in this.devices[client]) {
 		if (this.devices[client].hasOwnProperty(ardid)) {
-			if (this.devices[client][ardid]['ip'] == ip) {
+			if (this.devices[client][ardid].ip == ip) {
 				return ardid;
 			}
 		}
@@ -81,38 +81,37 @@ Mem.prototype.isArduinoIPRegistered = function(client, ip) {
 	IP  - can be taken from req.connection.remoteAddress of express req object.
 	date - when the GET has been received
 */
-Mem.prototype.setDeviceStatus = function(client, url, date, ip) {
-	urlSplitted = url.split('/');
-	ardid = urlSplitted[1];
-	devid = urlSplitted[2];
-	
+Mem.prototype.setDeviceStatus = function(client, devid, ardid, devType, dataType, value, date, ip) {
+
 	// check if the client, device and arduino exists
 	if (typeof(this.devices[client]) == 'undefined') {
-		this.devices[client] = {};
-		this.components.getFacility('debug').log(4, 'mem', 'new client id: ' + client + ', new Arduino registered: ' + 
-				ardid + ' and new device: ' + devid);
+		this.components.getFacility('debug').log(1, 'mem', 'received request from unknown client: ' + client + 
+				' from IP: ' + ip);
+		return;
 	}
 	if (typeof(this.devices[client][ardid]) == 'undefined') {
-		this.devices[client][ardid] = {};
-		this.components.getFacility('debug').log(4, 'mem', 'existing client id: ' + client + ', new Arduino registered: ' + 
-				ardid + ' and new device: ' + devid);
+		this.components.getFacility('debug').log(1, 'mem', 'existing client id: ' + client + ', received message from unregistered Arduino: ' + 
+				ardid + ' device: ' + devid + ' IP: ' + ip);
+		return;
 	}
 	if (typeof(this.devices[client][ardid][devid]) == 'undefined') {
 		this.devices[client][ardid][devid] = {};
+		this.devices[client][ardid][devid].desc = '';
+		this.devices[client][ardid][devid].activated = false;
+		this.devices[client][ardid][devid].ip = ip;
+		this.devices[client][ardid][devid].devType = devType;
+		this.devices[client][ardid][devid].dataType = dataType;
+		this.devices[client][ardid][devid].ardid = ardid;
+		this.devices[client][ardid][devid].devid = devid;
 		this.components.getFacility('debug').log(4, 'mem', 'existing client id: ' + client + ', existing Arduino registered: ' + 
 				ardid + ' and new device: ' + devid);
 	}
 	
-	// save the old value
+	// save the old value for later comparison
 	var oldValue = this.devices[client][ardid][devid].value
 	
-	// fill the mem cache subsctructure
-	this.devices[client][ardid][devid].ip = ip;
-	this.devices[client][ardid][devid].devType = urlSplitted[4];
-	this.devices[client][ardid][devid].dataType = urlSplitted[5];
-	this.devices[client][ardid][devid].value = urlSplitted[6];
-	this.devices[client][ardid][devid].ardid = ardid;
-	this.devices[client][ardid][devid].devid = devid;
+	this.devices[client][ardid][devid].value = value;
+	
 	this.devices[client][ardid][devid].date = {
 		y 	: date.getFullYear(),
 		m 	: date.getMonth() + 1,
@@ -140,7 +139,8 @@ Mem.prototype.setDeviceStatus = function(client, url, date, ip) {
    The output interfaces, like the backend need to be updated */
 function onValueChange(client, devid, ardid, device) {
 	io = this.components.getFacility('backend').io;
-	io.of('/iot').to(client).emit('value', device);
+	console.log('emitting...');
+	io.of('/iot').to(client).emit('device', device);
 }
 
 /* return mem cache object of a single device based on ardid, devid */
