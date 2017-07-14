@@ -1,9 +1,9 @@
 import httplib
 
-arduino = { 'id' : '0', 'devs' : { '1' : 1, '2' : 1}};
+arduino = { 'id' : '0', 'destip' : '127.0.0.2', 'devs' : { '1' : 1, '2' : 1}};
 
-def createArduino(arduino):
-	conn = httplib.HTTPConnection("localhost", "32300");
+def createArduino(arduino, destip):
+	conn = httplib.HTTPConnection(destip, "32300");
 	conn.putrequest("POST", "/0/0/a/")
 	for devid, type in arduino['devs'].iteritems():
 		conn.putheader("X-iot-dev", devid + "," + str(type))
@@ -21,8 +21,8 @@ def createArduino(arduino):
 	else:
 		return False
 
-def deviceSendStatus(arduino, devid):
-	conn = httplib.HTTPConnection("localhost", "32300")
+def deviceSendStatus(arduino, destip, devid):
+	conn = httplib.HTTPConnection(destip, "32300")
 	conn.putrequest("POST", "/" + str(devid) + "/" + arduino['id'] + "/40/1/1/0")
 	conn.endheaders()
 
@@ -36,11 +36,11 @@ def deviceSendStatus(arduino, devid):
 
 
 		
-if (createArduino(arduino)):
+if (createArduino(arduino, arduino['destip'])):
 	print 'registered succesfully with ardid:', arduino['id']
 	for devid, type in arduino['devs'].iteritems():
 		print 'Sending status for devid:', devid 
-		deviceSendStatus(arduino, devid)
+		deviceSendStatus(arduino, arduino['destip'], devid)
 else:
 	print 'Couldn\'t register arduino'
 

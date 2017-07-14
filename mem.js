@@ -16,39 +16,62 @@ var memory = new Mem();
 /* function registers new Arduino to the system, should be called every time registration command is received on the ARIF 
    it returns arduino ID
 */
-Mem.prototype.registerArduino = function(client) {
+Mem.prototype.registerArduino = function(client, ardIP) {
 	// check if the client, device and arduino exists
 	if (typeof(this.devices[client]) == 'undefined') {
 		ardid = '1'; /* if entered this condition it means this is the first arduino, give it ID "1" */
 		this.devices[client] = {};
 		this.devices[client][ardid] = {};
+		this.devices[client][ardid]['ip'] = ardIP;
 		this.components.getFacility('debug').log(4, 'mem', 'client id: ' + client + 
 				', new Arduino registered: ' + ardid);
 		return ardid;
-	} else {
-		ardid = '2';
-		while (true) {
-			if (typeof(this.devices[client][ardid]) == 'undefined') {
-				this.devices[client][ardid] = {};
-				this.components.getFacility('debug').log(4, 'mem', 'client id: ' + client + 
-						', new Arduino registered: ' + ardid);
-				return ardid;
+	} else { /* if at least one Arduino already registered */
+	
+		ardidRegistered = this.isArduinoIPRegistered(client, ardIP);
+		if (ardidRegistered) {
+			this.components.getFacility('debug').log(4, 'mem', 'client id: ' + client + 
+				', Arduino from: ' + ardIP + ' registered already as: ' + ardid);
+			return ardidRegistered;
+		} else { /* new Arduino device (new IP) */
+			ardid = '2';
+			while (true) {
+				if (typeof(this.devices[client][ardid]) == 'undefined') {
+					this.devices[client][ardid] = {};
+					this.devices[client][ardid]['ip'] = ardIP;
+					this.components.getFacility('debug').log(4, 'mem', 'client id: ' + client + 
+							', new Arduino registered: ' + ardid);
+					return ardid;
+				}
+				ardidDec = parseInt(ardid, 16);
+				ardidDec+=1
+				ardid = ardidDec.toString(16);
+				/* we can register only 250 arduinos */
+				if (ardid == 'fa') return 0; /* fa is 250 */
 			}
-			ardidDec = parseInt(ardid, 16);
-			ardidDec+=1
-			ardid = ardidDec.toString(16);
-			/* we can register only 250 arduinos */
-			if (ardid == 'fa') return 0; /* fa is 250 */
 		}
 	}
 }
 
 /* check if Arduino has been registered already */
-Mem.prototype.isArduinoRegistered = function(client, ardid) {
+Mem.prototype.isArdIDRegistered = function(client, ardid) {
 	if (typeof(this.devices[client][ardid]) == 'undefined') 
 		return true;
 	else
 		return false;
+}
+
+/* checks if the IP address where the registration came from was already registered and contains ardid,
+   in such case, function returns ardid */
+Mem.prototype.isArduinoIPRegistered = function(client, ip) {
+	for (var ardid in this.devices[client]) {
+		if (this.devices[client].hasOwnProperty(ardid)) {
+			if (this.devices[client][ardid]['ip'] == ip) {
+				return ardid;
+			}
+		}
+	}
+	return false;
 }
 
 /* the method puts the latest status into the mem cache 

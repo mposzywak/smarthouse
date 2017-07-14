@@ -84,11 +84,12 @@ function onPostRequest(req, res) {
 		//debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + command);
 		switch (command) {
 			case ARIF_REGISTER:
-				var ardid = mem.registerArduino(config.cloud.id);
+				var ardid = mem.registerArduino(config.cloud.id, req.connection.remoteAddress);
 				res.set('X-arduino', ardid);
 				break;
 			case ARIF_DATA_TRANSFER:
 				devType = validateDevType(url.split('/')[3]);
+				break;
 			default:
 				debug.log(1, 'arif', 'command: ' + command + ' from: ' + req.connection.remoteAddress + ' is unknown!');
 		}
