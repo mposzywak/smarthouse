@@ -203,6 +203,10 @@ function onWSAuthorize(socket, next) {
 					socket.join(email);
 					socket.session = session;
 					pushAllDevices(socket, email);
+					socket.on('device_activate', function (msg) {
+						console.log('device_activate received');
+						onDeviceActivate(msg, socket)
+					});
 					next();
 				} else {
 					//socket.disconnect();
@@ -216,6 +220,13 @@ function onWSAuthorize(socket, next) {
 		require('./debug.js').log(5, 'backend', 'WS no cookie received from: ' + source);
 		next(new Error('No cookie. Please login.'));
 	}
+}
+
+/**
+ * executed on receiving even 'device_activate' from the front-end
+ */
+function onDeviceActivate(msg, socket) {
+	require('./debug.js').log(5, 'backend', 'WS received event: device_update, from client: ' + socket.session.email);
 }
 
 /**

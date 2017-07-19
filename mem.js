@@ -139,7 +139,6 @@ Mem.prototype.setDeviceStatus = function(client, devid, ardid, devType, dataType
    The output interfaces, like the backend need to be updated */
 function onValueChange(client, devid, ardid, device) {
 	io = this.components.getFacility('backend').io;
-	console.log('emitting...');
 	io.of('/iot').to(client).emit('device', device);
 }
 

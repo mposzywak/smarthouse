@@ -108,24 +108,36 @@
 	  socket.on('connect', onConnect);
 	  socket.on('connect_error', onConnectError);
 	  socket.on('error', onError);
-	  //  <tr class="w3-hover-grey">
-	  //    <td>Temp Sensor</td>   << p1
-	  //    <td>Kitchen</td>
-	  //    <td>23 Degrees Celsius</td>
-	  //  </tr>
-	  // action to be performed on receiving 
+	  // set incoming events
       socket.on('device', setValue);
-	  
+
 	  function setValue(msg) {
 		devArdID = msg.ardid + "_" + msg.devid;
 		console.log('got value');
 		if (document.getElementById(devArdID) == null) {
 			if (!msg.activated) { /* only put a device if it is not "Activated" */
-				$("#devices").append(getTableRow(msg));
+				devArdID = msg.ardid + "_" + msg.devid;
+				trDevName = '<tr id="' + devArdID + '" class="w3-hover-grey"><td>' + devTypeGetName(msg.devType) + '</td>';
+				trDesc = '<td><input id="' + devArdID + '_desc" placeholder="Description" /></td>'
+				trDevValue = '<td id="' + devArdID + '_value">' + devValueGetName(msg.devType, msg.value) + '</td>'
+				trDevActive = '<td>' + msg.activated + '</td>'
+				trDevID = '<td>' + msg.devid + '</td>'
+				trArdID = '<td>' + msg.ardid + '</td>'
+				trLastUpd = '<td id="' + devArdID + '_date">' + formatDate(msg.date) + '</td>'
+				trActions = '<td><button id="' + devArdID + '_activate" class="small green"><i class="fa fa-plus-square"></i> Activate</button></td></tr>'
+		
+				$("#devices").append(trDevName + trDesc + trDevValue + trDevActive + trDevID + trArdID + trLastUpd + trActions);
+				$("#" + devArdID + "_activate").click(function() {
+					console.log('test');
+					//console.log('emit() on button click: ' + JSON.stringify(socket.emit('device_activate', {my : 'test'})));
+					
+				});
+				//console.log('emit() on row add: ' + socket.emit('device_activate', {my : 'test'});
+				socket.emit('device_activate', {my : 'test'})
 			}
 		} else {
 			/* the device already reported, structre needs to be filled in with new data */
-			$("#" + devArdID + "_value").text(msg.value);
+			updateDeviceStatus(msg);
 		}
       }
 	  
@@ -135,6 +147,7 @@
 		$("#status-bar").css( { "background-color": "#1CD935", "border": "3px solid #169126", "width": "95%" } );
 		$("#status-msg").text("Connected to server.");
 		$("#status-msg").css( { "margin": "5px" });
+		 socket.emit('message', 'Hello server');;
 	  }
 	  
 	  // color the status-bar on connection error
@@ -152,24 +165,41 @@
 		$("#status-msg").css( { "margin": "5px" });
 	  }
 	  
+	  /* get the whole HTML table row with the unactivated device */
 	  function getTableRow(msg) {
 	    devArdID = msg.ardid + "_" + msg.devid;
 		trDevName = '<tr id="' + devArdID + '" class="w3-hover-grey"><td>' + devTypeGetName(msg.devType) + '</td>';
-		trDesc = '<td><input id="text2" placeholder="Description" /></td>'
-		trDevStatus = '<td>' + devValueGetName(msg.devType, msg.value) + '</td>'
+		trDesc = '<td><input id="' + devArdID + '_desc" placeholder="Description" /></td>'
+		trDevValue = '<td id="' + devArdID + '_value">' + devValueGetName(msg.devType, msg.value) + '</td>'
 		trDevActive = '<td>' + msg.activated + '</td>'
 		trDevID = '<td>' + msg.devid + '</td>'
 		trArdID = '<td>' + msg.ardid + '</td>'
-		trLastUpd = '<td>' + formatDate(msg.date) + '</td>'
-		trActions = '<td><button class="small green"><i class="fa fa-plus-square"></i> Activate</button></td></tr>'
+		trLastUpd = '<td id="' + devArdID + '_date">' + formatDate(msg.date) + '</td>'
+		trActions = '<td><button id="' + devArdID + '_activate" class="small green"><i class="fa fa-plus-square"></i> Activate</button></td></tr>'
 		
-		return trDevName + trDesc + trDevStatus + trDevActive + trDevID + trArdID + trLastUpd + trActions;
+		return trDevName + trDesc + trDevValue + trDevActive + trDevID + trArdID + trLastUpd + trActions;
 	  }
 	  
+	  function onActivateButton(id) {
+	    console.log(id);
+		//var socket = io('/iot');
+		socket.emit('device_activate', id);
+
+	  }
+	  
+	  /* update the device Status/value according to it's type and sets the time for update */
+	  function updateDeviceStatus(msg) {
+	    devArdID = msg.ardid + "_" + msg.devid;
+	    $('#' + devArdID + '_value').text(devValueGetName(msg.devType, msg.value));
+		$('#' + devArdID + '_date').text(formatDate(msg.date));
+	  }
+	  
+	  /* formats the date into displayble string from the JSON data object of a device */
 	  function formatDate(date) {
 		return date.y + '-' + date.m + '-' + date.day + ' ' + date.h + ':' + date.min + ':' + date.s + '.' + date.ms ;
 	  }
 	  
+	  /* provides a string name of status of a device (selects the right status based on the device type) */
 	  function devValueGetName(devType, value) {
 	    switch (devType){
 		  case '1':
@@ -183,6 +213,7 @@
 		}
 	  }
 	  
+	  /* provides string name of a device type based on devType variable */
 	  function devTypeGetName(devType) {
 		switch (devType) {
 		  case '1':
