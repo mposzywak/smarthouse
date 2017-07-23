@@ -110,13 +110,14 @@
 	  socket.on('error', onError);
 	  // set incoming events
       socket.on('device', setValue);
+	  var test = 'hello';
 
 	  function setValue(msg) {
 		devArdID = msg.ardid + "_" + msg.devid;
 		console.log('got value');
 		if (document.getElementById(devArdID) == null) {
 			if (!msg.activated) { /* only put a device if it is not "Activated" */
-				devArdID = msg.ardid + "_" + msg.devid;
+				var devArdID = msg.ardid + "_" + msg.devid;
 				trDevName = '<tr id="' + devArdID + '" class="w3-hover-grey"><td>' + devTypeGetName(msg.devType) + '</td>';
 				trDesc = '<td><input id="' + devArdID + '_desc" placeholder="Description" /></td>'
 				trDevValue = '<td id="' + devArdID + '_value">' + devValueGetName(msg.devType, msg.value) + '</td>'
@@ -129,7 +130,7 @@
 				$("#devices").append(trDevName + trDesc + trDevValue + trDevActive + trDevID + trArdID + trLastUpd + trActions);
 				$("#" + devArdID + "_activate").click(function() {
 					console.log('test');
-					//console.log('emit() on button click: ' + JSON.stringify(socket.emit('device_activate', {my : 'test'})));
+					console.log('emit() on button click: ' + test);
 					
 				});
 				//console.log('emit() on row add: ' + socket.emit('device_activate', {my : 'test'});
