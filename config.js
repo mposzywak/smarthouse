@@ -35,15 +35,9 @@ config.backend.debug = 5;
 config.backend.port = 10080;
 config.backend.html = '/frontend';
 
-/*config.backend.cookies = {
-		secret: require('./helpers.js').generate(40),
-		//secret: 'blebleblebleble',
-		duration: 3 * 60 * 1000,
-		activeDuration: 1 * 60 * 1000,
-		cookie: {
-			httpOnly: false
-		}
-	};*/
+config.backend.fileSessionStoreOptions = {
+		secret: require('./helpers.js').generate(40)
+	};
 config.backend.sessionStoreOptions = {
   connectOptions: {
     servers: [

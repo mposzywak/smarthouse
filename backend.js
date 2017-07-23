@@ -20,19 +20,26 @@ var Backend = function() {
 	var EventEmitter = require('events').EventEmitter;
 	this.emitter      = new EventEmitter();
 	
-	this.RDBStore 	= require('express-session-rethinkdb')(this.session);
-	
-	this.rdbStore   = new this.RDBStore(this.components.getFacility('config').backend.sessionStoreOptions);
-	
+	this.fileStore = require('session-file-store')(this.session);
+	// TODO: Remove the rethink DB cookie store configuration
+	//this.RDBStore 	= require('express-session-rethinkdb')(this.session);
+	//this.rdbStore   = new this.RDBStore(this.components.getFacility('config').backend.sessionStoreOptions);
+	this.FILEStore = new this.fileStore();
 	this.app.set('views', __dirname + '/front_end');
 	this.app.engine('html', require('ejs').renderFile);
 	
 	this.app.use(this.session({
+		store: this.FILEStore,
+		secret: 'fdsifoa4efioehfrafoeffjisaofew',
+		saveUninitialized: true,
+		resave: true
+	}));
+/*	this.app.use(this.session({
 		secret: 'fdsifoa4efioehfrafoeffjisaofew',
 		saveUninitialized: true,
 		resave: true, 
 		store: this.rdbStore
-	}));
+	}));*/
 	this.app.use(this.bodyParser.json());      
 	this.app.use(this.bodyParser.urlencoded({extended: true}));
 	this.app.use('/css', this.express.static('front_end/css'));
@@ -187,7 +194,7 @@ function onWSAuthorize(socket, next) {
 		require('./debug.js').log(5, 'backend', 'Cookie received: ' + cookie + ' from: ' + source);
 		id = cookie.match('connect.sid=[\\w\\%\\d\\-]*')[0].substring(16);
 		console.log('ID = ' + id);
-		backend.rdbStore.get(id, function(error, session) {
+		backend.FILEStore.get(id, function(error, session) {
 			if (error)
 			{
 				require('./debug.js').log(5, 'backend', 'Error while reading session data from DB for: ' + source + ' error: ' + error);
