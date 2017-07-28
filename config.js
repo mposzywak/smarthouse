@@ -1,7 +1,7 @@
 
 /* initialize the facilities, the entry is required here for debug.log() to work with that facility */
 var config = {};
-var facilities = ['cloud', 'db', 'rcp', 'arif', 'mem', 'debug', 'backend', 'security', 'init'];
+var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init'];
 facilities.forEach(function(item) {
 	config[item] = {};
 });
@@ -12,8 +12,9 @@ components = require('./components').setFacility(config, 'config');
 config.name = 'config';
 
 // configuration related to communication with the cloud
-config.cloud.id = 'maciej_poszywak@smarthouse.com';
-config.cloud.passwd = '123qwe';
+//config.cloud.id = 'maciej_poszywak@smarthouse.com';
+//config.cloud.passwd = '123qwe';
+config.cloud.enabled = true;
 config.cloud.host = 'duinocloud.org';
 config.cloud.port = 24350;
 config.cloud.debug = 5;
@@ -78,3 +79,7 @@ config.security.gid = 99;
 config.security.debug = 5;
 
 module.exports = config;
+
+// config of the RCP (Raspy-Cloud Protocol) facility 
+config.rcpserver.port = 32400;
+config.rcpserver.debug = 5;

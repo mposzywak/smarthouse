@@ -1,4 +1,11 @@
 /**
+ * settings
+ */
+const ADD_EXEC = '/home/maciej/accountdb/add-account.sh';
+const AUTH_EXEC = '/home/maciej/accountdb/verify-account.sh';
+
+
+/**
  * Backend is the HTTP server that is serving the client requests, it 
  * is the user interface to the system.
  */
@@ -115,19 +122,20 @@ function onLogin(req, res) {
 	email = req.body.email;
 	pass = req.body.pass;
 	require('./debug.js').log(5, 'backend', 'Auth POST received with email: ' + email + ' pass: ' + pass);
-	if (verify(email, pass)) {
-		require('./debug.js').log(5, 'backend', 'Correct login for: ' + email);
-		req.session.email = email;
-		res.header('Access-Control-Allow-Origin', 'http://duinocloud.com:10080/*');
-		res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-		res.header('Access-Control-Allow-Headers', 'Content-Type');
-
-		res.end('done');
-	} else {
-		// bad user or pass
-		require('./debug.js').log(5, 'backend', 'Bad login for: ' + email);
-		res.end('bad');
-	}
+	verify(email, pass, function (code) {
+		if (code === 0) {
+			require('./debug.js').log(5, 'backend', 'Correct login for: ' + email);
+			req.session.email = email;
+			res.header('Access-Control-Allow-Origin', 'http://duinocloud.com:10080/*');
+			res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+			res.header('Access-Control-Allow-Headers', 'Content-Type');
+			res.end('done');
+		} else {
+			// bad user or pass
+			require('./debug.js').log(5, 'backend', 'Bad login for: ' + email + ' code: ' + code);
+			res.end('bad');
+		}
+	});
 }
 
 /**
@@ -163,18 +171,34 @@ function onLogout(req,res) {
 /**
  *
  */
-function verify(login, password) {
+function verify(login, password, callback) {
 	// check if the username is in the config file
 	id = components.getFacility('config').cloud.id;
 	pass = components.getFacility('config').cloud.passwd;
-	if (id && pass)
+	enabled = components.getFacility('config').cloud.enabled;
+	if (id && pass && enabled)
 	{
 		if (login === id && password === pass) {
 			//login ok
-			return true;
+			callback(0);
+			//return true;
+		} else {
+			callback(1);
 		}
 	} else { // TODO: check DB for username
-		
+		var exec = require('child_process').exec;
+		var child = exec(AUTH_EXEC + ' ' + login + ' ' + password, function (error, stdout, stderr) {
+			if (error !== null) {
+				//console.log('exec error: ' + error);
+				//console.log('error code: ' + error.code);
+				callback(error.code);
+			} else {
+				//console.log('succesfully auth');
+				//timer.start();
+				callback(0);
+
+			}
+		});
 	}
 	return false;
 }

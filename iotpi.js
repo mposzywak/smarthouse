@@ -16,6 +16,7 @@ init.setInit('main');
 var debug = require('./debug.js').enableDebugServer();
 var mem = require('./mem.js');
 var backend = require('./backend.js');
+var rcp = require('./rcpserver.js');
 
 /* ARiF HTTP server */
 init.setInit('ARiF');
@@ -44,16 +45,16 @@ urlRegex += 'dec\/[0-9]{1,7}\\b|'				// 32bit value 0 - FFFFFFFF
 urlRegex += '32bit\/[0-9a-fA-F]{1,8}\\b)';		// dec   value 0 - 99999999
 
 /* accept requests for all URLs, filter later */
-app.get('/*', onGetRequest);
+//app.get('/*', onGetRequest);
 app.post('/*', onPostRequest);
 //app.use(express.static('smarthouse'))
 
 /* Executed each time when an HTTP request comes into ARiF interface */
-function onGetRequest(req, res) {
+/*function onGetRequest(req, res) { ##################### TODO: Remove the function as we use POST.
 	reqDate = new Date();
 	debug.log(4, 'arif', 'Request GET URL: ' + req.originalUrl + ' from: ' + req.connection.remoteAddress);
 	var result = req.originalUrl.match(urlRegex);
-
+	
 	if (result) {
 		debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + result[2]);
 		if (result[2] == 'data') { // if command is data put it into the mem cache, db etc...
@@ -67,13 +68,20 @@ function onGetRequest(req, res) {
 		res.writeHead(404, { 'Content-Type' : 'text/plain'});
         res.end('Error: probably wrong URL');
 	}
-}
+}*/
 
 /* Execute each time when HTTP POST request comes into ARiF interface */
 function onPostRequest(req, res) {
 	var reqDate = new Date();
 	srcip = req.connection.remoteAddress;
 	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcip);
+
+	if (!config.cloud.id) {
+		debug.log(1, 'arif', 'Sending 502: ARIF interface not enabled, system configured for cloud');
+		res.writeHead(502, { 'Content-Type' : 'text/plain'});
+        res.end('Error: probably wrong URL');
+		return;
+	}
 	
 	var url = req.originalUrl;
 	var result = url.match("^(\/[0-9a-fA-F]{1,2}){3}");
