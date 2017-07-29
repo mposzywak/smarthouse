@@ -12,9 +12,10 @@ components = require('./components').setFacility(config, 'config');
 config.name = 'config';
 
 // configuration related to communication with the cloud
-//config.cloud.id = 'maciej_poszywak@smarthouse.com';
-//config.cloud.passwd = '123qwe';
-config.cloud.enabled = true;
+config.cloud.id = 'admin';
+config.cloud.passwd = 'admin';
+config.cloud.enabled = false;
+config.cloud.raspy = '001';
 config.cloud.host = 'duinocloud.org';
 config.cloud.port = 24350;
 config.cloud.debug = 5;

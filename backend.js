@@ -176,7 +176,7 @@ function verify(login, password, callback) {
 	id = components.getFacility('config').cloud.id;
 	pass = components.getFacility('config').cloud.passwd;
 	enabled = components.getFacility('config').cloud.enabled;
-	if (id && pass && enabled)
+	if (id && pass && !enabled)
 	{
 		if (login === id && password === pass) {
 			//login ok

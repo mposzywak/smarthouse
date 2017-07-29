@@ -143,4 +143,9 @@ function onHTTPError(err) {
 function onInitComplete() {
 	debug.log(1, 'init', 'Finished all initialization tasks');
 	debug.log(1, 'security', 'TODO: calling privs drop');
+	if (config.cloud.enabled) {
+		debug.log(1, 'init', 'app initialized as cloud');
+	} else {
+		debug.log(1, 'init', 'app initialized as raspby');
+	}
 }
