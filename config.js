@@ -1,7 +1,7 @@
 
 /* initialize the facilities, the entry is required here for debug.log() to work with that facility */
 var config = {};
-var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init'];
+var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init', 'rcpclient'];
 facilities.forEach(function(item) {
 	config[item] = {};
 });

@@ -12,7 +12,8 @@ var Mem = function() {
 	this.config = require('./config.js');
 	//this.raspyid = require('./config.js').cloud.raspy;
     // raspyID parameter is only used by ARiF related function, so this setting on the cloud doesn't matter.
-	this.raspyid = require('./config.js').rcpclient.vpnID.split('-')[1];
+	if (!this.config.cloud.enabled)
+		this.raspyid = require('./config.js').rcpclient.vpnID.split('-')[1];
     //this.raspyid = this.raspyid.split('-')[0];
     this.rcpclient = require('./rcpclient.js');
 }
