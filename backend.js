@@ -257,26 +257,45 @@ function onWSAuthorize(socket, next) {
  * executed on receiving even 'device_activate' from the front-end
  */
 function onDeviceActivate(msg, socket) {
-	require('./debug.js').log(5, 'backend', 'WS received event: device_update, from client: ' + socket.session.email);
+	accountID = socket.session.email;
+	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_update with: ' + JSON.stringify(msg));
+	mem = components.getFacility('mem');
+	devices = mem.getClientDevices(accountID);
+	
+	devices[msg.raspyID][msg.ardID][msg.devID].desc = msg.desc;
+	devices[msg.raspyID][msg.ardID][msg.devID].activated = true;
+	socket.emit('device', devices[msg.raspyID][msg.ardID][msg.devID]);
 }
 
 /**
- * pushes all device data to a socket identified by "client" ID
+ * Validate user string input (for length, etc... TODO)
  */
-function pushAllDevices(socket, client) {
+function validateFrontendInput(input) {
+	return input;
+}
+
+/**
+ * pushes all device data to a socket identified by accountID
+ */
+function pushAllDevices(socket, accountID) {
 	mem = components.getFacility('mem');
-	devices = mem.getClientDevices(client);
+	devices = mem.getClientDevices(accountID);
 	
-	for (var ardid in devices) {
-		for (var devid in devices[ardid]) {
-			//below line will not work. Probably because we are executing this function inside 
-			//initialization function
-			//io.of('/iot').to(client).emit('value', devices[ardid][devid]);
-			
-			socket.emit('device', devices[ardid][devid]);
+	for (var raspyID in devices) {
+		if (raspyID > 0 && raspyID < 999) { // control if variable is actually a raspyID or meta
+			for (var ardID in devices[raspyID]) {
+				if (ardID > 0 && ardID < 256) {
+					for (var devID in devices[raspyID][ardID]) {
+						if (devID > 0 && devID < 256) {
+							require('./debug.js').log(5, 'backend', '[' + accountID + '] Emitting device data of raspyID: ' + raspyID +
+									' ardID: ' + ardID + ' devID: ' + devID);
+							socket.emit('device', devices[raspyID][ardID][devID]);
+						}
+					}
+				}
+			}
 		}
 	}
-	
 }
 
 /**

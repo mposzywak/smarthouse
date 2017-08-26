@@ -14,7 +14,7 @@ config.name = 'config';
 // configuration related to communication with the cloud
 config.cloud.id = 'admin';
 config.cloud.passwd = 'admin';
-config.cloud.enabled = false;
+config.cloud.enabled = true;
 config.cloud.raspy = '001';
 config.cloud.host = 'duinocloud.org';
 config.cloud.port = 24350;

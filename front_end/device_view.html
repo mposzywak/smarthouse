@@ -125,17 +125,20 @@
       socket.on('device', setValue);
 	  
 	  function setValue(msg) {
-		devArdID = msg.devid + "_" + msg.ardid;
+		devArdID = msg.raspyid + '-' + msg.devid + '-' + msg.ardid;
 		console.log('got value');
-		if (document.getElementById(devArdID + '_value') == null) {
-			/* this is a new device so whole div structure needs to be created */
-			p1 = '<tr class="w3-hover-grey"><td>' + msg.devType + '</td>';
-			pMain = '<td>' + devArdID + '</td>';
-			p2 = '<td id="' + devArdID + '_value">' + msg.value + '</td></tr>';
-			$("#devices").append(p1 + pMain + p2);
-		} else {
-			/* the device already reported, structre needs to be filled in with new data */
-			$("#" + devArdID + "_value").text(msg.value);
+		if (msg.activated == true) {
+		
+			if (document.getElementById(devArdID + '_value') == null) {
+				/* this is a new device so whole div structure needs to be created */
+				p1 = '<tr class="w3-hover-grey"><td>' + msg.devType + '</td>';
+				pMain = '<td>' + msg.desc + '</td>';
+				p2 = '<td id="' + devArdID + '_value">' + msg.value + '</td></tr>';
+				$("#devices").append(p1 + pMain + p2);
+			} else {
+				/* the device already reported, structre needs to be filled in with new data */
+				$("#" + devArdID + "_value").text(msg.value);
+			}
 		}
       }
 	  

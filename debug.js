@@ -23,7 +23,7 @@ Debug.prototype.enableDebugServer = function() {
 	return this;
 }
 
-/* */
+/* main logging function */
 Debug.prototype.log = function(severity, facility, msg) {
 	if (typeof(this.components.getFacility('config')[facility]) == 'undefined') {
 		date = new Date();
@@ -44,7 +44,7 @@ Debug.prototype.log = function(severity, facility, msg) {
  *  wget -qO- http://localhost:32301/view/mem/devices | python -m json.tool
  *  Don't display directly the facility objects as they have circular structure
  *  for example /view/mem will not work, but /view/mem/devices will. Config facility doesn't
- *  have circular structure as the only one.
+ *  have circular structure as the only one. Don't add "/" at the end of the URL. 
  *  ### TODO: Add handling of the following: TypeError: Converting circular structure to JSON
  *  and TypeError: Cannot read property '1' of undefined
  */
@@ -65,10 +65,8 @@ Debug.prototype.onDebugRequest = function(req, res) {
 }
 
 function viewDataCMD(url) {
-	console.log('view data url: ' + url);
 	object = this.components.getFacility(url[2]);
 	for (i = 3 ; i < url.length ; i++) {
-		console.log('putting: ' + url[i]);
 		object = object[url[i]];
 	}
 	return object;
@@ -77,7 +75,7 @@ function viewDataCMD(url) {
 /* executed when Debug HTTP server starts to listen on port succesfully */
 function onHTTPDebugListen() {
 	components.getFacility('debug').log(1, 'debug', 'Debug HTTP server started succesfully, listening on port: ' + 
-		components.getFacility('config').debug.port || 32301);
+			components.getFacility('config').debug.port || 32301);
 	require('./components').getFacility('init').clearInit('debug');
 }
 

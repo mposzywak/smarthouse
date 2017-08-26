@@ -113,28 +113,32 @@
 	  var test = 'hello';
 
 	  function setValue(msg) {
-		devArdID = msg.ardid + "_" + msg.devid;
-		console.log('got value');
+		var devArdID = msg.raspyid + '-' + msg.ardid + '-' + msg.devid;
+		console.log('got value: ' + msg.ardid);
 		if (document.getElementById(devArdID) == null) {
 			if (!msg.activated) { /* only put a device if it is not "Activated" */
-				var devArdID = msg.ardid + "_" + msg.devid;
+				//var devArdID = msg.ardid + "_" + msg.devid;
 				trDevName = '<tr id="' + devArdID + '" class="w3-hover-grey"><td>' + devTypeGetName(msg.devType) + '</td>';
 				trDesc = '<td><input id="' + devArdID + '_desc" placeholder="Description" /></td>'
 				trDevValue = '<td id="' + devArdID + '_value">' + devValueGetName(msg.devType, msg.value) + '</td>'
 				trDevActive = '<td>' + msg.activated + '</td>'
 				trDevID = '<td>' + msg.devid + '</td>'
 				trArdID = '<td>' + msg.ardid + '</td>'
-				trLastUpd = '<td id="' + devArdID + '_date">' + formatDate(msg.date) + '</td>'
+				trLastUpd = '<td id="' + devArdID + '_date">' + ' data here... ' + '</td>'
 				trActions = '<td><button id="' + devArdID + '_activate" class="small green"><i class="fa fa-plus-square"></i> Activate</button></td></tr>'
 		
 				$("#devices").append(trDevName + trDesc + trDevValue + trDevActive + trDevID + trArdID + trLastUpd + trActions);
 				$("#" + devArdID + "_activate").click(function() {
-					console.log('test');
-					console.log('emit() on button click: ' + test);
-					
+					//console.log('test');
+					var device = {};
+					device.ardID = msg.ardid;
+					device.devID = msg.devid;
+					device.raspyID = msg.raspyid;
+					device.desc = $('#' + devArdID + '_desc').val();
+					socket.emit('device_activate', device);
 				});
 				//console.log('emit() on row add: ' + socket.emit('device_activate', {my : 'test'});
-				socket.emit('device_activate', {my : 'test'})
+				//socket.emit('device_activate', {my : 'test'})
 			}
 		} else {
 			/* the device already reported, structre needs to be filled in with new data */
@@ -166,16 +170,16 @@
 		$("#status-msg").css( { "margin": "5px" });
 	  }
 	  
-	  /* get the whole HTML table row with the unactivated device */
-	  function getTableRow(msg) {
-	    devArdID = msg.ardid + "_" + msg.devid;
+	  /* create the whole HTML table row with the unactivated device */
+	  function createTableRow(msg) {
+	    var devArdID = msg.raspyid + '-' + msg.ardid + '-' + msg.devid;
 		trDevName = '<tr id="' + devArdID + '" class="w3-hover-grey"><td>' + devTypeGetName(msg.devType) + '</td>';
 		trDesc = '<td><input id="' + devArdID + '_desc" placeholder="Description" /></td>'
 		trDevValue = '<td id="' + devArdID + '_value">' + devValueGetName(msg.devType, msg.value) + '</td>'
 		trDevActive = '<td>' + msg.activated + '</td>'
 		trDevID = '<td>' + msg.devid + '</td>'
 		trArdID = '<td>' + msg.ardid + '</td>'
-		trLastUpd = '<td id="' + devArdID + '_date">' + formatDate(msg.date) + '</td>'
+		trLastUpd = '<td id="' + devArdID + '_date">' + ' ' + '</td>'
 		trActions = '<td><button id="' + devArdID + '_activate" class="small green"><i class="fa fa-plus-square"></i> Activate</button></td></tr>'
 		
 		return trDevName + trDesc + trDevValue + trDevActive + trDevID + trArdID + trLastUpd + trActions;
@@ -190,15 +194,15 @@
 	  
 	  /* update the device Status/value according to it's type and sets the time for update */
 	  function updateDeviceStatus(msg) {
-	    devArdID = msg.ardid + "_" + msg.devid;
+	    var devArdID = msg.raspyid + '-' + msg.ardid + '-' + msg.devid;
 	    $('#' + devArdID + '_value').text(devValueGetName(msg.devType, msg.value));
-		$('#' + devArdID + '_date').text(formatDate(msg.date));
+		//$('#' + devArdID + '_date').text(formatDate(msg.date));
 	  }
 	  
 	  /* formats the date into displayble string from the JSON data object of a device */
-	  function formatDate(date) {
-		return date.y + '-' + date.m + '-' + date.day + ' ' + date.h + ':' + date.min + ':' + date.s + '.' + date.ms ;
-	  }
+	  //function formatDate(date) {
+		//return date.y + '-' + date.m + '-' + date.day + ' ' + date.h + ':' + date.min + ':' + date.s + '.' + date.ms ;
+	  //}
 	  
 	  /* provides a string name of status of a device (selects the right status based on the device type) */
 	  function devValueGetName(devType, value) {
