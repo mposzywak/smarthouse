@@ -20,7 +20,7 @@ RCPClient.prototype.sendDeviceStatus = function(device) {
 	request.write(JSON.stringify(device),encoding='utf8'); //possibly need to escape as well? 
 	require('./debug.js').log(4, 'rcpclient', 'Sending device status of device, ardid: ' + device.ardid + ' devid: ' + device.devid);
 	rcpclient.on('error', function (error) {
-		require('./debug.js').log(1, 'rcpclient', 'Failed to establish connection with the cloud: ', error);
+		require('./debug.js').log(1, 'rcpclient', 'Failed to establish connection with the cloud: ', error.message);
 	});
 
 	request.on('response', function (response) {

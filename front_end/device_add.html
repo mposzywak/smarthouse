@@ -8,6 +8,7 @@
 <script src="js/sorttable.js"></script>
 <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
 <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+<script src="js/smarthouse.js"></script>
 <link rel="stylesheet" type="text/css" href="css/style.css" media="all" /> 
 <link rel="stylesheet" type="text/css" href="css/w3c.css" media="all" /> 
 <link rel="stylesheet" type="text/css" href="css/kickstart.css" media="all" />               <!--  KICKSTART -->
@@ -18,9 +19,6 @@
 <!-- ===================================== END HEADER ===================================== -->
 <!-- ===================================== NAVIGATION BAR ===================================== -->
 	<nav class="navbar">
-		
-			
-			
 			<a class="hide-phone" id="logo" href="http://duinocloud.org" title="Go to duinocloud eshop"><i class="fa fa-angle-right" style="float:right"> duino<span>Cloud.org</span></a></i>
 
 			<ul  style="overflow:hidden" >
@@ -37,24 +35,17 @@
 			<li><a href="cloud_connect.html" style="float:right" title="Connect to your Monitoring Cloud"><i class="fa fa-cloud "></i></a></li>
 
 			</ul>
-			
-  
-
-			
-		
 	</nav> 
-
-
 <!-- ===================================== END NAVIGATION BAR ===================================== -->
 <div class="callout callout-top table-main" style="overflow:hidden">
  <!-- <div class="grid flex"> -->
 
 	<div class="w3-table-container">
-	  <h4>Device Details</h4>
+	  <h4>Inactive Devices</h4>
 	  
 		<div class="clear"></div><br/>
-		<div id="status-bar">
-			<p id="status-msg"> ... </p>
+		<div id="status-handle">
+			<!-- <p id="status-msg"> ... </p> -->
 		</div>
 		<div class="clear"></div><br/>	 
 		
@@ -113,72 +104,52 @@
 	  var test = 'hello';
 
 	  function setValue(msg) {
-		var devArdID = msg.raspyid + '-' + msg.ardid + '-' + msg.devid;
-		console.log('got value: ' + msg.ardid);
-		if (document.getElementById(devArdID) == null) {
+		var FID = msg.raspyID + '-' + msg.ardID + '-' + msg.devID;
+		console.log('got value: ' + msg.ardID);
+		if (document.getElementById(FID + '_row') == null) {
 			if (!msg.activated) { /* only put a device if it is not "Activated" */
-				//var devArdID = msg.ardid + "_" + msg.devid;
-				trDevName = '<tr id="' + devArdID + '" class="w3-hover-grey"><td>' + devTypeGetName(msg.devType) + '</td>';
-				trDesc = '<td><input id="' + devArdID + '_desc" placeholder="Description" /></td>'
-				trDevValue = '<td id="' + devArdID + '_value">' + devValueGetName(msg.devType, msg.value) + '</td>'
+				//var FID = msg.ardid + "_" + msg.devid;
+				trDevName = '<tr id="' + FID + '_row" class="w3-hover-grey"><td>' + devTypeGetName(msg.devType) + '</td>';
+				trDesc = '<td><input id="' + FID + '_desc" placeholder="Description" /></td>'
+				trDevValue = '<td id="' + FID + '_value">' + devValueGetName(msg.devType, msg.value) + '</td>'
 				trDevActive = '<td>' + msg.activated + '</td>'
-				trDevID = '<td>' + msg.devid + '</td>'
-				trArdID = '<td>' + msg.ardid + '</td>'
-				trLastUpd = '<td id="' + devArdID + '_date">' + ' data here... ' + '</td>'
-				trActions = '<td><button id="' + devArdID + '_activate" class="small green"><i class="fa fa-plus-square"></i> Activate</button></td></tr>'
+				trDevID = '<td>' + msg.devID + '</td>'
+				trArdID = '<td>' + msg.ardID + '</td>'
+				trLastUpd = '<td id="' + FID + '_date">' + ' data here... ' + '</td>'
+				trActions = '<td><button id="' + FID + '_activate" class="small green"><i class="fa fa-plus-square"></i> Activate</button></td></tr>'
 		
 				$("#devices").append(trDevName + trDesc + trDevValue + trDevActive + trDevID + trArdID + trLastUpd + trActions);
-				$("#" + devArdID + "_activate").click(function() {
+				$("#" + FID + "_activate").click(function() {
 					//console.log('test');
 					var device = {};
-					device.ardID = msg.ardid;
-					device.devID = msg.devid;
-					device.raspyID = msg.raspyid;
-					device.desc = $('#' + devArdID + '_desc').val();
-					socket.emit('device_activate', device);
+					device.ardID = msg.ardID;
+					device.devID = msg.devID;
+					device.raspyID = msg.raspyID;
+					device.desc = $('#' + FID + '_desc').val();
+					device.activated = true;
+					/*$('#' + FID + '_row').fadeOut('slow', 'swing', function(){
+						
+						$('#' + FID + '_row').remove();
+					}); */
+					$('#' + FID + '_row').remove();
+					socket.emit('device_update', device);
 				});
-				//console.log('emit() on row add: ' + socket.emit('device_activate', {my : 'test'});
-				//socket.emit('device_activate', {my : 'test'})
 			}
 		} else {
 			/* the device already reported, structre needs to be filled in with new data */
 			updateDeviceStatus(msg);
 		}
       }
-	  
-	  // color the status-bar div on successful connection
-	  function onConnect(msg) {
-		console.log("connected to server.");
-		$("#status-bar").css( { "background-color": "#1CD935", "border": "3px solid #169126", "width": "95%" } );
-		$("#status-msg").text("Connected to server.");
-		$("#status-msg").css( { "margin": "5px" });
-		 socket.emit('message', 'Hello server');;
-	  }
-	  
-	  // color the status-bar on connection error
-	  function onConnectError(msg) {
-		console.log("Connection Error!");
-		$("#status-bar").css( { "background-color": "#F02626", "border": "3px solid #911631", "width": "95%" } );
-		$("#status-msg").text("Disconnected from server: " + msg);
-		$("#status-msg").css( { "margin": "5px" });
-	  }
-	  
-	  function onError(msg) {
-		console.log("other error: " + msg);
-		$("#status-bar").css( { "background-color": "#F02626", "border": "3px solid #911631", "width": "95%" } );
-		$("#status-msg").text("Disconnected from server: " + msg);
-		$("#status-msg").css( { "margin": "5px" });
-	  }
-	  
+	   
 	  /* create the whole HTML table row with the unactivated device */
 	  function createTableRow(msg) {
-	    var devArdID = msg.raspyid + '-' + msg.ardid + '-' + msg.devid;
+	    var devArdID = msg.raspyID + '-' + msg.ardID + '-' + msg.devID;
 		trDevName = '<tr id="' + devArdID + '" class="w3-hover-grey"><td>' + devTypeGetName(msg.devType) + '</td>';
 		trDesc = '<td><input id="' + devArdID + '_desc" placeholder="Description" /></td>'
 		trDevValue = '<td id="' + devArdID + '_value">' + devValueGetName(msg.devType, msg.value) + '</td>'
 		trDevActive = '<td>' + msg.activated + '</td>'
-		trDevID = '<td>' + msg.devid + '</td>'
-		trArdID = '<td>' + msg.ardid + '</td>'
+		trDevID = '<td>' + msg.devID + '</td>'
+		trArdID = '<td>' + msg.ardID + '</td>'
 		trLastUpd = '<td id="' + devArdID + '_date">' + ' ' + '</td>'
 		trActions = '<td><button id="' + devArdID + '_activate" class="small green"><i class="fa fa-plus-square"></i> Activate</button></td></tr>'
 		
@@ -194,7 +165,7 @@
 	  
 	  /* update the device Status/value according to it's type and sets the time for update */
 	  function updateDeviceStatus(msg) {
-	    var devArdID = msg.raspyid + '-' + msg.ardid + '-' + msg.devid;
+	    var devArdID = msg.raspyID + '-' + msg.ardID + '-' + msg.devID;
 	    $('#' + devArdID + '_value').text(devValueGetName(msg.devType, msg.value));
 		//$('#' + devArdID + '_date').text(formatDate(msg.date));
 	  }
@@ -203,47 +174,6 @@
 	  //function formatDate(date) {
 		//return date.y + '-' + date.m + '-' + date.day + ' ' + date.h + ':' + date.min + ':' + date.s + '.' + date.ms ;
 	  //}
-	  
-	  /* provides a string name of status of a device (selects the right status based on the device type) */
-	  function devValueGetName(devType, value) {
-	    switch (devType){
-		  case '1':
-		    if (value == '0') 
-			  return 'OFF';
-			else
-			  return 'ON';
-			break;
-		  default:
-		    return value;
-		}
-	  }
-	  
-	  /* provides string name of a device type based on devType variable */
-	  function devTypeGetName(devType) {
-		switch (devType) {
-		  case '1':
-		    return 'Light';
-			break;
-		  case '2':
-		    return 'Switch';
-			break;
-		  case '3':
-		    return 'Sensor';
-			break;
-		  case '4':
-		    return 'Vent';
-			break;
-		  case '5':
-		    return 'Shade';
-			break;
-		  case '6':
-		    return 'Arduino';
-			break;
-		  default:
-		    return 'Unknown';
-			break;
-		}
-	  }
 	  
     </script>
 </html>

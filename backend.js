@@ -65,7 +65,7 @@ var Backend = function() {
 	this.io.of('/iot').use(onWSAuthorize);
 	//this.io.of('/iot').on('disconnect', onWSDisconnect);
 	this.server.on('error', onError);		// executed when cannot start the backend server
-	
+	this.db = require('./configdb.js');
 }
 
 var backend = new Backend();
@@ -223,8 +223,8 @@ function onWSAuthorize(socket, next) {
 			{
 				require('./debug.js').log(5, 'backend', 'Error while reading session data from DB for: ' + source + ' error: ' + error);
 			} else {
-				email = session.email;
-				if (email) {
+				if (session) {
+					email = session.email;
 					require('./debug.js').log(5, 'backend', '[' + email + '] WS session established from: ' + source);
 					socket.session = session;
 					socket.on('disconnect', function() {
@@ -234,9 +234,12 @@ function onWSAuthorize(socket, next) {
 					socket.join(email);
 					socket.session = session;
 					pushAllDevices(socket, email);
-					socket.on('device_activate', function (msg) {
-						console.log('device_activate received');
-						onDeviceActivate(msg, socket)
+					socket.on('device_update', function (msg) {
+						//console.log('device_activate received');
+						onDeviceUpdate(msg, socket);
+					});
+					socket.on('device_command', function (msg) {
+						onDeviceCommand(msg, socket);
 					});
 					next();
 				} else {
@@ -254,17 +257,39 @@ function onWSAuthorize(socket, next) {
 }
 
 /**
- * executed on receiving even 'device_activate' from the front-end
+ * executed on receiving even 'device_update' from the front-end
  */
-function onDeviceActivate(msg, socket) {
-	accountID = socket.session.email;
+function onDeviceUpdate(msg, socket) {
+	var accountID = socket.session.email;
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_update with: ' + JSON.stringify(msg));
-	mem = components.getFacility('mem');
-	devices = mem.getClientDevices(accountID);
+	var mem = components.getFacility('mem');
+	var devices = mem.getClientDevices(accountID);
 	
 	devices[msg.raspyID][msg.ardID][msg.devID].desc = msg.desc;
-	devices[msg.raspyID][msg.ardID][msg.devID].activated = true;
+	devices[msg.raspyID][msg.ardID][msg.devID].activated = msg.activated;
+	require('./configdb.js').updateDevice(accountID, devices[msg.raspyID][msg.ardID][msg.devID]);
 	socket.emit('device', devices[msg.raspyID][msg.ardID][msg.devID]);
+}
+
+/**
+ * executed on received even 'device_command' from the front-end
+ */
+function onDeviceCommand(msg, socket) {
+	var accountID = socket.session.email;
+	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_command with: ' + JSON.stringify(msg));
+	var mem = components.getFacility('mem');
+	var devices = mem.getClientDevices(accountID);
+	var command = msg.command;
+	var device = mem.getDeviceStatus(accountID, msg.device.raspyID, msg.device.ardID, msg.device.devID);
+	if (!require('./config.js').cloud.enable) {
+		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as raspy, sending command over ARiF');
+		require('./arif.js').sendCommand(device, command, function(message) {
+			console.log('test ' + JSON.stringify(message));
+			socket.emit('device_response', message);
+		});
+	} else {
+		// send to appropriate raspy
+	}
 }
 
 /**

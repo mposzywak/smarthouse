@@ -35,6 +35,7 @@ const ARIF_REGISTER  = 'a';
 const ARIF_LIGHT_ON  = '1';
 const ARIF_LIGHT_OFF = '2';
 const ARIF_DATA_TRANSFER = '40';
+const ARIF_DEV_MAPPING = '32';
 
 /* regex for verification of the incoming URL on ARiF */
 var urlRegex = '(\/[0-9a-fA-F]{1,4}){2}';
@@ -101,6 +102,13 @@ function onPostRequest(req, res) {
 				dataType = validateDataType(url.split('/')[5]);
 				value = validateValue(url.split('/')[6]);
 				mem.setDeviceStatus(config.cloud.id, devid, ardid, devType, dataType, value, reqDate, srcip);
+				break;
+			case ARIF_DEV_MAPPING:
+				devType = validateDevType(url.split('/')[4]);
+				dataType = validateDataType(url.split('/')[5]);
+				controlledDevs = url.split('/').slice(5); // get rest of array from 5th element
+				console.log(controlledDevs);
+				mem.setDevice(config.cloud.id, devid, ardid, devType, reqDate, srcip, controlledDevs)
 				break;
 			default:
 				debug.log(1, 'arif', 'command: ' + command + ' from: ' + srcip + ' is unknown!');

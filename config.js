@@ -1,7 +1,7 @@
 
 /* initialize the facilities, the entry is required here for debug.log() to work with that facility */
 var config = {};
-var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init', 'rcpclient'];
+var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init', 'rcpclient', 'configdb'];
 facilities.forEach(function(item) {
 	config[item] = {};
 });
@@ -14,11 +14,14 @@ config.name = 'config';
 // configuration related to communication with the cloud
 config.cloud.id = 'admin';
 config.cloud.passwd = 'admin';
-config.cloud.enabled = true;
-config.cloud.raspy = '001';
-config.cloud.host = 'duinocloud.org';
-config.cloud.port = 24350;
-config.cloud.debug = 5;
+config.cloud.enabled = false;
+
+// RCP client protocol settings (TODO: later credentials have to be taken from /etc/openvpn/username)
+config.rcpclient.vpnID = '00001002-001';
+config.rcpclient.host = 'localhost';
+config.rcpclient.port = 32400;
+config.rcpclient.debug = 5;
+config.rcpclient.vpnkey = '33e9bc2d515c7923';
 
 // configuration related to RethinkDB connection
 config.db.host = 'localhost';
@@ -26,7 +29,7 @@ config.db.port = 29015;
 config.db.debug = 5;
 
 // configuration of ARiF protocol, 
-config.arif.port = 32300;
+config.arif.port = 32302;
 config.arif.debug = 5;
 
 // config of the mem cache component
@@ -34,7 +37,7 @@ config.mem.debug = 5;
 
 // config of the backend
 config.backend.debug = 5;
-config.backend.port = 10080;
+config.backend.port = 10090;
 config.backend.html = '/frontend';
 
 config.backend.fileSessionStoreOptions = {
@@ -68,7 +71,7 @@ config.backend.cookieOptions = {
 };
 
 // config of the debug HTTP server
-config.debug.port = 32301;
+config.debug.port = 32303;
 config.debug.debug = 5;
 
 // config of the init facility
@@ -79,8 +82,13 @@ config.security.uid = 99;
 config.security.gid = 99;
 config.security.debug = 5;
 
+// config of the RCP (Raspy-Cloud Protocol) facility 
+config.rcpserver.port = 32401;
+config.rcpserver.debug = 5;
+
+// config of the SQLite DB for config store and device status
+config.configdb.dbfile = '/home/maciej/configdb/test.db';
+config.configdb.debug = 5;
 module.exports = config;
 
-// config of the RCP (Raspy-Cloud Protocol) facility 
-config.rcpserver.port = 32400;
-config.rcpserver.debug = 5;
+

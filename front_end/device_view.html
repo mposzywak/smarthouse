@@ -8,6 +8,7 @@
 <script src="js/sorttable.js"></script>
 <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
 <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+<script src="js/smarthouse.js"></script>
 <link rel="stylesheet" type="text/css" href="css/style.css" media="all" /> 
 <link rel="stylesheet" type="text/css" href="css/w3c.css" media="all" /> 
 <link rel="stylesheet" type="text/css" href="css/kickstart.css" media="all" />               <!--  KICKSTART -->
@@ -17,12 +18,7 @@
 </head><body>
 <!-- ===================================== END HEADER ===================================== -->
 <!-- ===================================== NAVIGATION BAR ===================================== -->
-
-
 	<nav class="navbar">
-		
-			
-			
 			<a class="hide-phone" id="logo" href="http://duinocloud.org" title="Go to duinocloud eshop"><i class="fa fa-angle-right" style="float:right"> duino<span>Cloud.org</span></a></i>
 
 			<ul  style="overflow:hidden" >
@@ -39,50 +35,33 @@
 			<li><a href="cloud_connect.html" style="float:right" title="Connect to your Monitoring Cloud"><i class="fa fa-cloud "></i></a></li>
 
 			</ul>
-			
-  
-
-			
-		
 	</nav> 
-
-
 <!-- ===================================== END NAVIGATION BAR ===================================== -->
 
-	<div class="callout callout-top w3-table-container">
-	  <h4>Table Device List</h4>
+	<div class="callout callout-top table-main" style="overflow:hidden">
+	  
+	<div class="w3-table-container">
+	  <h4>Active Devices</h4>
 
 		<div class="clear"></div><br/>
-		<div id="status-bar">
-			<p id="status-msg"> ... </p>
+		<div id="status-handle">
+			<!-- <p id="status-msg"> ... </p> -->
 		</div>
 		<div class="clear"></div><br/>	 
 
 	  <table id="devices" class="sortable w3-table-all w3-large">
 	    <thead>
 	      <tr class="w3-light-grey w3-hover-grey">
-	        <th>Name</th>
-	        <th>Location</th>
+	        <th>Description</th>
+	        <th>Type</th>
 	        <th>Status</th>
+			<th>Actions</th>
 	      </tr>
 	    </thead>
-	    <tr class="w3-hover-grey">
-	      <td>Temp Sensor</td>
-	      <td>Kitchen</td>
-	      <td>23 Degrees Celsius</td>
-	    </tr>
-	    <tr class="w3-hover-grey">
-	      <td>Light</td>
-	      <td>Kitchen</td>
-	      <td>Off</td>
-	    </tr>
-	    <tr class="w3-hover-grey">
-	      <td>Heat</td>
-	      <td>House</td>
-	      <td>On</td>
-	    </tr>
+
 	  </table>
-	</div>
+	  </div>
+	
 
 		<div class="clear"></div><br/>
 		<div class="clear"></div><br/>
@@ -105,65 +84,94 @@
 		<div class="clear"></div><br/>
 	</div>
 
-
+	</div>
  
 
 </body>
 <script>
-      var socket = io('/iot');
-	  
-	  // set connection actions
-	  socket.on('connect', onConnect);
-	  socket.on('connect_error', onConnectError);
-	  socket.on('error', onError);
-	  //  <tr class="w3-hover-grey">
-	  //    <td>Temp Sensor</td>   << p1
-	  //    <td>Kitchen</td>
-	  //    <td>23 Degrees Celsius</td>
-	  //  </tr>
-	  // action to be performed on receiving 
-      socket.on('device', setValue);
-	  
-	  function setValue(msg) {
-		devArdID = msg.raspyid + '-' + msg.devid + '-' + msg.ardid;
+    var socket = io('/iot');
+	
+	// set connection actions
+	socket.on('connect', onConnect);
+	socket.on('connect_error', onConnectError);
+	socket.on('error', onError);
+    socket.on('device', receiveDevice);
+	socket.on('device_response', onResponse);
+	
+	function receiveDevice(msg) {
+		updateDevice(msg);
+		var FID = msg.raspyID + '-' + msg.devID + '-' + msg.ardID;
 		console.log('got value');
 		if (msg.activated == true) {
 		
-			if (document.getElementById(devArdID + '_value') == null) {
+			if (document.getElementById(FID + '_row') == null) {
 				/* this is a new device so whole div structure needs to be created */
-				p1 = '<tr class="w3-hover-grey"><td>' + msg.devType + '</td>';
-				pMain = '<td>' + msg.desc + '</td>';
-				p2 = '<td id="' + devArdID + '_value">' + msg.value + '</td></tr>';
-				$("#devices").append(p1 + pMain + p2);
+				addActiveDeviceTableRow(msg);
+				$("#" + FID + "_activate").click(function() {
+					//console.log('test');
+					var device = {};
+					device.ardID = msg.ardID;
+					device.devID = msg.devID;
+					device.raspyID = msg.raspyID;
+					device.activated = false;
+					var buttonFID = FID;
+
+					socket.emit('device_update', device);
+					$('#' + buttonFID + '_row').remove();
+				});
+				$("#" + FID + "_switch").click(function() {
+					var device = {};
+					var FMessage = {};
+					device.ardID = msg.ardID;
+					device.devID = msg.devID;
+					device.raspyID = msg.raspyID;
+					device.activated = false;
+					var command = '1'; // 0x1 == 'lightON';
+					if (getDeviceValue(device) == '1')
+						command = '2'; // 0x2 == 'lightOFF'
+					console.log('DeviceValue: ' + getDeviceValue(device));
+					FMessage.command = command;
+					FMessage.device = device;
+					var buttonFID = FID;
+					setDeviceCommandOn(device);
+					grayOutLightButton(device);
+					setTimeout(function() { onCommandTimeout(device); }, 5000);
+					socket.emit('device_command', FMessage);
+					//$('#' + buttonFID + '_row').remove();
+				});
 			} else {
 				/* the device already reported, structre needs to be filled in with new data */
-				$("#" + devArdID + "_value").text(msg.value);
+				$("#" + FID + "_value").text(devValueGetName(msg.devType, msg.value));
+				makeGreenLightButton(msg);
 			}
 		}
-      }
-	  
-	  // color the status-bar div on successful connection
-	  function onConnect(msg) {
-		console.log("connected to server.");
-		$("#status-bar").css( { "background-color": "#1CD935", "border": "3px solid #169126", "width": "95%" } );
-		$("#status-msg").text("Connected to server.");
-		$("#status-msg").css( { "margin": "5px" });
-	  }
-	  
-	  // color the status-bar on connection error
-	  function onConnectError(msg) {
-		console.log("Connection Error!");
-		$("#status-bar").css( { "background-color": "#F02626", "border": "3px solid #911631", "width": "95%" } );
-		$("#status-msg").text("Disconnected from server: " + msg);
-		$("#status-msg").css( { "margin": "5px" });
-	  }
-	  
-	  function onError(msg) {
-		console.log("other error: " + msg);
-		$("#status-bar").css( { "background-color": "#F02626", "border": "3px solid #911631", "width": "95%" } );
-		$("#status-msg").text("Disconnected from server: " + msg);
-		$("#status-msg").css( { "margin": "5px" });
-	  }
-	  
-    </script>
+    }
+	
+	function addActiveDeviceTableRow(device) {
+		var FID = device.raspyID + '-' + device.devID + '-' + device.ardID;
+		
+		var row = '<tr id="' + FID + '_row" class="w3-hover-grey">';
+		row += '<td>' + device.desc + '</td>';		
+		row += '<td>' + devTypeGetName(device.devType) + '</td>';
+		row += '<td id="' + FID + '_value">' + devValueGetName(device.devType, device.value) + '</td>';
+		row += '<td>' + createLightButton(device) + createActivationButton(device) + '</td></tr>';
+		$("#devices").append(row);
+	}
+	
+	function updateActiveDeviceTableRow(device) {
+	
+	}
+	
+	function onResponse(msg) {
+		var response = msg.response;
+		var device = msg.device;
+		if (response != '0') {
+			onError('Error reaching device: ' + device.desc + ' (' + response + ')');
+		} else {
+			updateActiveDeviceTableRow(device);
+		}
+		//console.log(JSON.stringify(msg));
+	}
+	//function update
+</script>
 </html>
