@@ -135,7 +135,7 @@
 					var buttonFID = FID;
 					setDeviceCommandOn(device);
 					grayOutLightButton(device);
-					setTimeout(function() { onCommandTimeout(device); }, 5000);
+					setDeviceTimer(device, setTimeout(function() { onCommandTimeout(device); }, 5000));
 					socket.emit('device_command', FMessage);
 					//$('#' + buttonFID + '_row').remove();
 				});
@@ -143,6 +143,7 @@
 				/* the device already reported, structre needs to be filled in with new data */
 				$("#" + FID + "_value").text(devValueGetName(msg.devType, msg.value));
 				makeGreenLightButton(msg);
+				clearDeviceTimer(msg);
 			}
 		}
     }
@@ -167,6 +168,8 @@
 		var device = msg.device;
 		if (response != '0') {
 			onError('Error reaching device: ' + device.desc + ' (' + response + ')');
+			makeGreenLightButton(device);
+			clearDeviceTimer(device);
 		} else {
 			updateActiveDeviceTableRow(device);
 		}

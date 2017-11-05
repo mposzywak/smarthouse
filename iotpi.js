@@ -26,9 +26,33 @@ var http = require('http');
 var server = http.createServer(app).listen(config.arif.port || 32300, onHTTPListen);
 server.on('error', onHTTPError);
 
+/* multicast server setup for BB */
+const dgram = require('dgram');
+const BBSocket = dgram.createSocket('udp4');
+
+BBSocket.on('error', (err) => {
+  console.log(`BBSocket error:\n${err.stack}`);
+  BBSocket.close();
+});
+
+BBSocket.on('message', (msg, rinfo) => {
+  console.log(`BBSocket got: ${msg} from ${rinfo.address}:${rinfo.port}`);
+});
+
+BBSocket.on('listening', () => {
+  const address = BBSocket.address();
+  BBSocket.addMembership('224.1.1.1');
+  console.log(`BBSocket listening ${address.address}:${address.port}`);
+});
+
+BBSocket.bind('5007');
+
 init.setCallback(onInitComplete);
 init.clearInit('main');
 /* end of all initialization actions */
+
+
+
 
 /* ARIF commands */
 const ARIF_REGISTER  = 'a';
