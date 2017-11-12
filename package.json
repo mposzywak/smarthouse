@@ -10,5 +10,17 @@
     "iot"
   ],
   "author": "",
-  "license": "GPL-3.0"
+  "license": "GPL-3.0",
+  "dependencies": {
+    "body-parser": "^1.15.2",
+    "client-sessions": "^0.7.0",
+    "cookie-parser": "^1.4.3",
+    "ejs": "^2.5.7",
+    "express": "^4.16.2",
+    "express-session": "^1.15.6",
+    "html": "^1.0.0",
+    "session-file-store": "^1.1.2",
+    "socket.io": "^1.5.1",
+    "sqlite3": "^3.1.13"
+  }
 }
