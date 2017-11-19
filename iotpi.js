@@ -63,14 +63,6 @@ const ARIF_LIGHT_OFF = '2';
 const ARIF_DATA_TRANSFER = '40';
 const ARIF_DEV_MAPPING = '32';
 
-/* regex for verification of the incoming URL on ARiF */
-var urlRegex = '(\/[0-9a-fA-F]{1,4}){2}';
-urlRegex += '\/(data|req)';						// commands: data, req
-urlRegex += '\/(i2c|1wire)\/(';					// devTypes: i2c, 1wire 
-urlRegex += '16bit\/[0-9a-fA-F]{1,4}\\b|'; 		// 16bit value 0 - FFFF
-urlRegex += 'dec\/[0-9]{1,7}\\b|'				// 32bit value 0 - FFFFFFFF
-urlRegex += '32bit\/[0-9a-fA-F]{1,8}\\b)';		// dec   value 0 - 99999999
-
 /* accept requests for all URLs, filter later */
 app.post('/*', onPostRequest);
 //app.use(express.static('smarthouse'))
@@ -90,10 +82,10 @@ function onPostRequest(req, res) {
 	
 	var url = req.originalUrl;
 	var result = url.match("^(\/[0-9a-fA-F]{1,2}){3}");
-	if (result && url.length < 64) {
-		var devid = url.split('/')[1];
-		var ardid = url.split('/')[2];
-		var command = url.split('/')[3];
+	var devid = url.split('/')[1];
+	var ardid = url.split('/')[2];
+	var command = url.split('/')[3];
+	if (result && url.length < 64 && devid != '0') {
 		
 		//debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + command);
 		switch (command) {

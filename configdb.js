@@ -159,6 +159,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 					devices[raspyID] = {};
 				
 				devices[raspyID][ardID] = {}
+				devices[raspyID][ardID].devices = {}
 				devices[raspyID][ardID].IP = row.IP;
 			}
 			
@@ -176,17 +177,17 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 						if (typeof(devices[raspyID][ardID]) == 'undefined') 
 							devices[raspyID][ardID] = {};
 						
-						devices[raspyID][ardID][devID] = {};
-						devices[raspyID][ardID][devID].activated = row.activated ? true : false;
-						devices[raspyID][ardID][devID].ardID = row.ardID;
-						devices[raspyID][ardID][devID].dataType = row.dataType;
-						devices[raspyID][ardID][devID].date = JSON.parse(row.date);
-						devices[raspyID][ardID][devID].desc = row.desc;
-						devices[raspyID][ardID][devID].devType = row.devType;
-						devices[raspyID][ardID][devID].devID = row.devID;
-						devices[raspyID][ardID][devID].IP = row.IP;
-						devices[raspyID][ardID][devID].raspyID = row.raspyID;
-						devices[raspyID][ardID][devID].value = row.value;
+						devices[raspyID][ardID].devices[devID] = {};
+						devices[raspyID][ardID].devices[devID].activated = row.activated ? true : false;
+						devices[raspyID][ardID].devices[devID].ardID = row.ardID;
+						devices[raspyID][ardID].devices[devID].dataType = row.dataType;
+						devices[raspyID][ardID].devices[devID].date = JSON.parse(row.date);
+						devices[raspyID][ardID].devices[devID].desc = row.desc;
+						devices[raspyID][ardID].devices[devID].devType = row.devType;
+						devices[raspyID][ardID].devices[devID].devID = row.devID;
+						devices[raspyID][ardID].devices[devID].IP = row.IP;
+						devices[raspyID][ardID].devices[devID].raspyID = row.raspyID;
+						devices[raspyID][ardID].devices[devID].value = row.value;
 					}
 					//console.log(JSON.stringify(devices));
 					callback(error, devices);

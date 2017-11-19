@@ -46,6 +46,7 @@ Mem.prototype.registerArduino = function(accountID, IP) {
 		//this.devices[accountID] = {};
 		this.devices[accountID][this.raspyID] = {};
 		this.devices[accountID][this.raspyID][ardID] = {};
+		this.devices[accountID][this.raspyID][ardID].devices = {};
 		this.devices[accountID][this.raspyID][ardID].IP = IP; 
 		this.db.insertArduino(accountID, this.raspyID, IP, ardID);
 		this.components.getFacility('debug').log(4, 'mem', 'accountID id: ' + accountID + 
@@ -63,6 +64,7 @@ Mem.prototype.registerArduino = function(accountID, IP) {
 			while (true) {
 				if (typeof(this.devices[accountID][this.raspyID][ardID]) == 'undefined') {
 					this.devices[accountID][this.raspyID][ardID] = {};
+					this.devices[accountID][this.raspyID][ardID].devices = {}
 					this.devices[accountID][this.raspyID][ardID].IP = IP;
 					this.db.insertArduino(accountID, this.raspyID, IP, ardID);
 					this.components.getFacility('debug').log(4, 'mem', 'accountID id: ' + accountID + 
@@ -130,73 +132,73 @@ Mem.prototype.setDeviceStatus = function(accountID, devID, ardID, devType, dataT
 				ardID + ' device: ' + devID + ' IP: ' + IP);
 		return;
 	} */
-	if (typeof(this.devices[accountID][this.raspyID][ardID][devID]) == 'undefined') {
-		this.devices[accountID][this.raspyID][ardID][devID] = {};
-		this.devices[accountID][this.raspyID][ardID][devID].desc = '';
-		this.devices[accountID][this.raspyID][ardID][devID].activated = false;
-		this.devices[accountID][this.raspyID][ardID][devID].IP = IP;
-		this.devices[accountID][this.raspyID][ardID][devID].devType = devType;
-		this.devices[accountID][this.raspyID][ardID][devID].dataType = dataType;
-		this.devices[accountID][this.raspyID][ardID][devID].raspyID = this.raspyID;
-		this.devices[accountID][this.raspyID][ardID][devID].ardID = ardID;
-		this.devices[accountID][this.raspyID][ardID][devID].devID = devID;
+	if (typeof(this.devices[accountID][this.raspyID][ardID].devices[devID]) == 'undefined') {
+		this.devices[accountID][this.raspyID][ardID].devices[devID] = {};
+		this.devices[accountID][this.raspyID][ardID].devices[devID].desc = '';
+		this.devices[accountID][this.raspyID][ardID].devices[devID].activated = false;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].IP = IP;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].devType = devType;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].dataType = dataType;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].raspyID = this.raspyID;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].ardID = ardID;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].devID = devID;
 		isDeviceNew = true;
 		this.components.getFacility('debug').log(4, 'mem', 'existing accountID id: ' + accountID + ', existing Arduino registered: ' + 
 				ardID + ' and new device: ' + devID);
 	}
 	
 	// save the old value for later comparison
-	var oldValue = this.devices[accountID][this.raspyID][ardID][devID].value
+	var oldValue = this.devices[accountID][this.raspyID][ardID].devices[devID].value
 	
-	this.devices[accountID][this.raspyID][ardID][devID].value = value;
+	this.devices[accountID][this.raspyID][ardID].devices[devID].value = value;
 	
-	this.devices[accountID][this.raspyID][ardID][devID].date = date.getTime();
+	this.devices[accountID][this.raspyID][ardID].devices[devID].date = date.getTime();
 	
 	// when we detect that the new value is different then the old one.
-	if (oldValue != this.devices[accountID][this.raspyID][ardID][devID].value) {
-		onValueChange(accountID, devID, ardID, this.devices[accountID][this.raspyID][ardID][devID]);
+	if (oldValue != this.devices[accountID][this.raspyID][ardID].devices[devID].value) {
+		onValueChange(accountID, devID, ardID, this.devices[accountID][this.raspyID][ardID].devices[devID]);
 		if (isDeviceNew) {
-			this.db.insertDevice(accountID, this.devices[accountID][this.raspyID][ardID][devID]);
+			this.db.insertDevice(accountID, this.devices[accountID][this.raspyID][ardID].devices[devID]);
 		} else {
-			this.db.updateDevice(accountID, this.devices[accountID][this.raspyID][ardID][devID]);
+			this.db.updateDevice(accountID, this.devices[accountID][this.raspyID][ardID].devices[devID]);
 		}
-		this.rcpclient.sendDeviceStatus(this.devices[accountID][this.raspyID][ardID][devID]);
+		this.rcpclient.sendDeviceStatus(this.devices[accountID][this.raspyID][ardID].devices[devID]);
 		this.components.getFacility('debug').log(5, 'mem', 
 			'For accountID id: ' + accountID + ', Arduino: "' + ardID + '", Device: "' + devID +
-			'" Record updated by ARIF -> IP: ' + this.devices[accountID][this.raspyID][ardID][devID].IP + 
-			' devType: ' + this.devices[accountID][this.raspyID][ardID][devID].devType +
-			' dataType: ' + this.devices[accountID][this.raspyID][ardID][devID].dataType +
-			' valule: ' + this.devices[accountID][this.raspyID][ardID][devID].value +
-			' date: ' + JSON.stringify(this.devices[accountID][this.raspyID][ardID][devID].date));
+			'" Record updated by ARIF -> IP: ' + this.devices[accountID][this.raspyID][ardID].devices[devID].IP + 
+			' devType: ' + this.devices[accountID][this.raspyID][ardID].devices[devID].devType +
+			' dataType: ' + this.devices[accountID][this.raspyID][ardID].devices[devID].dataType +
+			' valule: ' + this.devices[accountID][this.raspyID][ardID].devices[devID].value +
+			' date: ' + JSON.stringify(this.devices[accountID][this.raspyID][ardID].devices[devID].date));
 	}
 }
 
 /* set new device. This procedure is initiated on CMD 0x32 devMapping */
 Mem.prototype.setDevice = function(accountID, devID, ardID, devType, date, IP, controlledDevs) {
 	/* no need to check for arduinoID or accountID in devices structure */
-	if (typeof(this.devices[accountID][this.raspyID][ardID][devID]) == 'undefined') {
-		this.devices[accountID][this.raspyID][ardID][devID] = {};
-		this.devices[accountID][this.raspyID][ardID][devID].desc = '';
-		this.devices[accountID][this.raspyID][ardID][devID].activated = false;
-		this.devices[accountID][this.raspyID][ardID][devID].IP = IP;
-		this.devices[accountID][this.raspyID][ardID][devID].devType = devType;
-		this.devices[accountID][this.raspyID][ardID][devID].controlledDevs = '';
-		this.devices[accountID][this.raspyID][ardID][devID].raspyID = this.raspyID;
-		this.devices[accountID][this.raspyID][ardID][devID].ardID = ardID;
-		this.devices[accountID][this.raspyID][ardID][devID].devID = devID;
-		this.devices[accountID][this.raspyID][ardID][devID].date = date.getTime();
+	if (typeof(this.devices[accountID][this.raspyID][ardID].devices[devID]) == 'undefined') {
+		this.devices[accountID][this.raspyID][ardID].devices[devID] = {};
+		this.devices[accountID][this.raspyID][ardID].devices[devID].desc = '';
+		this.devices[accountID][this.raspyID][ardID].devices[devID].activated = false;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].IP = IP;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].devType = devType;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].controlledDevs = '';
+		this.devices[accountID][this.raspyID][ardID].devices[devID].raspyID = this.raspyID;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].ardID = ardID;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].devID = devID;
+		this.devices[accountID][this.raspyID][ardID].devices[devID].date = date.getTime();
 		
 		for (var i in controlledDevs) {
 			console.log(i);
-			this.devices[accountID][this.raspyID][ardID][devID].controlledDevs += controlledDevs[i] + ' ';
+			this.devices[accountID][this.raspyID][ardID].devices[devID].controlledDevs += controlledDevs[i] + ' ';
 		}
 		
-		this.db.insertDevice(accountID, this.devices[accountID][this.raspyID][ardID][devID])
+		this.db.insertDevice(accountID, this.devices[accountID][this.raspyID][ardID].devices[devID])
 		this.components.getFacility('debug').log(5, 'mem', 
 			'[' + accountID + '] ardID: "' + ardID + '", devID: "' + devID +
-			' registered by ARIF -> IP: ' + this.devices[accountID][this.raspyID][ardID][devID].IP + 
-			' devType: ' + this.devices[accountID][this.raspyID][ardID][devID].devType +
-			' date: ' + JSON.stringify(this.devices[accountID][this.raspyID][ardID][devID].date));
+			' registered by ARIF -> IP: ' + this.devices[accountID][this.raspyID][ardID].devices[devID].IP + 
+			' devType: ' + this.devices[accountID][this.raspyID][ardID].devices[devID].devType +
+			' date: ' + JSON.stringify(this.devices[accountID][this.raspyID][ardID].devices[devID].date));
 		
 	} else {
 		/* exit function as it looks like the device is already registered/mapped in the DB */
@@ -213,26 +215,27 @@ Mem.prototype.setRCPDeviceStatus = function(vpnid, raspyip, device) {
 	
 	// TODO: put here the limitations on the number of devices, raspys, arduinos, etc...
 	if (typeof(this.devices[accountID]) == 'undefined') {
-		this.devices[accountID] = {}
+		this.devices[accountID] = {};
 	}
 	if (typeof(this.devices[accountID][raspyID]) == 'undefined') {
-		this.devices[accountID][raspyID] = {}
-		this.devices[accountID][raspyID].IP = raspyip
+		this.devices[accountID][raspyID] = {};
+		this.devices[accountID][raspyID].IP = raspyip;
 	}
 	if (typeof(this.devices[accountID][raspyID][device.ardID]) == 'undefined') {
-		this.devices[accountID][raspyID][device.ardID] = {}
+		this.devices[accountID][raspyID][device.ardID] = {};
+		this.devices[accountID][raspyID][device.ardID].devices = {};
 		this.devices[accountID][raspyID][device.ardID].IP = device.IP;
 	}
 	
 	this.devices[accountID][raspyID][device.ardID][device.devID] = device;
-	onValueChange(accountID, device.devID, device.ardID, this.devices[accountID][raspyID][device.ardID][device.devID]);
+	onValueChange(accountID, device.devID, device.ardID, this.devices[accountID][raspyID][device.ardID].devices[device.devID]);
 	this.components.getFacility('debug').log(5, 'mem', 
 			'For accountID: ' + accountID + 'raspyID: ' + raspyID + ', Arduino: "' + device.ardID + '", Device: "' + device.devID +
-			'" Record updated by RCP -> IP: ' + this.devices[accountID][raspyID][device.ardID][device.devID].IP + 
-			' devType: ' + this.devices[accountID][raspyID][device.ardID][device.devID].devType +
-			' dataType: ' + this.devices[accountID][raspyID][device.ardID][device.devID].dataType +
-			' value: ' + this.devices[accountID][raspyID][device.ardID][device.devID].value +
-			' date: ' + JSON.stringify(this.devices[accountID][raspyID][device.ardID][device.devID].date));
+			'" Record updated by RCP -> IP: ' + this.devices[accountID][raspyID][device.ardID].devices[device.devID].IP + 
+			' devType: ' + this.devices[accountID][raspyID][device.ardID].devices[device.devID].devType +
+			' dataType: ' + this.devices[accountID][raspyID][device.ardID].devices[device.devID].dataType +
+			' value: ' + this.devices[accountID][raspyID][device.ardID].devices[device.devID].value +
+			' date: ' + JSON.stringify(this.devices[accountID][raspyID][device.ardID].devices[device.devID].date));
 }
 
 
@@ -247,11 +250,11 @@ function onValueChange(accountID, devID, ardID, device) {
 Mem.prototype.getDeviceStatus = function(accountID, raspyID, ardID, devID) {
 	if (typeof(this.devices[accountID][raspyID][ardID]) == 'undefined') {
 		return;
-	} else if (this.devices[accountID][raspyID][ardID][devID] == 'undefined') {
+	} else if (this.devices[accountID][raspyID][ardID].devices[devID] == 'undefined') {
 		return;
 	}
 	
-	return this.devices[accountID][this.raspyID][ardID][devID];
+	return this.devices[accountID][this.raspyID][ardID].devices[devID];
 }
 
 /* return the whole devices structure */
@@ -263,14 +266,56 @@ Mem.prototype.getClientDevices = function (accountID) {
 	return this.devices[accountID];
 }
 
+Mem.prototype.increaseDeadCounter = function(accountID, raspyID, ardID) {
+	console.log('increaseDeadCounter exec\'d, counter: ' + this.devices[accountID][raspyID][ardID].counter)
+	if (!this.devices[accountID][raspyID][ardID].counter)
+		this.devices[accountID][raspyID][ardID].counter = 0
+	
+	if (this.devices[accountID][raspyID][ardID].counter < 3)
+		this.devices[accountID][raspyID][ardID].counter += 1;
+	
+	if (this.devices[accountID][raspyID][ardID].counter == 3)
+		this.setArduinoDead(accountID, raspyID, ardID);
+		
+}
+
+Mem.prototype.clearDeadCounter = function(accountID, raspyID, ardID) {
+	this.devices[accountID][raspyID][ardID].counter = 0
+	this.setArduinoAlive(accountID, raspyID, ardID);
+}
+
 /* sets a given Arduino status dead and all its devices */
 Mem.prototype.setArduinoDead = function(accountID, raspyID, ardID) {
 	this.devices[accountID][raspyID][ardID].alive = false;
+	for (var devID in this.devices[accountID][raspyID][ardID].devices) {
+		if (this.devices[accountID][raspyID][ardID].devices.hasOwnProperty(devID)){
+			var device = this.devices[accountID][raspyID][ardID].devices[devID];
+			
+			if (device.alive == true || typeof(device.alive) == 'undefined') {
+				this.devices[accountID][raspyID][ardID].devices[devID].alive = false;
+				onValueChange(accountID, raspyID, ardID, device);
+				this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] ArdID and its devIDs declared dead: ' + 
+						ardID + ' on raspyID: ' + raspyID + 'devID: ' + devID);
+			}
+		}
+	}
 }
 
 /* sets a given Arduino status alive and all its devices */
 Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
 	this.devices[accountID][raspyID][ardID].alive = true;
+		for (var devID in this.devices[accountID][raspyID][ardID].devices) {
+		if (this.devices[accountID][raspyID][ardID].devices.hasOwnProperty(devID)){
+			var device = this.devices[accountID][raspyID][ardID].devices[devID];
+			
+			if (device.alive == false || typeof(device.alive) == 'undefined') {
+				device.alive = true;
+				this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] ArdID and its devIDs declared alive: ' + 
+						ardID + ' on raspyID: ' + raspyID + 'devID: ' + devID);
+				onValueChange(accountID, raspyID, ardID, device);
+			}
+		}
+	}
 }
 
 

@@ -58,7 +58,8 @@ class S(BaseHTTPRequestHandler):
             value = 0
         self.wfile.write("<html><body><h1>POST!</h1></body></html>")
         time.sleep(0.5)
-        self.deviceSendStatus(sourceIP, "32302", devID, ardID, str(value))
+        if devID == 0:
+            self.deviceSendStatus(sourceIP, "32302", devID, ardID, str(value))
         #print 'ardID: ', sourceIP
         
 def run(server_class=HTTPServer, handler_class=S, port=32302):
