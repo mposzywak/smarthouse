@@ -8,12 +8,13 @@ const MSG_ARD_UNREACHABLE = '1';
 var ARiF = function() {
 	this.config = require('./config.js');
 	this.debug = require('./debug.js');
+	this.raspyID = this.config.rcpclient.vpnID.split('-')[1];
 }
 
 var arif = new ARiF();
 
 ARiF.prototype.sendCommand = function(device, command, callback) {
-	debug = this.debug;
+	var debug = this.debug;
 	debug.log(1, 'arif', 'Sending ARiF command to device devID: ' + device.devID + ' ardID: ' + 
 			device.ardID + ' IP: ' + device.IP + ' command: ' + command);
 				
@@ -37,25 +38,33 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 	
 	req.write('');
 	req.end();
-	
-	/*var ARiFRaspyClient = http.createClient(this.config.arif.port, device.IP);
-	var request = ARiFRaspyClient.request('POST', '/' + device.devID + '/' + device.ardID + '/' + this.config.rcpclient.vpnID.split('-')[1] +
-			'/' + command, {'host': 'raspy',  'content-type': 'application/json'});
-	request.write(JSON.stringify(device), encoding='utf8'); //possibly need to escape as well? 
-	
-	ARiFRaspyClient.on('error', function (error) {
-		require('./debug.js').log(1, 'arif', 'Failed to establish connection with the arduino: ', error.message);
-		message = {};
-		message.device = device;
-		message.response = MSG_ARD_UNREACHABLE;
-		callback(message);
-	});
+}
 
-	request.on('response', function (response) {
-		require('./debug.js').log(4, 'arif', 'Received STATUS: ' + response.statusCode + ' for ardID: ' + device.ardID + ' devID: ' + device.devID);
-	});
+ARiF.prototype.validateDataTransferURL = function(url, srcIP) {
+	var debug = this.debug;
+	var devID = url.split('/')[1];
+	var ardID = url.split('/')[2];
+	var command = url.split('/')[3];
+	var devType = url.split('/')[4];
+	var dataType = url.split('/')[5];
+	var value = url.split('/')[6];
+	var ardIP = require('./mem.js').getArduinoIP(this.config.cloud.id, ardID);
+
+	if (!ardIP) {
+		debug.log(1, 'arif', 'Arduino with ardID: ' + ardID + ' could not be found, URL: ' + url);
+		return;
+	}
 	
-	request.end(); */
+	if (srcIP != ardIP) {
+		debug.log(1, 'arif', 'ARiF message from incorrect IP: ' + srcIP + ' URL: ' + url);
+		return;
+	}	
+	if (!devType || !dataType || !value) {
+		debug.log(1, 'arif', 'ARiF message URL incorrect: ' + url);
+		return;
+	}
+	
+	return 1;
 }
 
 module.exports = arif;

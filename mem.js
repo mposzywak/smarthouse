@@ -87,6 +87,15 @@ Mem.prototype.isArdIDRegistered = function(accountID, ardID) {
 		return false;
 }
 
+/* returns Arduinos IP address */
+Mem.prototype.getArduinoIP = function(accountID, ardID) {
+	arduino = this.devices[accountID][this.raspyID][ardID];
+	if (!arduino)
+		return;
+	else
+		return this.devices[accountID][this.raspyID][ardID].IP;
+}
+
 /* checks if the IP address where the registration came from was already registered and contains ardID,
    in such case, function returns ardID */
 Mem.prototype.isArduinoIPRegistered = function(accountID, IP) {
@@ -141,15 +150,7 @@ Mem.prototype.setDeviceStatus = function(accountID, devID, ardID, devType, dataT
 	
 	this.devices[accountID][this.raspyID][ardID][devID].value = value;
 	
-	this.devices[accountID][this.raspyID][ardID][devID].date = {
-		y 	: date.getFullYear(),
-		m 	: date.getMonth() + 1,
-		day : date.getUTCDate(),
-		h 	: date.getHours(),
-		min : date.getMinutes(),
-		s 	: date.getSeconds(),
-		ms 	: date.getMilliseconds()
-	}
+	this.devices[accountID][this.raspyID][ardID][devID].date = date.getTime();
 	
 	// when we detect that the new value is different then the old one.
 	if (oldValue != this.devices[accountID][this.raspyID][ardID][devID].value) {
@@ -183,15 +184,7 @@ Mem.prototype.setDevice = function(accountID, devID, ardID, devType, date, IP, c
 		this.devices[accountID][this.raspyID][ardID][devID].raspyID = this.raspyID;
 		this.devices[accountID][this.raspyID][ardID][devID].ardID = ardID;
 		this.devices[accountID][this.raspyID][ardID][devID].devID = devID;
-		this.devices[accountID][this.raspyID][ardID][devID].date = {
-			y 	: date.getFullYear(),
-			m 	: date.getMonth() + 1,
-			day : date.getUTCDate(),
-			h 	: date.getHours(),
-			min : date.getMinutes(),
-			s 	: date.getSeconds(),
-			ms 	: date.getMilliseconds()
-		}
+		this.devices[accountID][this.raspyID][ardID][devID].date = date.getTime();
 		
 		for (var i in controlledDevs) {
 			console.log(i);
@@ -217,10 +210,6 @@ Mem.prototype.setDevice = function(accountID, devID, ardID, devType, date, IP, c
 Mem.prototype.setRCPDeviceStatus = function(vpnid, raspyip, device) {
 	accountID = vpnid.split('-')[0];
 	raspyID = vpnid.split('-')[1];
-	//console.log('vpnid = ' + vpnid);
-	//console.log('accountID = ' + accountID);
-	//console.log('raspyID = ' + raspyid);
-	//console.log('devID = ' + device.devID);
 	
 	// TODO: put here the limitations on the number of devices, raspys, arduinos, etc...
 	if (typeof(this.devices[accountID]) == 'undefined') {
@@ -273,5 +262,16 @@ Mem.prototype.getDeviceStatusAll = function() {
 Mem.prototype.getClientDevices = function (accountID) {
 	return this.devices[accountID];
 }
+
+/* sets a given Arduino status dead and all its devices */
+Mem.prototype.setArduinoDead = function(accountID, raspyID, ardID) {
+	this.devices[accountID][raspyID][ardID].alive = false;
+}
+
+/* sets a given Arduino status alive and all its devices */
+Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
+	this.devices[accountID][raspyID][ardID].alive = true;
+}
+
 
 module.exports = memory;

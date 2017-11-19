@@ -26,6 +26,8 @@ var http = require('http');
 var server = http.createServer(app).listen(config.arif.port || 32300, onHTTPListen);
 server.on('error', onHTTPError);
 
+var arif = require('./arif.js');
+
 /* multicast server setup for BB */
 const dgram = require('dgram');
 const BBSocket = dgram.createSocket('udp4');
@@ -70,30 +72,8 @@ urlRegex += 'dec\/[0-9]{1,7}\\b|'				// 32bit value 0 - FFFFFFFF
 urlRegex += '32bit\/[0-9a-fA-F]{1,8}\\b)';		// dec   value 0 - 99999999
 
 /* accept requests for all URLs, filter later */
-//app.get('/*', onGetRequest);
 app.post('/*', onPostRequest);
 //app.use(express.static('smarthouse'))
-
-/* Executed each time when an HTTP request comes into ARiF interface */
-/*function onGetRequest(req, res) { ##################### TODO: Remove the function as we use POST.
-	reqDate = new Date();
-	debug.log(4, 'arif', 'Request GET URL: ' + req.originalUrl + ' from: ' + req.connection.remoteAddress);
-	var result = req.originalUrl.match(urlRegex);
-	
-	if (result) {
-		debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + result[2]);
-		if (result[2] == 'data') { // if command is data put it into the mem cache, db etc...
-			mem.setDeviceStatus(config.cloud.id, req.originalUrl, reqDate, req.connection.remoteAddress);
-		}
-		debug.log(4, 'arif', 'Sending 200 OK to: ' + req.connection.remoteAddress + ' for GET URL: ' + req.originalUrl);
-		res.writeHead(200, { 'Content-Type' : 'text/plain'});
-        res.end('Data ack');
-	} else {
-		debug.log(1, 'arif', 'Sending 404, improper URL received: ' + req.originalUrl + ' from: ' + req.connection.remoteAddress);
-		res.writeHead(404, { 'Content-Type' : 'text/plain'});
-        res.end('Error: probably wrong URL');
-	}
-}*/
 
 /* Execute each time when HTTP POST request comes into ARiF interface */
 function onPostRequest(req, res) {
@@ -122,10 +102,17 @@ function onPostRequest(req, res) {
 				res.set('X-arduino', ardid);
 				break;
 			case ARIF_DATA_TRANSFER:
-				devType = validateDevType(url.split('/')[4]);
-				dataType = validateDataType(url.split('/')[5]);
-				value = validateValue(url.split('/')[6]);
-				mem.setDeviceStatus(config.cloud.id, devid, ardid, devType, dataType, value, reqDate, srcip);
+				var devType = url.split('/')[4];
+				var dataType = url.split('/')[5];
+				var value = url.split('/')[6];
+				if (arif.validateDataTransferURL(url, srcip))
+					mem.setDeviceStatus(config.cloud.id, devid, ardid, devType, dataType, value, reqDate, srcip);
+				else {
+					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcip);
+					res.writeHead(404, { 'Content-Type' : 'text/plain'});
+					res.end('Error: probably wrong URL');
+					return;
+				}
 				break;
 			case ARIF_DEV_MAPPING:
 				devType = validateDevType(url.split('/')[4]);
@@ -141,7 +128,7 @@ function onPostRequest(req, res) {
 		res.writeHead(200, { 'Content-Type' : 'text/plain'});
         res.end('Data ack');
 	} else {
-		debug.log(1, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + srcip);
+		debug.log(2, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + srcip);
 		res.writeHead(404, { 'Content-Type' : 'text/plain'});
         res.end('Error: probably wrong URL');
 	}
