@@ -31,6 +31,8 @@ config.db.debug = 5;
 // configuration of ARiF protocol, 
 config.arif.port = 32302;
 config.arif.debug = 5;
+config.arif.beaconAddress = '224.1.1.1';
+config.arif.beaconPort = 5007
 
 // config of the mem cache component
 config.mem.debug = 5;
@@ -39,7 +41,7 @@ config.mem.debug = 5;
 config.backend.debug = 5;
 config.backend.port = 10090;
 config.backend.html = '/frontend';
-
+/*
 config.backend.fileSessionStoreOptions = {
 		secret: require('./helpers.js').generate(40)
 	};
@@ -61,7 +63,7 @@ config.backend.sessionStoreOptions = {
   sessionTimeout: 86400000,
   flushInterval: 60000,
   debug: false
-};
+};*/
 
 config.backend.cookieOptions = {
 	secret: 'fdsifoa4efioehfrafoeffjisaofew',

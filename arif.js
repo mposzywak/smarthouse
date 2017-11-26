@@ -12,6 +12,43 @@ var ARiF = function() {
 	this.mem = require('./mem.js');
 	this.raspyID = this.config.rcpclient.vpnID.split('-')[1];
 	
+	/* multicast server setup for Beacon */
+	const dgram = require('dgram');
+	const BBSocket = dgram.createSocket('udp4');
+	
+	var d = this.debug;
+	var c = this.config;
+	var m = this.mem;
+	
+	BBSocket.on('error', (err) => {
+		//console.log(`BBSocket error:\n${err.stack}`);
+		d.log(2, 'arif', 'Beacon socket error: ' + err.stack);
+		BBSocket.close();
+	});
+
+	BBSocket.on('message', (msg, rinfo) => {
+		//console.log(`BBSocket got: ${msg} from ${rinfo.address}:${rinfo.port}`);
+		d.log(2, 'arif', 'Beacon received from: ' + rinfo.address + ':' + rinfo.port + ' url: ' + msg);
+		var ardID = (msg + '').split('/')[2];
+		var arduinoIP = m.getArduinoIP(c.cloud.id, ardID)
+		if (rinfo.address == arduinoIP || '::ffff:' + rinfo.address == arduinoIP) {
+			//console.log('ardIP: ' + m.getArduinoIP(c.cloud.id, ardID))
+			d.log(2, 'arif', 'Beacon src IP same as registered Ard IP of: ' + ardID);
+		} else {
+			d.log(2, 'arif', 'Beacon src different than registered Ard IP of: ' + ardID + '. Updating.' );
+			m.updateArduinoIP(c.cloud.id, ardID, rinfo.address);
+		}
+	});
+
+	BBSocket.on('listening', () => {
+		const address = BBSocket.address();
+		BBSocket.addMembership(c.arif.beaconAddress);
+		//console.log(`BBSocket listening ${address.address}:${address.port}`);
+		d.log(2, 'arif', 'Beacon socket listening on ' + address.address + ':' + address.port)
+	});
+
+BBSocket.bind(c.arif.beaconPort);
+	
 	setInterval(heartbeatArduinos, 3000);
 }
 
@@ -21,10 +58,10 @@ function heartbeatArduinos() {
 	var mem = require('./mem.js');
 	var config = require('./config.js');
 	var accountID = require('./config.js').cloud.id;
-	var raspy = mem.devices[accountID][require('./config.js').rcpclient.vpnID.split('-')[1]];
-	for (ardID in raspy) {
+	var raspy = mem.devices[accountID].raspys[require('./config.js').rcpclient.vpnID.split('-')[1]];
+	for (ardID in raspy.arduinos) {
 		if (raspy.hasOwnProperty(ardID)){
-			sendHeartbeat(ardID, raspy[ardID].IP)
+			sendHeartbeat(ardID, raspy.arduinos[ardID].IP)
 		}
 	}
 	

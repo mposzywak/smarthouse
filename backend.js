@@ -265,10 +265,10 @@ function onDeviceUpdate(msg, socket) {
 	var mem = components.getFacility('mem');
 	var devices = mem.getClientDevices(accountID);
 	
-	devices[msg.raspyID][msg.ardID].devices[msg.devID].desc = msg.desc;
-	devices[msg.raspyID][msg.ardID].devices[msg.devID].activated = msg.activated;
-	require('./configdb.js').updateDevice(accountID, devices[msg.raspyID][msg.ardID].devices[msg.devID]);
-	socket.emit('device', devices[msg.raspyID][msg.ardID].devices[msg.devID]);
+	devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID].desc = msg.desc;
+	devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID].activated = msg.activated;
+	require('./configdb.js').updateDevice(accountID, devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID]);
+	socket.emit('device', devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID]);
 }
 
 /**
@@ -306,15 +306,15 @@ function pushAllDevices(socket, accountID) {
 	mem = components.getFacility('mem');
 	devices = mem.getClientDevices(accountID);
 	
-	for (var raspyID in devices) {
+	for (var raspyID in devices.raspys) {
 		if (raspyID > 0 && raspyID < 999) { // control if variable is actually a raspyID or meta
-			for (var ardID in devices[raspyID]) {
+			for (var ardID in devices.raspys[raspyID].arduinos) {
 				if (ardID > 0 && ardID < 256) {
-					for (var devID in devices[raspyID][ardID].devices) {
+					for (var devID in devices.raspys[raspyID].arduinos[ardID].devices) {
 						if (devID > 0 && devID < 256) {
 							require('./debug.js').log(5, 'backend', '[' + accountID + '] Emitting device data of raspyID: ' + raspyID +
 									' ardID: ' + ardID + ' devID: ' + devID);
-							socket.emit('device', devices[raspyID][ardID].devices[devID]);
+							socket.emit('device', devices.raspys[raspyID].arduinos[ardID].devices[devID]);
 						}
 					}
 				}

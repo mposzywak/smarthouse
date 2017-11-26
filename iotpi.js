@@ -32,7 +32,7 @@ var arif = require('./arif.js');
 const dgram = require('dgram');
 const BBSocket = dgram.createSocket('udp4');
 
-BBSocket.on('error', (err) => {
+/*BBSocket.on('error', (err) => {
   console.log(`BBSocket error:\n${err.stack}`);
   BBSocket.close();
 });
@@ -48,7 +48,7 @@ BBSocket.on('listening', () => {
 });
 
 BBSocket.bind('5007');
-
+*/
 init.setCallback(onInitComplete);
 init.clearInit('main');
 /* end of all initialization actions */
