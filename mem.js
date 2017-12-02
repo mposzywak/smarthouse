@@ -9,6 +9,7 @@
 var Mem = function() {
 	this.devices = {};
 	var devices = this.devices;
+	var mem = this;
 	this.components = require('./components').setFacility(this, 'mem');
 	this.config = require('./config.js');
 	//this.raspyID = require('./config.js').cloud.raspy;
@@ -24,12 +25,24 @@ var Mem = function() {
 				require('./debug.js').log(1, 'configdb', 'Failed to access configDB: ' + error.message);
 			} else {
 				devices[accountID] = raspys;
-				require('./debug.js').log(1, 'configdb', 'configDB contents loaded succesfully');
+				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully');
+			}
+		});
+		this.rcpclient = require('./rcpclient.js');
+	} else {
+		this.db.getEverything(function(error, accounts) {
+			if (error != null) {
+				require('./debug.js').log(1, 'configdb', 'Failed to access configDB: ' + error.message);
+			} else {
+				
+				mem['devices'] = accounts;
+				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully');
+				//console.log('accounts: ' + JSON.stringify(devices));
 			}
 		});
 	}
     //this.raspyID = this.raspyid.split('-')[0];
-    this.rcpclient = require('./rcpclient.js');
+    
 	//this.db = require('./configdb.js');
 	
 }
@@ -215,6 +228,20 @@ Mem.prototype.setDevice = function(accountID, devID, ardID, devType, date, IP, c
 		this.components.getFacility('debug').log(4, 'mem', 'accountID id: ' + accountID + ', Arduino: ' + 
 				ardID + ' existing devID mapping came: ' + devID);
 		return;
+	}
+}
+
+Mem.prototype.updateRaspyIP = function(accountID, raspyID, IP) {
+	if (typeof(this.devices[accountID]) == 'undefined') {
+		this.components.getFacility('debug').log(1, 'mem', 'accountID id: ' + accountID + ' not present in DB! This should not happen!');
+		return;
+	}
+	if (typeof(this.devices[accountID].raspys[raspyID]) == 'undefined') {
+		this.devices[accountID].raspys[raspyID] = {}
+		this.devices[accountID].raspys[raspyID].arduinos = {}
+		this.devices[accountID].raspys[raspyID].IP = IP;
+	} else {
+		this.devices[accountID].raspys[raspyID].IP = IP;
 	}
 }
 

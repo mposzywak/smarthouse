@@ -4,10 +4,11 @@ const sqlite3 = require('sqlite3').verbose();
 var ConfigDB = function() {
 	this.components = require('./components').setFacility(this, 'configdb');
 	this.debug = require('./debug.js');
+	this.config = require('./config.js');
 	var debug = this.debug;
-	this.db = new sqlite3.Database('/home/maciej/configdb/test.db', (err) => {
+	this.db = new sqlite3.Database(this.config.configdb.dbfile, (err) => {
 		if (err) {
-			debug.log(1, 'configdb', 'Error while inserting new Arduino: ' + error.message);
+			debug.log(1, 'configdb', 'Error while opening DB file: ' + error.message);
 		} else {
 			debug.log(1, 'configdb', 'ConfigDB file opened succesfully');
 		}
@@ -146,7 +147,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 	var db = this.db;
 	var devices = {};
 	devices.raspys = {};
-	
+
 	db.all(SQLArduinos, [accountID], function(error, rows) {
 		if (error) {
 			callback(error, null);
@@ -197,6 +198,34 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 					callback(error, devices);
 				}
 			});
+		}
+	});
+}
+
+ConfigDB.prototype.getEverything = function(callback) {
+	var SQLAccounts = 'SELECT * FROM accounts';
+	var db = this.db;
+	var accounts = {};
+	
+	db.all(SQLAccounts, [], function(error, rows) {
+		console.log('test');
+		if (error) {
+			callback(error, null);
+		} else {
+			for (var i = 0; i < rows.length; i++) {
+				var row = rows[i];
+				var accountID = row.accountID;
+				var name = row.name;
+				var email = row.email;
+				var password = row.password;
+				
+				accounts[accountID] = {};
+				accounts[accountID].raspys = {};
+				accounts[accountID].name = name;
+				accounts[accountID].email = email;
+				accounts[accountID].password = password;
+			}
+			callback(null, accounts);
 		}
 	});
 }

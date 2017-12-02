@@ -14,7 +14,10 @@ config.name = 'config';
 // configuration related to communication with the cloud
 config.cloud.id = 'admin';
 config.cloud.passwd = 'admin';
+//defines if the app is running in cloud (true) or raspy mode (false)
 config.cloud.enabled = false;
+//(only valid in raspy mode) defines if we should initiate a cloud RCP connection
+config.cloud.connection = false;
 
 // RCP client protocol settings (TODO: later credentials have to be taken from /etc/openvpn/username)
 config.rcpclient.vpnID = '00001002-001';
@@ -24,10 +27,11 @@ config.rcpclient.debug = 5;
 config.rcpclient.vpnkey = '33e9bc2d515c7923';
 
 // configuration related to RethinkDB connection
-config.db.host = 'localhost';
+/*config.db.host = 'localhost';
 config.db.port = 29015;
 config.db.debug = 5;
-
+config.db.file = '/home/maciej/configdb/test.db';
+*/
 // configuration of ARiF protocol, 
 config.arif.port = 32302;
 config.arif.debug = 5;

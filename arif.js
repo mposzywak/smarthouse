@@ -47,8 +47,7 @@ var ARiF = function() {
 		d.log(2, 'arif', 'Beacon socket listening on ' + address.address + ':' + address.port)
 	});
 
-BBSocket.bind(c.arif.beaconPort);
-	
+	BBSocket.bind(c.arif.beaconPort);
 	setInterval(heartbeatArduinos, 3000);
 }
 
@@ -60,7 +59,7 @@ function heartbeatArduinos() {
 	var accountID = require('./config.js').cloud.id;
 	var raspy = mem.devices[accountID].raspys[require('./config.js').rcpclient.vpnID.split('-')[1]];
 	for (ardID in raspy.arduinos) {
-		if (raspy.hasOwnProperty(ardID)){
+		if (raspy.arduinos.hasOwnProperty(ardID)){
 			sendHeartbeat(ardID, raspy.arduinos[ardID].IP)
 		}
 	}
