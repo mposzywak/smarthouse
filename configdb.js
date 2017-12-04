@@ -208,7 +208,6 @@ ConfigDB.prototype.getEverything = function(callback) {
 	var accounts = {};
 	
 	db.all(SQLAccounts, [], function(error, rows) {
-		console.log('test');
 		if (error) {
 			callback(error, null);
 		} else {
@@ -224,6 +223,13 @@ ConfigDB.prototype.getEverything = function(callback) {
 				accounts[accountID].name = name;
 				accounts[accountID].email = email;
 				accounts[accountID].password = password;
+				require('./configdb.js').getAllAccountDevices(accountID, function(error, raspys) {
+					if (error) {
+						callback(error);
+					} else {
+						accounts[accountID] = raspys;
+					}
+				});
 			}
 			callback(null, accounts);
 		}

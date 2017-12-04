@@ -85,10 +85,10 @@ function sendHeartbeat(ardID, IP) {
 	
 	var req = http.request(options, function (res){
 		debug.log(5, 'arif', 'Received Heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
-		mem.clearDeadCounter(accountID, raspyID, ardID);
+		mem.clearArduinoDeadCounter(accountID, raspyID, ardID);
 	}).on('error', function(error) {
 		debug.log(1, 'arif', 'Error in Heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
-		mem.increaseDeadCounter(accountID, raspyID, ardID);
+		mem.increaseArduinoDeadCounter(accountID, raspyID, ardID);
 	});
 	
 	req.write('');

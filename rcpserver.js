@@ -14,6 +14,8 @@ var RCPServer = function () {
 	this.server.on('error', onRCPError);
 	this.app.post('/device', onPostRequest);
 	this.app.post('/heartbeat', onHeartbeat);
+	
+	setInterval(monitorRaspys, 3000);
 }
 
 // script for authenticating RCP packets
@@ -37,6 +39,7 @@ function onHeartbeat(req, res) {
 			accountID = vpnid.split('-')[0]
 			raspyID = vpnid.split('-')[1]
 			require('./mem.js').updateRaspyIP(accountID, raspyID, req.connection.remoteAddress);
+			require('./mem.js').clearRaspyDeadCounter(accountID, raspyID);
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
 			res.end('HB ok');
 		}
@@ -126,5 +129,19 @@ function authRCP(req, res, callback) {
 }
 
 //function authenticateRequest(, )
+
+function monitorRaspys() {
+	var mem = require('./mem.js');
+	var accounts = mem.devices;
+	for (var accountID in accounts) {
+		if (accounts.hasOwnProperty(accountID)) {
+			for (var raspyID in accounts[accountID].raspys) {
+				if (accounts[accountID].raspys.hasOwnProperty(raspyID)) {
+					mem.increaseRaspyDeadCounter(accountID, raspyID);
+				}
+			}
+		}
+	}
+}
 
 module.exports = rcpserver;

@@ -37,7 +37,6 @@ var Mem = function() {
 				
 				mem['devices'] = accounts;
 				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully');
-				//console.log('accounts: ' + JSON.stringify(devices));
 			}
 		});
 	}
@@ -305,7 +304,8 @@ Mem.prototype.getClientDevices = function (accountID) {
 	return this.devices[accountID];
 }
 
-Mem.prototype.increaseDeadCounter = function(accountID, raspyID, ardID) {
+/* increment Arduino dead counter */
+Mem.prototype.increaseArduinoDeadCounter = function(accountID, raspyID, ardID) {
 	if (!this.devices[accountID].raspys[raspyID].arduinos[ardID].counter)
 		this.devices[accountID].raspys[raspyID].arduinos[ardID].counter = 0
 	
@@ -317,9 +317,29 @@ Mem.prototype.increaseDeadCounter = function(accountID, raspyID, ardID) {
 		
 }
 
-Mem.prototype.clearDeadCounter = function(accountID, raspyID, ardID) {
+/* increment Raspy dead counter */
+Mem.prototype.increaseRaspyDeadCounter = function(accountID, raspyID) {
+	if (!this.devices[accountID].raspys[raspyID].counter)
+		this.devices[accountID].raspys[raspyID].counter = 0
+	
+	if (this.devices[accountID].raspys[raspyID].counter < 3)
+		this.devices[accountID].raspys[raspyID].counter += 1;
+	
+	if (this.devices[accountID].raspys[raspyID].counter == 3)
+		this.setRaspyDead(accountID, raspyID);
+		
+}
+
+/* clear the Arduino dead counter */
+Mem.prototype.clearArduinoDeadCounter = function(accountID, raspyID, ardID) {
 	this.devices[accountID].raspys[raspyID].arduinos[ardID].counter = 0
 	this.setArduinoAlive(accountID, raspyID, ardID);
+}
+
+/* clear the Raspy dead counter */
+Mem.prototype.clearRaspyDeadCounter = function(accountID, raspyID) {
+	this.devices[accountID].raspys[raspyID].counter = 0
+	this.setRaspyAlive(accountID, raspyID);
 }
 
 /* sets a given Arduino status dead and all its devices */
@@ -356,5 +376,28 @@ Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
 	}
 }
 
+Mem.prototype.setRaspyAlive = function(accountID, raspyID) {
+	var raspy = this.devices[accountID].raspys[raspyID];
+	if (raspy.alive == false || typeof(raspy.alive) == 'undefined') {
+		raspy.alive = true;
+		require('./debug.js').log(5, 'mem', '[' + accountID + '] raspyID and its devices alive: ' + raspyID);
+	}
+	for (var ardID in raspy.arduinos) {
+		if (raspy.arduinos.hasOwnProperty(ardID))
+			this.setArduinoAlive(accountID, raspyID, ardID);
+	}
+}
+
+Mem.prototype.setRaspyDead = function(accountID, raspyID, ardID) {
+	var raspy = this.devices[accountID].raspys[raspyID];
+	if (raspy.alive == true || typeof(raspy.alive) == 'undefined') {
+		raspy.alive = false;
+		require('./debug.js').log(5, 'mem', '[' + accountID + '] raspyID and its devices dead: ' + raspyID);
+	}
+	for (var ardID in raspy.arduinos) {
+		if (raspy.arduinos.hasOwnProperty(ardID))
+			this.setArduinoDead(accountID, raspyID, ardID);
+	}
+}
 
 module.exports = memory;
