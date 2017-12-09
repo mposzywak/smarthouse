@@ -36,7 +36,7 @@ function sendHeartbeat() {
 	
 	var req = http.request(options, function (res){
 		require('./debug.js').log(4, 'rcpclient', 'Heartbeat Received STATUS: ' + res.statusCode);
-		require('./rcpclient.js').isCloudAlive = true;
+		onHeartbeatResponse(res);
 	}).on('error', function(error) {
 		require('./debug.js').log(1, 'rcpclient', 'Heartbeat failed to establish connection with the cloud: ', 
 				error.message);
@@ -54,7 +54,7 @@ RCPClient.prototype.sendDeviceStatus = function(device) {
 	var http = require('http');
 	
 	require('./debug.js').log(4, 'rcpclient', 'Sending device status of ardID: ' 
-			+ device.ardid + ' devID: ' + device.devid);
+			+ device.ardID + ' devID: ' + device.devID);
 
 	var options = {
 		hostname: this.config.rcpclient.host,
@@ -70,15 +70,27 @@ RCPClient.prototype.sendDeviceStatus = function(device) {
 	
 	var req = http.request(options, function (res){
 		require('./debug.js').log(4, 'rcpclient', 'Received STATUS: ' + res.statusCode + 
-				' for ardid: ' + device.ardid + ' devid: ' + device.devid);
+				' for ardID: ' + device.ardID + ' devid: ' + device.devID);
 	}).on('error', function(error) {
-		require('./debug.js').log(1, 'rcpclient', 'Failed to establish connection with the cloud: ', 
+		require('./debug.js').log(1, 'rcpclient', 'Failed to send Device Status: ', 
 				error.message);
 	});
 	
 	req.write(JSON.stringify(device),encoding='utf8');
 	req.end();
 
+}
+
+function onHeartbeatResponse(res) {
+	var isCloudAlive = require('./rcpclient.js').isCloudAlive;
+	if (res.statusCode == 200 && isCloudAlive == false) {
+		require('./rcpclient.js').isCloudAlive = true;
+		require('./debug.js').log(2, 'rcpclient', 'Setting Cloud connection alive. Sending Device status');
+		// Send status of all alive devices to the Cloud
+		require('./mem.js').sendRCPAllDeviceStatus(require('./rcpclient.js'));
+	} else if (res.statusCode != 200) {
+		require('./debug.js').log(1, 'rcpclient', 'Incorrect StatusCode received on RCP from Cloud Server!');
+	}
 }
 
 module.exports = rcpclient;

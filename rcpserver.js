@@ -4,18 +4,21 @@ var RCPServer = function () {
 	this.config = require('./config.js');
 	this.debug = require('./debug.js')
 	this.components = require('./components').setFacility(this, 'rcpserver');
-	require('./init.js').setInit('rcpserver');
-	this.app = require('express')();
-	this.bodyParser = require('body-parser');
-	this.app.use(this.bodyParser.json());
-	this.express = require('express');
-	this.http = require('http');
-	this.server = this.http.createServer(this.app).listen(this.config.rcpserver.port || 32400, onRCPListen);
-	this.server.on('error', onRCPError);
-	this.app.post('/device', onPostRequest);
-	this.app.post('/heartbeat', onHeartbeat);
 	
-	setInterval(monitorRaspys, 3000);
+	if (this.config.cloud.enabled) {
+		require('./init.js').setInit('rcpserver');
+		this.app = require('express')();
+		this.bodyParser = require('body-parser');
+		this.app.use(this.bodyParser.json());
+		this.express = require('express');
+		this.http = require('http');
+		this.server = this.http.createServer(this.app).listen(this.config.rcpserver.port || 32400, onRCPListen);
+		this.server.on('error', onRCPError);
+		this.app.post('/device', onPostRequest);
+		this.app.post('/heartbeat', onHeartbeat);
+		
+		setInterval(monitorRaspys, 3000);
+	}
 }
 
 // script for authenticating RCP packets

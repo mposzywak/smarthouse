@@ -25,7 +25,7 @@ var Mem = function() {
 				require('./debug.js').log(1, 'configdb', 'Failed to access configDB: ' + error.message);
 			} else {
 				devices[accountID] = raspys;
-				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully');
+				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully [Raspy mode]');
 			}
 		});
 		this.rcpclient = require('./rcpclient.js');
@@ -36,7 +36,7 @@ var Mem = function() {
 			} else {
 				
 				mem['devices'] = accounts;
-				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully');
+				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully [Cloud mode]');
 			}
 		});
 	}
@@ -394,9 +394,35 @@ Mem.prototype.setRaspyDead = function(accountID, raspyID, ardID) {
 		raspy.alive = false;
 		require('./debug.js').log(5, 'mem', '[' + accountID + '] raspyID and its devices dead: ' + raspyID);
 	}
+	
 	for (var ardID in raspy.arduinos) {
 		if (raspy.arduinos.hasOwnProperty(ardID))
 			this.setArduinoDead(accountID, raspyID, ardID);
+	}
+}
+
+/* send status of all devices over RCP to Cloud */
+Mem.prototype.sendRCPAllDeviceStatus = function(rcpclient) {
+	var accountID = this.config.cloud.id;
+	var raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	
+	var arduinos = this.devices[accountID].raspys[raspyID].arduinos;
+	for (var ardID in arduinos) {
+		if (arduinos.hasOwnProperty(ardID)) {
+			var devices = arduinos[ardID].devices;
+			for (var devID in devices) {
+				if (devices.hasOwnProperty(devID)){
+					var device = devices[devID];
+				
+					if (device.alive == true) {
+						rcpclient.sendDeviceStatus(this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID]);
+						//this needs to be removed.
+						this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] Device found to update Cloud, ardID: ' + 
+								device.ardID + ' on raspyID: ' + device.raspyID + ' devID: ' + device.devID);
+					}
+				}
+			}
+		}
 	}
 }
 

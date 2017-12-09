@@ -20,6 +20,10 @@ var ARiF = function() {
 	var c = this.config;
 	var m = this.mem;
 	
+	/* variable holding status of cloud connection */
+	this.cloudAlive = false;
+	this.cloudAliveCounter = 0;
+	
 	BBSocket.on('error', (err) => {
 		//console.log(`BBSocket error:\n${err.stack}`);
 		d.log(2, 'arif', 'Beacon socket error: ' + err.stack);
@@ -155,6 +159,19 @@ ARiF.prototype.validateDataTransferURL = function(url, srcIP) {
 	return 1;
 }
 
+ARiF.prototype.isCloudAlive = function() {
+	return this.cloudAlive;
+}
 
+ARiF.prototype.setCloudAlive = function() {
+	this.cloudAlive = true;
+	this.cloudAliveCounter = 0;
+	
+	//send all device status data to cloud.
+}
+
+ARiF.prototype.setCloudDead = function() {
+	this.cloudAlive = false;
+}
 
 module.exports = arif;
