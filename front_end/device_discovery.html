@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Bootstrap Example</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+	
+</head>
+<style>
+.top-buffer { 
+	margin-top:20px; 
+	min-height:0px !important;
+}
+
+.switch-button-margin {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px
+}
+
+/* On Button */
+.switch-button-on {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #f4d142;
+	border-color: #d1b338;
+}
+
+.switch-button-on:hover {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #d1b338;
+	border-color: #d1b338;
+}
+
+.switch-button-on:active {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #c1a634;
+	border-color: #c1a634;
+}
+
+.switch-button-on:disabled {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #e5d695;
+	border-color: #e5d695;
+}
+
+/* Off Button */
+.switch-button-off {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #aaaaaa;
+	border-color: #969696;
+}
+
+.switch-button-off:hover {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #969696;
+	border-color: #969696;
+}
+
+.switch-button-off:active {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #898989;
+	border-color: #898989;
+}
+
+.switch-button-off:disabled {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #d1d1d1;
+	border-color: #d1d1d1;
+}
+
+.section-center__full {
+	height: 12vh;
+	display: flex;
+	justify-content: left;
+	align-items: center;
+}
+
+.container{
+    max-width: 300px;
+}
+
+.row-settings {
+	background: #c4c4c4;
+}
+
+</style>
+<body>
+
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+      <a class="navbar-brand" href="#">Navigation</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarCollapse">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="device_configuration.html">Configuration</a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="device_discovery.html">Device Discovery</a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link" href="device_active.html">Active Devices</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+<div class="container">
+	<br><br>
+	<div class="alert alert-warning alert-dismissible fade show" role="alert">
+		<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+			<span aria-hidden="true">&times;</span>
+		</button>
+		<br>
+		<strong>Holy guacamole!</strong> You should check in on some of those fields below.
+	</div>
+	<br><h1>Discovered Devices</h1>
+	<p> </p>
+</div>
+
+<div class="container">
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white row-settings">
+			Kitchen
+		</div>
+		<div class="col-sm text-white row-settings">	
+		<button type="button" class="btn text-white switch-button-on">
+			<span class="fa fa-lightbulb-o" aria-hidden="true"></span>	
+			On
+		</button>
+		</div>
+	</div>
+  
+  <div class="row justify-content-md-center top-buffer">
+    <div class="col-sm text-white row-settings">
+      Room 1
+    </div>
+    <div class="col-sm text-white row-settings">
+		<button type="button" class="btn switch-button-off">Off</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

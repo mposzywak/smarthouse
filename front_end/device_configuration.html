@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Bootstrap Example</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+	<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+	<script src="js/smarthouse.js"></script>
+</head>
+<style>
+.top-buffer { 
+	margin-top:20px; 
+	min-height:0px !important;
+}
+
+.arduino-col { 
+	margin-top:40px; 
+	min-height:0px !important;
+	background: #ededed;
+}
+
+.switch-button-margin {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px
+}
+
+/* On Button */
+.conf-button {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #4744ff;
+	border-color: #3331bc;
+}
+
+.conf-button:hover {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #3331bc;
+	border-color: #3331bc;
+}
+
+.conf-button:active {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #2a289b;
+	border-color: #2a289b;
+}
+
+.conf-button:disabled {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #8987ff;
+	border-color: #8987ff;
+}
+
+
+.section-center__full {
+	height: 12vh;
+	display: flex;
+	justify-content: left;
+	align-items: center;
+}
+
+.container{
+    max-width: 450px;
+}
+
+.row-settings {
+	background: #c4c4c4;
+	margin-left: 8px;
+	margin-right: 8px;
+	min-width: 300px;
+}
+
+
+</style>
+<body>
+
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+      <a class="navbar-brand" href="#">Navigation</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarCollapse">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#">Configuration</a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="device_discovery.html">Device Discovery</a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link" href="device_active.html">Active Devices</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+<div class="container">
+	<br><br>
+
+	<br><h1>Configuration</h1>
+	<p> </p>
+</div>
+
+<div class="container">
+	<div class="row justify-content-md-center top-buffer" id="arduinos">
+
+	</div>
+</div>
+
+</body>
+<script>
+    var socket = io('/iot');
+	
+	// set connection actions
+	socket.on('connect', onConnect);
+	socket.on('connect_error', onConnectError);
+	socket.on('error', onError);
+    socket.on('device', receiveDevice);
+	socket.on('device_response', onResponse);
+	
+	function receiveDevice(msg) {
+		updateDevice(msg);
+		var FID = msg.raspyID + '-' + msg.devID + '-' + msg.ardID;
+		//console.log('got value');
+		
+		if (document.getElementById('arduino-' + msg.ardID) == null) {
+			/* this is a new device so whole div structure needs to be created */
+			addArduinoTableRow(msg);
+			
+		} else {
+			/* the device already reported, structure needs to be filled in with new data */
+		}
+		
+		if (document.getElementById(FID + '_row') == null) {
+			/* this is a new device so whole div structure needs to be created */
+			addDeviceTableRow(msg);
+			
+		} else {
+			/* the device already reported, structure needs to be filled in with new data */
+		}
+
+    }
+	
+	function addArduinoTableRow(device) {
+		var FID = device.raspyID + '-' + device.devID + '-' + device.ardID;
+		
+		var row = '<div class="col-sm text-white arduino-col" id="arduino-' + device.ardID + '"> \
+						<div class="row justify-content-md-center top-buffer"> \
+							<div class="col-sm text-white row-settings" id="ardID-' + device.ardID + '"> \
+								ardID: ' + device.ardID + '<br> \
+								name: Not Availble</strong> \
+							</div> \
+							<div class="col-sm text-white row-settings"> \
+								<button type="button" class="btn text-white conf-button"> \
+									<span class="fa fa-cog" aria-hidden="true"></span> \
+									Configuration \
+								</button> \
+							</div> \
+						</div> \
+					</div>';
+		
+		$("#arduinos").append(row);
+	}
+
+	function addDeviceTableRow(device) {
+		var FID = device.raspyID + '-' + device.devID + '-' + device.ardID;
+		var desc;
+		
+		if (typeof(device.desc) == 'undefined' || device.desc == '' || device.desc == null)
+			desc = 'Not set';
+		else
+			desc = device.desc;
+		
+		var row =  '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row"> \
+						<div class="col-sm text-white row-settings" id="' + FID + '_row-settings"> \
+							device type: ' + device.devType + '<br> \
+							name: <strong>' + desc + '</strong> \
+						</div> \
+						<div class="col-sm text-white row-settings"> \
+							<button type="button" class="btn text-white conf-button" onclick="location.href=\'device_configuration_single.html\';"> \
+								<span class="fa fa-cog" aria-hidden="true"></span> \
+								Configuration \
+							</button> \
+						</div> \
+					</div>';
+				
+		$("#arduino-" + device.ardID).append(row);
+	}
+	
+	function updateActiveDeviceTableRow(device) {
+	
+	}
+	
+	function onResponse(msg) {
+		var response = msg.response;
+		var device = msg.device;
+		if (response != '0') {
+			onError('Error reaching device: ' + device.desc + ' (' + response + ')');
+			enableLightButton(device);
+			clearDeviceTimer(device);
+		} else {
+			updateActiveDeviceTableRow(device);
+		}
+		//console.log(JSON.stringify(msg));
+	}
+	//function update
+</script>
+</html>

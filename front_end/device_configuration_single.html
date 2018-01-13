@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Bootstrap Example</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+	
+</head>
+<style>
+.top-buffer { 
+	min-height:0px !important;
+}
+
+.arduino-col { 
+	margin-top:40px; 
+	min-height:0px !important;
+	background: #ededed;
+}
+
+.switch-button-margin {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px
+}
+
+/* On Button */
+.conf-button {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #4744ff;
+	border-color: #3331bc;
+}
+
+.conf-button:hover {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #3331bc;
+	border-color: #3331bc;
+}
+
+.conf-button:active {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #2a289b;
+	border-color: #2a289b;
+}
+
+.conf-button:disabled {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #8987ff;
+	border-color: #8987ff;
+}
+
+
+.section-center__full {
+	height: 12vh;
+	display: flex;
+	justify-content: left;
+	align-items: center;
+}
+
+.container{
+    max-width: 450px;
+}
+
+.conf-data-panel {
+	background: #c4c4c4;
+	min-height: 40px;
+}
+
+.conf-button-panel {
+	min-width: 100px;
+	background: #c4c4c4;
+}
+
+.conf-data-panel-text {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin-left: 20px;
+}
+
+.conf-data-panel-checkbox {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin-left: 40px;
+}
+
+</style>
+<body>
+
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+      <a class="navbar-brand" href="#">Navigation</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarCollapse">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#">Configuration</a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="device_discovery.html">Device Discovery</a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link" href="device_active.html">Active Devices</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+<div class="container">
+	<br><br>
+
+	<br><h1>Device Configuration</h1>
+	<p> </p>
+</div>
+
+<div class="container">
+	<div class="row justify-content-md-center top-buffer" id="ardid-1">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>device ID: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text">1</div> 
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>Name: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<input type="text" class="form-control" id="name-input" aria-describedby="emailHelp" placeholder="Enter name">
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-checkbox">
+				<input type="checkbox" class="form-check-input">Enabled
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-button-panel">
+			<button type="button" class="btn text-white conf-button" onclick="location.href='device_configuration.html?cmd=success';">
+				<span class="fa fa-floppy-o" aria-hidden="true"></span>	
+				Save
+			</button>
+			<button type="button" class="btn text-white conf-button" onclick="location.href='device_configuration.html';">
+				Back
+			</button>
+		</div>
+	</div>
+</div>
+
+</body>
+</html>
