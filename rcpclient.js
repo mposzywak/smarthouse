@@ -64,7 +64,8 @@ RCPClient.prototype.sendDeviceStatus = function(device) {
 		agent: false,
 		headers: {
 			'iot-raspyid' : this.config.rcpclient.vpnID, 
-			'iot-vpnkey' : this.config.rcpclient.vpnkey
+			'iot-vpnkey' : this.config.rcpclient.vpnkey,
+			'Content-Type' : 'application/json'
 		}
 	};
 	
@@ -76,10 +77,72 @@ RCPClient.prototype.sendDeviceStatus = function(device) {
 				error.message);
 	});
 	
-	req.write(JSON.stringify(device),encoding='utf8');
+	req.write(JSON.stringify(device), encoding='utf8');
 	req.end();
 
 }
+
+RCPClient.prototype.sendArduinoAlive = function(ardID) {
+	var url = '/arduino-alive?ardID=' + ardID;
+	
+	require('./debug.js').log(4, 'rcpclient', 'Sending arduino-alive, ardID: ' + ardID);
+	
+	this.sendMessage(url, null, function(error, res) {
+		if (res)
+			require('./debug.js').log(4, 'rcpclient', 'Received STATUS: ' + res.statusCode + ' to arduino-alive');
+		if (error)
+			require('./debug.js').log(1, 'rcpclient', 'Failed to send arduino-alive: ', error.message);
+	});
+}
+
+RCPClient.prototype.sendArduinoDead = function(ardID) {
+	var url = '/arduino-dead?ardID=' + ardID;
+	
+	require('./debug.js').log(4, 'rcpclient', 'Sending arduino-dead, ardID: ' + ardID);
+	
+	this.sendMessage(url, null, function(error, res) {
+		if (res)
+			require('./debug.js').log(4, 'rcpclient', 'Received STATUS: ' + res.statusCode + ' to arduino-dead');
+		if (error)
+			require('./debug.js').log(1, 'rcpclient', 'Failed to send arduino-dead: ', error.message);
+	});
+}
+
+
+/** Send generic message on RCP 
+ * put URL, payload has to be a JSON argument, if set to NULL or '' body will be sent empty
+ * callback has the following arguments: callback(error, res)
+ */
+RCPClient.prototype.sendMessage = function(url, payload, callback) {
+	var http = require('http');
+	var options = {
+		hostname: this.config.rcpclient.host,
+		port: this.config.rcpclient.port,
+		path: url,
+		method: 'POST',
+		agent: false,
+		headers: {
+			'iot-raspyid' : this.config.rcpclient.vpnID, 
+			'iot-vpnkey' : this.config.rcpclient.vpnkey,
+			'Content-Type' : 'application/json'
+		}
+	};
+	
+	var req = http.request(options, function (res){
+		callback(null, res);
+	}).on('error', function(error) {
+		callback(error, null);
+	});
+	
+	if (payload)
+		req.write(JSON.stringify(payload), encoding='utf8');
+	else
+		req.write('', encoding='utf8');
+	
+	req.end();
+}
+
+
 
 function onHeartbeatResponse(res) {
 	var isCloudAlive = require('./rcpclient.js').isCloudAlive;

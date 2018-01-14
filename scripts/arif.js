@@ -66,13 +66,13 @@ function onPostRequest(req, res) {
 	var raspyID = params.raspyID;
 	var devType = params.devType;
 	var command = params.cmd;
-	
+	debug.log(5, 'arif', 'Decoded values, devID: ' + devID + ' ardID: ' + ardID + ' raspyID: ' + raspyID + ' devType: ' + devType + ' cmd: ' + command);
 	var arif = require('./arif.js');
 	var arduino = require('./devices.js');
 	
 	switch (command) {
 		case ARIF_HEARTBEAT:
-			missingHeartbeats = 0;
+			arif.missingHeartbeats = 0;
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
 			res.end('');
 			break;
@@ -146,7 +146,7 @@ function getParams(url) {
 	var urlParams;
     var match,
         pl     = /\+/g,  // Regex for replacing addition symbol with a space
-        search = /([^&=]+)=?([^&]*)/g,
+        search = /([^&?\/=]+)=?([^&]*)/g,
         decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); };
 
     urlParams = {};

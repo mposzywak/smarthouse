@@ -32,23 +32,8 @@ var arif = require('./arif.js');
 const dgram = require('dgram');
 const BBSocket = dgram.createSocket('udp4');
 
-/*BBSocket.on('error', (err) => {
-  console.log(`BBSocket error:\n${err.stack}`);
-  BBSocket.close();
-});
 
-BBSocket.on('message', (msg, rinfo) => {
-  console.log(`BBSocket got: ${msg} from ${rinfo.address}:${rinfo.port}`);
-});
 
-BBSocket.on('listening', () => {
-  const address = BBSocket.address();
-  BBSocket.addMembership('224.1.1.1');
-  console.log(`BBSocket listening ${address.address}:${address.port}`);
-});
-
-BBSocket.bind('5007');
-*/
 init.setCallback(onInitComplete);
 init.clearInit('main');
 /* end of all initialization actions */
@@ -60,7 +45,7 @@ init.clearInit('main');
 const ARIF_REGISTER  = 'a';
 const ARIF_LIGHT_ON  = '1';
 const ARIF_LIGHT_OFF = '2';
-const ARIF_DATA_TRANSFER = '40';
+const ARIF_DEV_STATUS = 'status';
 const ARIF_DEV_MAPPING = '32';
 
 /* accept requests for all URLs, filter later */
@@ -70,8 +55,8 @@ app.post('/*', onPostRequest);
 /* Execute each time when HTTP POST request comes into ARiF interface */
 function onPostRequest(req, res) {
 	var reqDate = new Date();
-	srcip = req.connection.remoteAddress;
-	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcip);
+	srcIP = req.connection.remoteAddress;
+	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcIP);
 
 	if (!config.cloud.id) {
 		debug.log(1, 'arif', 'Sending 502: ARIF interface not enabled, system configured for cloud');
@@ -81,26 +66,31 @@ function onPostRequest(req, res) {
 	}
 	
 	var url = req.originalUrl;
-	var result = url.match("^(\/[0-9a-fA-F]{1,2}){3}");
-	var devid = url.split('/')[1];
-	var ardid = url.split('/')[2];
-	var command = url.split('/')[3];
-	if (result && url.length < 64 && devid != '0') {
-		
+	var params = getParams(url);
+	//var result = url.match("^(\/[0-9a-fA-F]{1,2}){3}");
+	var devID = req.query.devID; //url.split('/')[1];
+	var ardID = params.ardID; //url.split('/')[2];
+	var raspyID = params.raspyID; //url.split('/')[3];
+	var cmd = params.cmd; //url.split('/')[4];
+	console.log('devID: ' + devID);
+	console.log('ardID: ' + ardID);
+	console.log('raspyID: ' + raspyID);
+	
+	if (devID && ardID && raspyID && cmd && url.length < 256 && devID != '0') {
 		//debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + command);
-		switch (command) {
+		switch (cmd) {
 			case ARIF_REGISTER:
-				var ardid = mem.registerArduino(config.cloud.id, srcip);
-				res.set('X-arduino', ardid);
+				var newArdID = mem.registerArduino(config.cloud.id, srcIP);
+				res.set('X-arduino', newArdID);
 				break;
-			case ARIF_DATA_TRANSFER:
-				var devType = url.split('/')[4];
-				var dataType = url.split('/')[5];
-				var value = url.split('/')[6];
-				if (arif.validateDataTransferURL(url, srcip))
-					mem.setDeviceStatus(config.cloud.id, devid, ardid, devType, dataType, value, reqDate, srcip);
+			case ARIF_DEV_STATUS:
+				var devType = params.devType; // url.split('/')[5];
+				var dataType = params.dataType; //url.split('/')[6];
+				var value = params.value; //url.split('/')[7];
+				if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP))
+					mem.setDeviceStatus(config.cloud.id, devID, ardID, devType, dataType, value, reqDate, srcIP);
 				else {
-					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcip);
+					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);
 					res.writeHead(404, { 'Content-Type' : 'text/plain'});
 					res.end('Error: probably wrong URL');
 					return;
@@ -111,16 +101,16 @@ function onPostRequest(req, res) {
 				dataType = validateDataType(url.split('/')[5]);
 				controlledDevs = url.split('/').slice(5); // get rest of array from 5th element
 				console.log(controlledDevs);
-				mem.setDevice(config.cloud.id, devid, ardid, devType, reqDate, srcip, controlledDevs)
+				mem.setDevice(config.cloud.id, devid, ardid, devType, reqDate, srcIP, controlledDevs)
 				break;
 			default:
-				debug.log(1, 'arif', 'command: ' + command + ' from: ' + srcip + ' is unknown!');
+				debug.log(1, 'arif', 'command: ' + command + ' from: ' + srcIP + ' is unknown!');
 		}
-		debug.log(4, 'arif', 'Sending 200 OK to: ' + srcip + ' for GET URL: ' + url);
+		debug.log(4, 'arif', 'Sending 200 OK to: ' + srcIP + ' for GET URL: ' + url);
 		res.writeHead(200, { 'Content-Type' : 'text/plain'});
         res.end('Data ack');
 	} else {
-		debug.log(2, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + srcip);
+		debug.log(2, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + srcIP);
 		res.writeHead(404, { 'Content-Type' : 'text/plain'});
         res.end('Error: probably wrong URL');
 	}
@@ -159,4 +149,18 @@ function onInitComplete() {
 	} else {
 		debug.log(1, 'init', 'app initialized as raspby');
 	}
+}
+
+function getParams(url) {
+	var urlParams;
+    var match,
+        pl     = /\+/g,  // Regex for replacing addition symbol with a space
+        search = /([^&=]+)=?([^&]*)/g,
+        decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); };
+
+    urlParams = {};
+    while (match = search.exec(url))
+       urlParams[decode(match[1])] = decode(match[2]);
+	
+	return urlParams
 }

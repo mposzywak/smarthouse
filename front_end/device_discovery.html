@@ -15,6 +15,7 @@
 .top-buffer { 
 	margin-top:20px; 
 	min-height:0px !important;
+	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
 .switch-button-margin {
@@ -115,13 +116,13 @@
       <div class="collapse navbar-collapse" id="navbarCollapse">
         <ul class="navbar-nav mr-auto">
           <li class="nav-item">
-            <a class="nav-link" href="device_configuration.html">Configuration</a>
+            <a class="nav-link" href="device-configuration">Configuration</a>
           </li>
           <li class="nav-item active">
-            <a class="nav-link" href="device_discovery.html">Device Discovery</a>
+            <a class="nav-link" href="device-discovery">Device Discovery</a>
           </li>
-		  <li class="nav-item">
-            <a class="nav-link" href="device_active.html">Active Devices</a>
+          <li class="nav-item">
+            <a class="nav-link" href="device-active">Active Devices</a>
           </li>
         </ul>
       </div>
@@ -129,12 +130,8 @@
 
 <div class="container">
 	<br><br>
-	<div class="alert alert-warning alert-dismissible fade show" role="alert">
-		<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-			<span aria-hidden="true">&times;</span>
-		</button>
-		<br>
-		<strong>Holy guacamole!</strong> You should check in on some of those fields below.
+	<div id="message-holder">
+		
 	</div>
 	<br><h1>Discovered Devices</h1>
 	<p> </p>
@@ -142,10 +139,10 @@
 
 <div class="container">
 	<div class="row justify-content-md-center top-buffer">
-		<div class="col-sm text-white row-settings">
+		<div class="col text-white row-settings">
 			Kitchen
 		</div>
-		<div class="col-sm text-white row-settings">	
+		<div class="col text-white row-settings">	
 		<button type="button" class="btn text-white switch-button-on">
 			<span class="fa fa-lightbulb-o" aria-hidden="true"></span>	
 			On

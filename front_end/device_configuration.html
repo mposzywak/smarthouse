@@ -93,14 +93,14 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarCollapse">
         <ul class="navbar-nav mr-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="#">Configuration</a>
-          </li>
           <li class="nav-item active">
-            <a class="nav-link" href="device_discovery.html">Device Discovery</a>
+            <a class="nav-link" href="device-configuration">Configuration</a>
           </li>
-		  <li class="nav-item">
-            <a class="nav-link" href="device_active.html">Active Devices</a>
+          <li class="nav-item">
+            <a class="nav-link" href="device-discovery">Device Discovery</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="device-active">Active Devices</a>
           </li>
         </ul>
       </div>
@@ -108,7 +108,8 @@
 
 <div class="container">
 	<br><br>
-
+	<div id="message-holder">
+	</div>
 	<br><h1>Configuration</h1>
 	<p> </p>
 </div>
@@ -128,7 +129,7 @@
 	socket.on('connect_error', onConnectError);
 	socket.on('error', onError);
     socket.on('device', receiveDevice);
-	socket.on('device_response', onResponse);
+	//socket.on('device_response', onResponse);
 	
 	function receiveDevice(msg) {
 		updateDevice(msg);
@@ -176,20 +177,25 @@
 
 	function addDeviceTableRow(device) {
 		var FID = device.raspyID + '-' + device.devID + '-' + device.ardID;
+		var deviceIDArg = '?raspyID=' + device.raspyID + '&ardID=' + device.ardID + '&devID=' + device.devID;
 		var desc;
+		var enabled = '<font color="#911414"><strong> \(Disabled\)</strong></font>';
 		
 		if (typeof(device.desc) == 'undefined' || device.desc == '' || device.desc == null)
-			desc = 'Not set';
+			desc = '<font color="#911414">\(Not set\)</font>';
 		else
 			desc = device.desc;
 		
+		if (device.activated)
+			enabled = '<font color="#009e24"><strong> \(Enabled\)</strong></font>';
+		
 		var row =  '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row"> \
 						<div class="col-sm text-white row-settings" id="' + FID + '_row-settings"> \
-							device type: ' + device.devType + '<br> \
+							device type: ' + device.devType + ' ' + enabled + '<br> \
 							name: <strong>' + desc + '</strong> \
 						</div> \
 						<div class="col-sm text-white row-settings"> \
-							<button type="button" class="btn text-white conf-button" onclick="location.href=\'device_configuration_single.html\';"> \
+							<button type="button" class="btn text-white conf-button" onclick="location.href=\'device-configuration-single' + deviceIDArg + '\';"> \
 								<span class="fa fa-cog" aria-hidden="true"></span> \
 								Configuration \
 							</button> \
@@ -203,18 +209,12 @@
 	
 	}
 	
-	function onResponse(msg) {
-		var response = msg.response;
-		var device = msg.device;
-		if (response != '0') {
-			onError('Error reaching device: ' + device.desc + ' (' + response + ')');
-			enableLightButton(device);
-			clearDeviceTimer(device);
-		} else {
-			updateActiveDeviceTableRow(device);
-		}
-		//console.log(JSON.stringify(msg));
-	}
-	//function update
+
+
+	/* display success message when the device was succesfully configuring and redirection 
+		comes from device-configuration-single */
+	if (urlParams['cmd'] == 'success')
+		displaySuccessMsg('Device has been configured and saved.')
+	
 </script>
 </html>

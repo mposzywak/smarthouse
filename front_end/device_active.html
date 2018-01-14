@@ -16,6 +16,7 @@
 .top-buffer { 
 	margin-top:20px; 
 	min-height:0px !important;
+	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
 .switch-button-margin {
@@ -127,20 +128,24 @@
       <div class="collapse navbar-collapse" id="navbarCollapse">
         <ul class="navbar-nav mr-auto">
           <li class="nav-item">
-            <a class="nav-link" href="device_configuration.html">Configuration</a>
+            <a class="nav-link" href="/device-configuration">Configuration</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="device_discovery.html">Device Discovery</a>
+            <a class="nav-link" href="/device-discovery">Device Discovery</a>
           </li>
           <li class="nav-item active">
-            <a class="nav-link" href="device_active.html">Active Devices</a>
+            <a class="nav-link" href="/device-active">Active Devices</a>
           </li>
         </ul>
       </div>
     </nav>
 
 <div class="container">
-	<br><br><br><h1>Active Devices</h1>
+	<br><br>
+	<div id="message-holder">
+		
+	</div>
+	<br><h1>Active Devices</h1>
 	<p> </p>
 </div>
 
@@ -158,6 +163,7 @@
 	socket.on('error', onError);
     socket.on('device', receiveDevice);
 	socket.on('device_response', onResponse);
+	socket.on('message', onMessage);
 	
 	function receiveDevice(msg) {
 		updateDevice(msg);

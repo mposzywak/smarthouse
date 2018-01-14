@@ -11,7 +11,7 @@ config.name = 'config';
 
 // configuration of ARiF protocol, 
 config.arif.port = 32302;
-config.arif.debug = 4;
+config.arif.debug = 5;
 
 // config of the debug HTTP server
 config.debug.port = 32303;

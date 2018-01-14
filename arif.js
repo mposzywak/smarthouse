@@ -82,7 +82,8 @@ function sendHeartbeat(ardID, IP) {
 	var options = {
 		hostname: IP,
 		port: config.arif.port,
-		path: '/0/' + ardID + '/' + raspyID + '/' + ARIF_HEARTBEAT,
+		//path: '/0/' + ardID + '/' + raspyID + '/' + ARIF_HEARTBEAT,
+		path: '/?devID=0&ardID=' + ardID + '&raspyID=' + raspyID + '&cmd=heartbeat',
 		method: 'POST',
 		agent: false
 	};
@@ -112,7 +113,8 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 	var options = {
 		hostname: device.IP,
 		port: this.config.arif.port,
-		path: '/' + device.devID + '/' + device.ardID + '/' + this.config.rcpclient.vpnID.split('-')[1] + '/' + command,
+		path: '/?devID=' + device.devID + '&ardID=' + device.ardID + 
+				'&raspyID=' + this.config.rcpclient.vpnID.split('-')[1] + '&cmd=' + command + '&devType=' + device.devType,
 		method: 'POST',
 		agent: false
 	};
@@ -132,14 +134,9 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 /**
  * This function checks if the dataTransfer command from an Arduino is correct and comes from non-spoofed IP
  */
-ARiF.prototype.validateDataTransferURL = function(url, srcIP) {
+ARiF.prototype.validateDeviceStatusData = function(devID, ardID, raspyID, devType, dataType, value, srcIP) {
 	var debug = this.debug;
-	var devID = url.split('/')[1];
-	var ardID = url.split('/')[2];
-	var command = url.split('/')[3];
-	var devType = url.split('/')[4];
-	var dataType = url.split('/')[5];
-	var value = url.split('/')[6];
+
 	var ardIP = require('./mem.js').getArduinoIP(this.config.cloud.id, ardID);
 
 	if (!ardIP) {
@@ -147,7 +144,7 @@ ARiF.prototype.validateDataTransferURL = function(url, srcIP) {
 		return;
 	}
 	
-	if (srcIP != ardIP) {
+	if (!(srcIP == ardIP || '::ffff:' + srcIP == ardID || srcIP == '::ffff:' + ardIP)) {
 		debug.log(1, 'arif', 'ARiF message from incorrect IP: ' + srcIP + ' URL: ' + url);
 		return;
 	}	
@@ -172,6 +169,21 @@ ARiF.prototype.setCloudAlive = function() {
 
 ARiF.prototype.setCloudDead = function() {
 	this.cloudAlive = false;
+}
+
+function getParams(url) {
+	var urlParams;
+    var match,
+        pl     = /\+/g,  // Regex for replacing addition symbol with a space
+        search = /([^&=]+)=?([^&]*)/g,
+        decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+        query  = window.location.search.substring(1);
+
+    urlParams = {};
+    while (match = search.exec(query))
+       urlParams[decode(match[1])] = decode(match[2]);
+	
+	return urlParams
 }
 
 module.exports = arif;

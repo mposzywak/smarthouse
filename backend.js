@@ -4,6 +4,7 @@
 const ADD_EXEC = '/home/maciej/accountdb/add-account.sh';
 const AUTH_EXEC = '/home/maciej/accountdb/verify-account.sh';
 
+const LOGIN_PAGE = 'login2.html'
 
 /**
  * Backend is the HTTP server that is serving the client requests, it 
@@ -34,6 +35,7 @@ var Backend = function() {
 	this.FILEStore = new this.fileStore();
 	this.app.set('views', __dirname + '/front_end');
 	this.app.engine('html', require('ejs').renderFile);
+	this.app.set('view engine', 'html');
 	
 	this.app.use(this.session({
 		store: this.FILEStore,
@@ -53,7 +55,14 @@ var Backend = function() {
 	this.app.use('/js', this.express.static('front_end/js'));
 	this.app.get('/admin', onAdmin);
 	this.app.get('/\*.html', onAnyHTML);
-	this.app.get('/', onAnyHTML);       // redirect to login page on '/'
+	/* specific html service functions */
+	this.app.get('/device-active', onDeviceActive);
+	this.app.get('/device-configuration', onDeviceConfiguration);
+	//this.app.get('\/device-configuration-single\/[0-9]{3}\/[0-9]{1,3}\/[0-9]{1,3}', onDeviceConfigurationSingle);
+	this.app.get('\/device-configuration-single', onDeviceConfigurationSingle);
+	this.app.get('/device-discovery', onDeviceDiscovery);
+	
+	this.app.get('', onAnyHTML);       // redirect to login page on '/'
 	//executed on login inforamtion
 	this.app.post('/auth', onLogin);
 
@@ -110,7 +119,7 @@ function onAnyHTML(req,res) {
 	if(sess.email) {
 		renderFile(req, res);
 	} else {
-		res.render('login.html');
+		res.render(LOGIN_PAGE);
 		require('./debug.js').log(5, 'backend', 'Backend received GET for URL w/o cookie: ' + req.originalUrl + ', redirecting');
 	}
 }
@@ -131,7 +140,7 @@ function onLogin(req, res) {
 			res.header('Access-Control-Allow-Headers', 'Content-Type');
 			res.end('done');
 		} else {
-			// bad user or pass
+			// bad user or pass, will not send cookie
 			require('./debug.js').log(5, 'backend', 'Bad login for: ' + email + ' code: ' + code);
 			res.end('bad');
 		}
@@ -145,14 +154,65 @@ function onAdmin(req, res) {
 	var sess = req.session;
 	if(sess.email)	
 	{
-		res.render('index.html');
+		res.render('device_active.html');
 	}
 	else
 	{
 		res.write('<h1>Please login first.</h1>');
 		res.end('<a href='+'/'+'>Login</a>');
 	}
+}
 
+function onDeviceActive(req, res) {
+	var sess = req.session;
+	if(sess.email)	
+	{
+		res.render('device_active.html');
+	}
+	else
+	{
+		res.write('<h1>Please login first.</h1>');
+		res.end('<a href='+'/'+'>Login</a>');
+	}
+}
+
+function onDeviceDiscovery(req, res) {
+	var sess = req.session;
+	if(sess.email)	
+	{
+		res.render('device_discovery.html');
+	}
+	else
+	{
+		res.write('<h1>Please login first.</h1>');
+		res.end('<a href='+'/'+'>Login</a>');
+	}
+}
+
+function onDeviceConfiguration(req, res) {
+	var sess = req.session;
+	if(sess.email)	
+	{
+		res.render('device_configuration.html');
+	}
+	else
+	{
+		res.write('<h1>Please login first.</h1>');
+		res.end('<a href='+'/'+'>Login</a>');
+	}
+}
+
+function onDeviceConfigurationSingle(req, res) {
+	var sess = req.session;
+	if(sess.email)	
+	{
+		res.render('device_configuration_single.html');
+	}
+	else
+	{
+		res.write('<h1>Please login first.</h1>');
+		res.end('<a href='+'/'+'>Login</a>');
+	}
 }
 
 /**
@@ -217,7 +277,7 @@ function onWSAuthorize(socket, next) {
 	if (cookie) {
 		require('./debug.js').log(5, 'backend', 'Cookie received: ' + cookie + ' from: ' + source);
 		id = cookie.match('connect.sid=[\\w\\%\\d\\-]*')[0].substring(16);
-		console.log('ID = ' + id);
+		//console.log('ID = ' + id);
 		backend.FILEStore.get(id, function(error, session) {
 			if (error)
 			{
@@ -289,6 +349,7 @@ function onDeviceCommand(msg, socket) {
 		});
 	} else {
 		// send to appropriate raspy
+		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as raspy, sending command over ARiF');
 	}
 }
 

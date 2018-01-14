@@ -9,7 +9,8 @@
 	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
-	
+	<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+	<script src="/js/smarthouse.js"></script>
 </head>
 <style>
 .top-buffer { 
@@ -107,14 +108,14 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarCollapse">
         <ul class="navbar-nav mr-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="#">Configuration</a>
-          </li>
           <li class="nav-item active">
-            <a class="nav-link" href="device_discovery.html">Device Discovery</a>
+            <a class="nav-link" href="/device-configuration">Configuration</a>
           </li>
-		  <li class="nav-item">
-            <a class="nav-link" href="device_active.html">Active Devices</a>
+          <li class="nav-item">
+            <a class="nav-link" href="/device-discovery">Device Discovery</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/device-active">Active Devices</a>
           </li>
         </ul>
       </div>
@@ -122,7 +123,9 @@
 
 <div class="container">
 	<br><br>
-
+	<div id="message-holder">
+		
+	</div>
 	<br><h1>Device Configuration</h1>
 	<p> </p>
 </div>
@@ -133,7 +136,7 @@
 			<div class="conf-data-panel-text"><strong>device ID: </strong></div>
 		</div>
 		<div class="col-sm text-white conf-data-panel">
-			<div class="conf-data-panel-text">1</div> 
+			<div class="conf-data-panel-text" id="devID-field"></div> 
 		</div>
 	</div>
 	<div class="row justify-content-md-center top-buffer">
@@ -147,17 +150,17 @@
 	<div class="row justify-content-md-center top-buffer">
 		<div class="col-sm text-white conf-data-panel">
 			<div class="conf-data-panel-checkbox">
-				<input type="checkbox" class="form-check-input">Enabled
+				<input type="checkbox" id="enabled" class="form-check-input">Enabled
 			</div>
 		</div>
 	</div>
 	<div class="row justify-content-md-center top-buffer">
 		<div class="col-sm text-white conf-button-panel">
-			<button type="button" class="btn text-white conf-button" onclick="location.href='device_configuration.html?cmd=success';">
+			<button type="button" class="btn text-white conf-button" onclick="location.href='/device-configuration?cmd=success';" id="save-button">
 				<span class="fa fa-floppy-o" aria-hidden="true"></span>	
 				Save
 			</button>
-			<button type="button" class="btn text-white conf-button" onclick="location.href='device_configuration.html';">
+			<button type="button" class="btn text-white conf-button" onclick="location.href='/device-configuration';">
 				Back
 			</button>
 		</div>
@@ -165,4 +168,54 @@
 </div>
 
 </body>
+<script>
+    var socket = io('/iot');
+	
+	// set connection actions
+	socket.on('connect', onConnect);
+	socket.on('connect_error', onConnectError);
+	socket.on('error', onError);
+    socket.on('device', receiveDevice);
+	socket.on('device_response', onResponse);
+	socket.on('message', onMessage);
+	
+	function receiveDevice(msg) {
+		updateDevice(msg);
+		var FID = msg.raspyID + '-' + msg.devID + '-' + msg.ardID;
+		
+	}
+	
+	$("#devID-field").append(urlParams['devID']);
+	
+	console.log('URL: ' + window.location.search.substring(1))
+	
+	$("#save-button").click(function() {
+		console.log('save button pressed. desc = ' + $('#name-input').val() + ' enabled: ' + $('#enabled').val());
+		var device = {};
+		var enabled = false;
+		if ($('#enabled').val() == "on")
+			enabled = true;
+		device.raspyID = urlParams['raspyID'];
+		device.ardID = urlParams['ardID'];
+		device.devID = urlParams['devID'];
+		device.desc = $('#name-input').val();
+		device.activated = $('#enabled').is(':checked');
+		socket.emit('device_update', device);
+	});
+
+	
+	function onResponse(msg) {
+		var response = msg.response;
+		var device = msg.device;
+		if (response != '0') {
+			onError('Error reaching device: ' + device.desc + ' (' + response + ')');
+			enableLightButton(device);
+			clearDeviceTimer(device);
+		} else {
+			updateActiveDeviceTableRow(device);
+		}
+		//console.log(JSON.stringify(msg));
+	}
+	//function update
+</script>
 </html>

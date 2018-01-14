@@ -1,6 +1,21 @@
 
+/* BFP (Backend Frontend Protocol) commands */
+const BFP_HEARTBEAT = 'heartbeat';
+const BFP_LIGHTON = 'lightON';
+const BFP_LIGHTOFF = 'lightOFF';
+
+/* command send status */
 const COMMAND_ON = 1;
 const COMMAND_CLEAR = 0;
+
+/* devTypes */
+const TYPE_DIGITIN = 'digitIN';
+const TYPE_DIGITOUT = 'digitOUT';
+
+/* consts for message codes */
+const MSG_ARDUINO_DEAD = 0;
+const MSG_ARDUINO_ALIVE = 1;
+ 
 
 var devices = {};
 
@@ -85,30 +100,63 @@ function devTypeGetName(devType) {
 	}
 }
 
-/* function used to create light switch button */
-function createLightButton(device) {
-	var color = 'small red';
-	if (device.value) color = 'small green';
-	var button;
-	button = '<button id="' + device.raspyID + '-' + device.devID + '-' + device.ardID + '_switch"';
-	button += 'class="' + color;
-	button += '">Switch</button>';
-	
-	return button;
+
+function onLightButton(device) {
+	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
+	var iconID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_icon';
+	$('#' + buttonID).removeAttr("disabled", "disabled");
+	$('#' + buttonID).removeClass('switch-button-off');
+	$('#' + buttonID).removeClass('switch-button-error');
+	$('#' + buttonID).addClass('switch-button-on');
+	$('#' + buttonID).addClass('text-white');
+	$('#' + buttonID).html('<span class="fa fa-lightbulb-o" aria-hidden="true" id="' + iconID + '"></span> On');
 }
 
-function grayOutLightButton(device) {
-	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_switch';
+function offLightButton(device) {
+	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
+	var iconID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_icon';
+	$('#' + buttonID).removeAttr("disabled", "disabled");
+	$('#' + buttonID).removeClass('switch-button-on');
+	$('#' + buttonID).removeClass('switch-button-error');
+	$('#' + buttonID).removeClass('text-white');
+	$('#' + buttonID).addClass('switch-button-off');
+	$('#' + buttonID).html('Off');
+}
+
+function errorLightButton(device) {
+	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
+	var iconID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_icon';
+	$('#' + buttonID).removeClass('switch-button-on');
+	$('#' + buttonID).removeClass('switch-button-off');
+	$('#' + buttonID).removeClass('text-white');
+	$('#' + buttonID).addClass('switch-button-error');
 	$('#' + buttonID).attr("disabled", "disabled");
-	$('#' + buttonID).attr("class", "small");
-	//console.log('graying out: ', buttonID);
+	$('#' + buttonID).html('<span class="fa fa-exclamation-circle" aria-hidden="true" id="' + iconID + '"></span> Disabled');
+	
 }
 
-function makeGreenLightButton(device) {
-	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_switch';
+function disableLightButton(device) {
+	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
+	$('#' + buttonID).attr("disabled", "disabled");
+	$('#' + buttonID).text('working...');
+}
+
+function enableLightButton(device) {
+	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
+	var iconID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_icon';
+	var value = devices[device.raspyID][device.ardID][device.devID].value;
+	
 	$('#' + buttonID).removeAttr("disabled");
-	$('#' + buttonID).attr("class", "small green");
-	//console.log('graying out: ', buttonID);
+	$('#' + buttonID).removeClass('switch-button-error');
+	
+	if (value == '0') {
+		$('#' + buttonID).addClass('switch-button-off');
+		$('#' + buttonID).text('Off');
+	} else {
+		$('#' + buttonID).addClass('switch-button-on');
+		$('#' + buttonID).html('<span class="fa fa-lightbulb-o" aria-hidden="true" id="' + iconID + '"></span> On');
+	}
+
 }
 
 function getDeviceCommandStatus(device) {
@@ -128,7 +176,7 @@ function onCommandTimeout(device) {
 	if (getDeviceCommandStatus(device) == COMMAND_ON) {
 		console.log('timeout');
 		onError('Timeout while waiting for device status: ' + getDeviceDesc(device) + ' (3)');
-		makeGreenLightButton(device);
+		enableLightButton(device);
 		setDeviceCommandClear(device)
 	} else {
 		// nothing to do
@@ -152,35 +200,103 @@ function createActivationButton(device) {
 	
 	return button;
 }
+/* Message displaying section */
 
-// color the status-bar div on successful connection
-function onConnect(msg) {
-	console.log("connected to server.");
-	message = '<div id="status-bar" class="notice success"><i class="icon-remove-sign icon-large"></i> Connected to Server <a href="javascript:closeStatusBar();" class="fa fa-remove"></a></div>'
-	$('#status-bar').remove();
-	$('#status-handle').append(message);
+/* this variable represents last status so that the error message is not updated all the time,
+   but only during change of condition */
+const CONNECTION_ERROR = 0;
+const CONNECTION_EXISTS = 1;
+
+var WSConnection = CONNECTION_EXISTS;
+
+/* display success (green) message at the top of a page */
+function displaySuccessMsg(msg) {
+	
+	var statusBar = '<div class="alert alert-success alert-dismissible fade show" id="status-bar" role="alert"> \
+					<button type="button" class="close" data-dismiss="alert" aria-label="Close"> \
+						<span aria-hidden="true">&times;</span> \
+					</button> \
+					<br> \
+					<strong>Success!</strong> ' + msg + ' \
+			   </div>';
+
+	$("#message-holder").append(statusBar);  
 }
 
-// color the status-bar on connection error
-function onConnectError(msg) {
-	console.log("Connection Error!");
-	message1 = '<div id="status-bar" class="notice error"><i class="icon-remove-sign icon-large"></i>'; 
-	message2 = '<a href="javascript:closeStatusBar();" class="fa fa-remove"></a></div>';
-	$('#status-bar').remove();
-	$('#status-handle').append(message1 + ' Server connection problem: ' + msg + ' ' + message2);
+/* remove status bar */
+function removeMsg() {
+	$("#status-bar").remove();
 }
 
-function onError(msg) {
-	console.log("other error: " + msg);
-	message1 = '<div id="status-bar" class="notice error"><i class="icon-remove-sign icon-large"></i>'; 
-	message2 = '<a href="javascript:closeStatusBar();" class="fa fa-remove"></a></div>';
-	$('#status-bar').remove();
-	$('#status-handle').append(message1 + ' Error: ' + msg + ' ' + message2);
+/* display Error (red) message at the top of a page */
+function displayErrorMsg(msg) {
+	
+	var row = '<div class="alert alert-danger alert-dismissible fade show" id="status-bar" role="alert"> \
+					<button type="button" class="close" data-dismiss="alert" aria-label="Close"> \
+						<span aria-hidden="true">&times;</span> \
+					</button> \
+					<br> \
+					<strong>Oh Snap!</strong> ' + msg + ' \
+			   </div>';
+			   
+	$("#message-holder").append(row);  
 }
 
-function closeStatusBar() {
+/* executed each time there is a succesfull WS connection to the back end */
+function onConnectError() {
+	if (WSConnection == CONNECTION_EXISTS) {
+		removeMsg();
+		displayErrorMsg('Cannot connect to the cloud. Check your internet connection.');
+		WSConnection = CONNECTION_ERROR;
+	}
+}
+
+function onError() {
+	removeMsg();
+	displayErrorMsg('Cannot establish properly connection to the cloud. Try to re-login.');
+	WSConnection = CONNECTION_ERROR;
+}
+
+/* executed each time there is a failure during WS connection to the back end */
+function onConnect() {
+	if (WSConnection == CONNECTION_ERROR) {
+		removeMsg();
+		displaySuccessMsg('Connection to the cloud established succesfully.');
+		WSConnection = CONNECTION_EXISTS;
+	}
+}
+
+/* executed each time when "message" call comes out of WS */
+function onMessage(msg) {
+	console.log('Message received, code: ' + msg.code);
+	if (msg.code == MSG_ARDUINO_ALIVE) {
+		removeMsg();
+		displaySuccessMsg('Arduino with ID ' + msg.ardID + ' restored connectivity.');
+	} else if (msg.code == MSG_ARDUINO_DEAD) {
+		removeMsg();
+		displayErrorMsg('Arduino with ID ' + msg.ardID + ' lost connectivity. Some devices might not be available.');
+	}
+}
+
+/*function closeStatusBar() {
 	$('#status-bar').fadeOut('fast', 'swing', function() {
 		$('#status-bar').remove();
 	});
-}
+}*/
+
+/* variable containing URL query string parameters */
+var urlParams;
+
+/* function executed on page load to fill in the urlParams page */
+(window.onpopstate = function () {
+    var match,
+        pl     = /\+/g,  // Regex for replacing addition symbol with a space
+        search = /([^&=]+)=?([^&]*)/g,
+        decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+        query  = window.location.search.substring(1);
+
+    urlParams = {};
+    while (match = search.exec(query))
+       urlParams[decode(match[1])] = decode(match[2]);
+})();
 	  

@@ -14,8 +14,11 @@ var RCPServer = function () {
 		this.http = require('http');
 		this.server = this.http.createServer(this.app).listen(this.config.rcpserver.port || 32400, onRCPListen);
 		this.server.on('error', onRCPError);
-		this.app.post('/device', onPostRequest);
+		this.app.post('/device', onDevice);
 		this.app.post('/heartbeat', onHeartbeat);
+		this.app.post('/arduino-dead', onArduinoDead);
+		this.app.post('/arduino-alive', onArduinoAlive)
+		
 		
 		setInterval(monitorRaspys, 3000);
 	}
@@ -49,45 +52,48 @@ function onHeartbeat(req, res) {
 	});
 }
 
-function onPostRequest(req, res) {
+function onDevice(req, res) {
+	authRCP(req, res, function(error){
+		if (error == null){
+			vpnid = req.get('iot-raspyid');
+			accountID = vpnid.split('-')[0]
+			raspyID = vpnid.split('-')[1]
+			require('./mem.js').updateRaspyIP(accountID, raspyID, req.connection.remoteAddress);
+			require('./mem.js').clearRaspyDeadCounter(accountID, raspyID);
+			require('./mem.js').setRCPDeviceStatus(vpnid, srcip, req.body);
+		
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+			res.end('HB ok');
+		}
+	});
+}
 
-	
+function onArduinoDead(req, res) {
+	authRCP(req, res, function(error){
+		if (error == null) {
+			vpnid = req.get('iot-raspyid');
+			accountID = vpnid.split('-')[0];
+			raspyID = vpnid.split('-')[1];
+			var ardID = req.query.ardID;
+			require('./mem.js').setArduinoDead(accountID, raspyID, ardID);
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+			res.end('ok');
+		}
+	});
+}
 
-/*	srcip = req.connection.remoteAddress;
-	require('./debug.js').log(5, 'rcpserver', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcip + ' data: ' + JSON.stringify(req.body));
-	vpnid = req.get('iot-raspyid');
-	vpnkey = req.get('iot-vpnkey');
-	if (!vpnid || !vpnkey) {
-		require('./debug.js').log(1, 'rcpserver', 'Request POST did not contain auth headers from: ' + srcip);
-		res.writeHead(401, { 'Content-Type' : 'text/plain'});
-		res.end('No auth headers');
-		return;
-	} else {
-		require('./debug.js').log(1, 'rcpserver', 'Request POST contained vpnid: ' + vpnid + ' and vpnkey: ' + vpnkey);
-		var exec = require('child_process').exec;
-		var child = exec(VPNKEY_EXEC + ' ' + vpnid, function (error, stdout, stderr) {
-			if (error == null) {
-				require('./debug.js').log(5, 'rcpserver', 'Succesfully Accessed raspy DB for POST: ' + srcip);
-				if (stdout.trim() == vpnkey.trim()) {
-					require('./debug.js').log(5, 'rcpserver', 'RCP packet authenticated successfully from: ' + srcip);
-					res.writeHead(200, { 'Content-Type' : 'text/plain'});
-					res.end('Raspy DB cannot be accessed');
-					//console.log('rcp-server, vpnid: ' + vpnid);
-					require('./mem.js').setRCPDeviceStatus(vpnid, srcip, req.body);
-				} else {
-					require('./debug.js').log(2, 'rcpserver', 'RCP packet authentication failed from: ' + srcip);
-					res.writeHead(401, { 'Content-Type' : 'text/plain'});
-					res.end('Auth failed');
-				}
-			} else {
-				require('./debug.js').log(5, 'rcpserver', 'failed to access raspy DB, code: ' + error + ' stderr: ' + stderr);
-				res.writeHead(500, { 'Content-Type' : 'text/plain'});
-				res.end('Raspy DB cannot be accessed');
-			}
-			//console.log('exec: ' + VPNKEY_EXEC + ' ' + raspyid);
-			//console.log('stdout: ' + stdout + ' error: ' + error + ' vpnkey: ' + vpnkey);
-		});
-	}*/
+function onArduinoAlive(req, res) {
+	authRCP(req, res, function(error){
+		if (error == null) {
+			vpnid = req.get('iot-raspyid');
+			accountID = vpnid.split('-')[0];
+			raspyID = vpnid.split('-')[1];
+			var ardID = req.query.ardID;
+			require('./mem.js').setArduinoAlive(accountID, raspyID, ardID);
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+			res.end('ok');
+		}
+	});
 }
 
 function authRCP(req, res, callback) {
@@ -131,7 +137,6 @@ function authRCP(req, res, callback) {
 	}
 }
 
-//function authenticateRequest(, )
 
 function monitorRaspys() {
 	var mem = require('./mem.js');
