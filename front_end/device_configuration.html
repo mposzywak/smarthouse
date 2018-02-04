@@ -129,6 +129,7 @@
 	socket.on('connect_error', onConnectError);
 	socket.on('error', onError);
     socket.on('device', receiveDevice);
+	socket.on('arduino', receiveArduino);
 	//socket.on('device_response', onResponse);
 	
 	function receiveDevice(msg) {
@@ -151,20 +152,34 @@
 		} else {
 			/* the device already reported, structure needs to be filled in with new data */
 		}
-
     }
 	
+	function receiveArduino(msg) {
+		console.log('arduino received: ' + msg.ardID);
+		if (document.getElementById('arduino-' + msg.ardID) == null) {
+			/* this is a new arduino so whole div structure needs to be created */
+			addArduinoTableRow(msg);
+		} else {
+			/* the device already reported, structure needs to be filled in with new data */
+			$('#ardID-' + msg.ardID).html('ardID: ' + msg.ardID + '<br>name: ' + msg.name + '</strong> ');
+		}
+	}
+	
 	function addArduinoTableRow(device) {
-		var FID = device.raspyID + '-' + device.devID + '-' + device.ardID;
+		console.log('device name: ' + JSON.stringify(device));
+		var deviceIDArg = '?raspyID=' + device.raspyID + '&ardID=' + device.ardID;
+		var name = 'Not available';
+		if (typeof(device.name) != 'undefined')
+			name = device.name;
 		
 		var row = '<div class="col-sm text-white arduino-col" id="arduino-' + device.ardID + '"> \
 						<div class="row justify-content-md-center top-buffer"> \
 							<div class="col-sm text-white row-settings" id="ardID-' + device.ardID + '"> \
 								ardID: ' + device.ardID + '<br> \
-								name: Not Availble</strong> \
+								name: ' + name + '</strong> \
 							</div> \
 							<div class="col-sm text-white row-settings"> \
-								<button type="button" class="btn text-white conf-button"> \
+								<button type="button" class="btn text-white conf-button" onclick="location.href=\'device-configuration-arduino' + deviceIDArg + '\';"> \
 									<span class="fa fa-cog" aria-hidden="true"></span> \
 									Configuration \
 								</button> \

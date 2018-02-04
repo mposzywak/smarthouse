@@ -179,13 +179,23 @@
 	socket.on('device_response', onResponse);
 	socket.on('message', onMessage);
 	
+	
+	
 	function receiveDevice(msg) {
 		updateDevice(msg);
 		var FID = msg.raspyID + '-' + msg.devID + '-' + msg.ardID;
-		
+		if (msg.raspyID == urlParams['raspyID'] && msg.ardID == urlParams['ardID'] && msg.devID == urlParams['devID']) {
+			$("#enabled").attr("checked", msg.activated);
+			if (msg.desc != '')
+				$("#name-input").attr("placeholder", msg.desc);
+		}
 	}
 	
+	/* setting the right devID */
 	$("#devID-field").append(urlParams['devID']);
+	
+	/* setting the "enabled" checkbox value according to device state */
+	
 	
 	console.log('URL: ' + window.location.search.substring(1))
 	

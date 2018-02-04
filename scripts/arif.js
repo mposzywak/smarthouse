@@ -3,6 +3,7 @@
 const ARIF_HEARTBEAT = 'heartbeat';
 const ARIF_LIGHTON = 'lightON';
 const ARIF_LIGHTOFF = 'lightOFF';
+const ARIF_REGISTER = 'register';
 
 /* default operational values */
 const ARDID = '1';
@@ -16,7 +17,7 @@ var ARIF = function() {
 	this.arduino = require('./devices');
 	
 	/* ARiF HTTP server */
-	var app = require('express')();
+	/*var app = require('express')();
 	var express = require('express');
 	var http = require('http');
 	var server = http.createServer(app).listen(this.config.arif.port || 32300, onHTTPListen);
@@ -31,7 +32,7 @@ var ARIF = function() {
 		BBs.setBroadcast(true);
 		BBs.setMulticastTTL(2);
 		BBs.addMembership('224.1.1.1');
-	});
+	}); */
 
 	/* missing heartbeats */
 	this.missingHeartbeats = 3;
@@ -39,12 +40,52 @@ var ARIF = function() {
 	/* status if raspy seems to be aware of Ard presence */
 	this.isRaspyAware = false;
 
-	/* ardID from raspy */
+	/* ardID and raspyID from raspy */
 	this.ardID = ARDID;
+	this.raspyID = RASPYID;
+	
+	/* status if we should send registration beacon */
+	this.registered = false;
+	
+	/*setInterval(sendBeacon, 3000);
+	setInterval(addMissingHeartbeat, 3000) */
 
+	this.srcIP = null;
+}
+
+ARIF.prototype.init = function() {
+	/* ARiF HTTP server */
+	var app = require('express')();
+	var express = require('express');
+	var http = require('http');
+	
+	if (!this.srcIP)
+		var server = http.createServer(app).listen(this.config.arif.port || 32300, onHTTPListen);
+	else
+		var server = http.createServer(app).listen(this.config.arif.port || 32300, this.srcIP, onHTTPListen);
+	server.on('error', onHTTPError);
+
+	app.post('*', onPostRequest);
+
+	var dgram = require('dgram'); 
+	this.BBserver = dgram.createSocket("udp4"); 
+	var BBs = this.BBserver;
+	if (this.srcIP) {
+		this.BBserver.bind(5007, this.srcIP, function(){
+			BBs.setBroadcast(true);
+			BBs.setMulticastTTL(2);
+			BBs.addMembership('224.1.1.1');
+		});
+	} else {
+		this.BBserver.bind(5007, function(){
+			BBs.setBroadcast(true);
+			BBs.setMulticastTTL(2);
+			BBs.addMembership('224.1.1.1');
+		});
+	}
 	setInterval(sendBeacon, 3000);
 	setInterval(addMissingHeartbeat, 3000)
-}
+} 
 
 var arif = new ARIF();
 
@@ -88,6 +129,15 @@ function onPostRequest(req, res) {
 			arduino.digitOUTChangeState(devID);
 			arif.sendDeviceStatus(devID, '0'); 
 			break;
+		case ARIF_REGISTER:
+			debug.log(5, 'arif', 'Received registration command, saving ardID: ' + ardID +
+					' MAC address: ' + params.value);
+			arif.ardID = ardID;
+			arif.raspyID = raspyID;
+			arif.registered = true;
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+			res.end('');
+			break;
 		default:
 			debug.log(4, 'arif', 'Unknown command received: ' + command);
 			break;
@@ -97,7 +147,9 @@ function onPostRequest(req, res) {
 /* execute when ARiF HTTP server succesfully starts to listen on port */
 function onHTTPListen() {
 	var debug =  require('./arif.js').debug;
-	debug.log(1, 'arif', 'ARiF server listening on port: ' +  require('./arif.js').config.arif.port || 32300);
+	var a = require('./arif.js');
+	var port = a.config.arif.port || 32300;
+	debug.log(1, 'arif', 'ARiF server listening on port: ' +  port + ' and IP: ' + a.srcIP);
 }
 
 /* execute when ARiF HTTP server encounters an unrecoverable error and quit the app */
@@ -122,13 +174,16 @@ ARIF.prototype.sendDeviceStatus = function(devID, status) {
 	var options = {
 		hostname: RASPYIP,
 		port: this.config.arif.port || 32300,
-		path: '/?devID=' + devID + '&ardID=' + ARDID + '&raspyID=' + RASPYID + 
+		path: '/?devID=' + devID + '&ardID=' + this.ardID + '&raspyID=' + this.raspyID + 
 				'&cmd=status&devType=' + this.arduino.getDeviceType(devID) + 
 				'&dataType=' + dataType + '&value=' + status,
 		method: 'POST',
 		agent: false,
 		headers: {}
 	};
+	
+	if (this.srcIP)
+		options.localAddress = this.srcIP;
 	
 	var req = http.request(options, function (res){
 		debug.log(4, 'arif', 'Device status response STATUS: ' + res.statusCode);
@@ -166,16 +221,26 @@ function addMissingHeartbeat() {
 /* send beacon */
 function sendBeacon() {
 	var arif = require('./arif.js')
-	var url = '/smarthouse/' + arif.ardID;
+	if (!arif.registered)
+		var url = '/smarthouse/0';
+	else
+		var url = '/smarthouse/' + arif.ardID;
     var message = new Buffer(url);
-	var arif = require('./arif.js');
-	if (arif.missingHeartbeats >= 3) {
+
+	if (arif.missingHeartbeats >= 3 || arif.register) {
 		arif.BBserver.send(message, 0, message.length, 5007, '224.1.1.1');
 		arif.debug.log(5, 'arif', 'Sent URL: ' + message + ' beacon');
 	}
     //server.close();
 }
 
+/* set registration flag */
+ARIF.prototype.setRegisterFlag = function(flag) {
+	this.registered = flag;
+}
 
+ARIF.prototype.setSourceIP = function(srcIP) {
+	this.srcIP = srcIP;
+}
 
 module.exports = arif;

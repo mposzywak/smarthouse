@@ -9,6 +9,7 @@
 /* consts for message codes */
 const MSG_ARDUINO_DEAD = 0;
 const MSG_ARDUINO_ALIVE = 1;
+const MSG_ARDUINO_PENDING = 2;
  
 var Mem = function() {
 	this.devices = {};
@@ -24,11 +25,18 @@ var Mem = function() {
 		this.raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
 		this.accountID = this.config.cloud.id;
 		var accountID = this.accountID;
+		var raspyID = this.raspyID;
+		this.devices[this.accountID] = {};
+		this.devices[this.accountID].raspys = {};
+		this.devices[this.accountID].raspys[this.raspyID] = {};
+		
 		this.db.getAllAccountDevices(this.accountID, function(error, raspys) {
 			if (error) {
 				require('./debug.js').log(1, 'configdb', 'Failed to access configDB: ' + error.message);
 			} else {
+				console.log(JSON.stringify(raspys))
 				devices[accountID] = raspys;
+				devices[accountID].raspys[raspyID].pending = {};
 				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully [Raspy mode]');
 			}
 		});
@@ -57,10 +65,9 @@ var memory = new Mem();
 */
 Mem.prototype.registerArduino = function(accountID, IP) {
 	// check if the accountID, device and arduino exists
-	if (typeof(this.devices[accountID][this.raspyID]) == 'undefined') {
+	if (typeof(this.devices[accountID].raspys[this.raspyID].arduinos) == 'undefined') {
 		var ardID = '1'; /* if entered this condition it means this is the first arduino, give it ID "1" */
-		this.devices[accountID].raspys = {};
-		this.devices[accountID].raspys[this.raspyID] = {};
+
 		this.devices[accountID].raspys[this.raspyID].arduinos = {};
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID] = {};
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices = {};
@@ -88,11 +95,11 @@ Mem.prototype.registerArduino = function(accountID, IP) {
 							', new Arduino registered: ' + ardID + ' from: ' + IP);
 					return ardID;
 				}
-				ardIDDec = parseInt(ardID, 16);
+				ardIDDec = parseInt(ardID, 10);
 				ardIDDec += 1
-				ardID = ardidDec.toString(16);
+				ardID = ardidDec.toString(10);
 				/* we can register only 250 arduinos */
-				if (ardID == 'fa') return 0; /* fa is 250 */
+				if (ardID == '250') return 0; /* fa is 250 */
 			}
 		}
 	}
@@ -315,6 +322,35 @@ function sendArduinoAliveMessage(accountID, raspyID, ardID) {
 	io.of('/iot').to(accountID).emit('message', message);
 }
 
+function sendPendingArduinoUpdate(raspyID, ardIP) {
+	var message = {};
+	var m = require('./mem.js');
+	var pending = m.devices[m.accountID].raspys[m.raspyID].pending;
+	message.code = MSG_ARDUINO_ALIVE;
+	message.raspyID = raspyID;
+	message.allowed = pending[ardIP].allowed;
+	message.lastDate = pending[ardIP].lastDate;
+	message.firstDate = pending[ardIP].firstDate;
+	message.ardIP = ardIP;
+	
+	io = this.components.getFacility('backend').io;
+	io.of('/iot').to(m.accountID).emit('pending_arduino', message);
+}
+
+Mem.prototype.allowPendingArduino = function(raspyID, ardIP) {
+	var pending = this.devices[m.accountID].raspys[m.raspyID].pending;
+	if (typeof(pending[ardIP]) != 'undefined') {
+		pending[ardIP].allowed = true;
+	}
+}
+
+Mem.prototype.removePendingArduino = function(raspyID, ardIP) {
+	var pending = this.devices[m.accountID].raspys[m.raspyID].pending;
+	if (typeof(pending[ardIP]) != 'undefined') {
+		delete pending[ardIP]
+	} 
+}
+
 /* return mem cache object of a single device based on ardID, devID */
 Mem.prototype.getDeviceStatus = function(accountID, raspyID, ardID, devID) {
 	if (typeof(this.devices[accountID].raspys[raspyID].arduinos[ardID]) == 'undefined') {
@@ -468,6 +504,67 @@ Mem.prototype.sendRCPAllDeviceStatus = function(rcpclient) {
 			}
 		}
 	}
+}
+
+/* set pending arduino information. Could be used for the first time arduino is seen or
+   every other time */
+Mem.prototype.updatePendingArduino = function(ardIP) {
+	var pending = this.devices[this.accountID].raspys[this.raspyID].pending;
+	var date = new Date();
+	if (typeof(pending[ardIP]) == 'undefined') {
+		pending[ardIP] = {};
+		pending[ardIP].allowed = false;
+		pending[ardIP].lastDate = date.getTime();
+		pending[ardIP].firstDate = date.getTime();
+	} else {
+		pending[ardIP].lastDate = date.getTime();
+	}
+	sendPendingArduinoUpdate(this.raspyID, ardIP)
+}
+
+/**
+ * Checkinf if pending Arduino is allowed to register (raspy only function)
+ */
+Mem.prototype.isPendingArduinoAllowed = function(ardIP) {
+	var pending = this.devices[this.accountID].raspys[this.raspyID].pending;
+	if (typeof(pending[ardIP]) == 'undefined')
+		return false;
+	
+	return pending[ardIP].allowed;
+}
+
+/**
+ *	Set this pending arduino to be allowed to register (both raspy and cloud function)
+ */ 
+Mem.prototype.allowPendingArduino = function(accountID, raspyID, ardIP) {
+	var pending = this.devices[accountID].raspys[raspyID].pending;
+	pending[ardIP].allowed = true;
+}
+
+/**
+ * Remove pending arduino information from the mem structure (both raspy and cloud function)
+ */
+Mem.prototype.removePendingArduino = function(accountID, raspyID, ardIP) {
+	var pending = this.devices[accountID].raspys[raspyID].pending;
+	delete pending[ardIP];
+}
+
+/**
+ * Update arduino information in the mem structure (both raspy and cloud function)
+ * trigger also DB entry update.
+ */
+Mem.prototype.updateArduino = function(accountID, raspyID, ardID, name) {
+	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
+	
+	arduino.name = name;
+}
+
+/**
+ * Remove arduino information from the mem structure (both raspy and cloud function)
+ * trigger also DB entries deletion.
+ */
+Mem.prototype.deleteArduino = function(accountID, raspyID, ardID) {
+	
 }
 
 module.exports = memory;

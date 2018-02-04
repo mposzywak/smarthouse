@@ -6,6 +6,11 @@ const AUTH_EXEC = '/home/maciej/accountdb/verify-account.sh';
 
 const LOGIN_PAGE = 'login2.html'
 
+/* message codes */
+	const ALLOW_PENDING_ARD = 0;
+	const REMOVE_PENDING_ARD = 1;
+
+
 /**
  * Backend is the HTTP server that is serving the client requests, it 
  * is the user interface to the system.
@@ -60,6 +65,7 @@ var Backend = function() {
 	this.app.get('/device-configuration', onDeviceConfiguration);
 	//this.app.get('\/device-configuration-single\/[0-9]{3}\/[0-9]{1,3}\/[0-9]{1,3}', onDeviceConfigurationSingle);
 	this.app.get('\/device-configuration-single', onDeviceConfigurationSingle);
+	this.app.get('\/device-configuration-arduino', onDeviceConfigurationArduino);
 	this.app.get('/device-discovery', onDeviceDiscovery);
 	
 	this.app.get('', onAnyHTML);       // redirect to login page on '/'
@@ -215,6 +221,19 @@ function onDeviceConfigurationSingle(req, res) {
 	}
 }
 
+function onDeviceConfigurationArduino(req, res) {
+	var sess = req.session;
+	if(sess.email)	
+	{
+		res.render('device_configuration_arduino.html');
+	}
+	else
+	{
+		res.write('<h1>Please login first.</h1>');
+		res.end('<a href='+'/'+'>Login</a>');
+	}
+}
+
 /**
  * Function executed on logout
  */
@@ -294,12 +313,22 @@ function onWSAuthorize(socket, next) {
 					socket.join(email);
 					socket.session = session;
 					pushAllDevices(socket, email);
+					pushAllArduinos(socket, email);
 					socket.on('device_update', function (msg) {
 						//console.log('device_activate received');
 						onDeviceUpdate(msg, socket);
 					});
 					socket.on('device_command', function (msg) {
 						onDeviceCommand(msg, socket);
+					});
+					socket.on('update_pending_arduino', function (msg) {
+						onUpdatePendingArduino(msg, socket);
+					});
+					socket.on('update_arduino', function (msg) {
+						onUpdateArduino(msg, socket);
+					});
+					socket.on('delete_arduino', function (msg) {
+						onDeleteArduino(msg, socket);
 					});
 					next();
 				} else {
@@ -314,6 +343,33 @@ function onWSAuthorize(socket, next) {
 		require('./debug.js').log(5, 'backend', 'WS no cookie received from: ' + source);
 		next(new Error('No cookie. Please login.'));
 	}
+}
+
+/**
+ * executed on receiving event 'update_pending_arduino' from the front-end
+ */
+function onUpdatePendingArduino(msg, socket) {
+	var debug = require('./debug.js');
+	var accountID = socket.session.email;
+	var m = require('./mem.js');
+	debug.log(5, 'backend', '[' + accountID + '] WS received event: update_pending_arduino with: ' + JSON.stringify(msg));
+	if (msg.code == ALLOW_PENDING_ARD) {
+		m.allowPendingArduino(accountID, msg.raspyID, msg.ardIP);
+	} else if (msg.code == REMOVE_PENDING_ARD) {
+		m.removePendingArduino(accountID, msg.raspyID, msg.ardIP);
+	}
+}
+
+/**
+ * executed on receiving event 'update_arduino' from the front-end
+ */
+function onUpdateArduino(msg, socket) {
+	var debug = require('./debug.js');
+	var accountID = socket.session.email;
+	var m = require('./mem.js');
+	
+	debug.log(5, 'backend', '[' + accountID + '] WS received event: update_arduino with: ' + JSON.stringify(msg));
+	m.updateArduino(accountID, msg.raspyID, msg.ardID, msg.name);
 }
 
 /**
@@ -353,6 +409,15 @@ function onDeviceCommand(msg, socket) {
 	}
 }
 
+function onDeleteArduino(msg, socket) {
+	var accountID = socket.session.email;
+	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: delete_arduino with: ' + JSON.stringify(msg));
+	var mem = components.getFacility('mem');
+	var devices = mem.getClientDevices(accountID);
+	var raspyID = msg.raspyID;
+	var ardID = msg.ardID;
+}
+
 /**
  * Validate user string input (for length, etc... TODO)
  */
@@ -378,6 +443,35 @@ function pushAllDevices(socket, accountID) {
 							socket.emit('device', devices.raspys[raspyID].arduinos[ardID].devices[devID]);
 						}
 					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * pushes all device data to a socket identified by accountID
+ */
+function pushAllArduinos(socket, accountID) {
+	mem = components.getFacility('mem');
+	devices = mem.getClientDevices(accountID);
+	
+		for (var raspyID in devices.raspys) {
+		if (raspyID > 0 && raspyID < 999) { // control if variable is actually a raspyID or meta
+			for (var ardID in devices.raspys[raspyID].arduinos) {
+				if (ardID > 0 && ardID < 256) {
+							var arduino = {};
+							arduino.ardID = ardID;
+							if (typeof(devices.raspys[raspyID].arduinos[ardID].name) != 'undefined')
+								arduino.name = devices.raspys[raspyID].arduinos[ardID].name;
+							arduino.IP = devices.raspys[raspyID].arduinos[ardID].IP;
+							arduino.alive = devices.raspys[raspyID].arduinos[ardID].alive;
+							arduino.raspyID = devices.raspys[raspyID].arduinos[ardID].raspyID;
+							
+							require('./debug.js').log(5, 'backend', '[' + accountID + '] Emitting Arduino data of raspyID: ' + raspyID +
+									' ardID: ' + ardID);
+							socket.emit('arduino', arduino);
+
 				}
 			}
 		}

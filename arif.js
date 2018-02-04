@@ -19,6 +19,7 @@ var ARiF = function() {
 	var d = this.debug;
 	var c = this.config;
 	var m = this.mem;
+	var a = this;
 	
 	/* variable holding status of cloud connection */
 	this.cloudAlive = false;
@@ -34,6 +35,23 @@ var ARiF = function() {
 		//console.log(`BBSocket got: ${msg} from ${rinfo.address}:${rinfo.port}`);
 		d.log(2, 'arif', 'Beacon received from: ' + rinfo.address + ':' + rinfo.port + ' url: ' + msg);
 		var ardID = (msg + '').split('/')[2];
+		
+		/* we need to start new registration procedure */
+		if (ardID == '0') {
+			d.log(2, 'arif', 'Registration beacon received from: ' + rinfo.address);
+			if (m.isPendingArduinoAllowed(rinfo.address)) {
+				d.log(2, 'arif', 'Beacon received from ' + rinfo.address + ' is allowed, beginning registration');
+				var newArdID = m.registerArduino(c.cloud.id, rinfo.address);
+				a.sendRegisterCommand(rinfo.address, newArdID, 'EE:EA:DE:AD:BA:BE', function () {
+					d.log(2, 'arif', 'Registration finished of ardID: ' + newArdID);
+				});
+			}
+			else {
+				m.updatePendingArduino(rinfo.address);
+			}
+			return;
+		}
+		
 		var arduinoIP = m.getArduinoIP(c.cloud.id, ardID)
 		if (rinfo.address == arduinoIP || '::ffff:' + rinfo.address == arduinoIP) {
 			//console.log('ardIP: ' + m.getArduinoIP(c.cloud.id, ardID))
@@ -130,6 +148,33 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 	req.write('');
 	req.end();
 }
+
+/** send register command */
+ARiF.prototype.sendRegisterCommand = function(IP, ardID, MAC, callback) {
+	var debug = this.debug;
+	debug.log(1, 'arif', 'Sending ARiF register cmd to IP: ' + IP);
+				
+	var http = require('http');
+	
+	var options = {
+		hostname: IP,
+		port: this.config.arif.port,
+		path: '/?devID=0&ardID=' + ardID + 
+				'&raspyID=' + this.config.rcpclient.vpnID.split('-')[1] + '&cmd=register' + '&value=' + MAC,
+		method: 'POST',
+		agent: false
+	};
+	
+	var req = http.request(options, function (res){
+		debug.log(1, 'arif', 'Received Register cmd resp from IP: ' + IP);
+	}).on('error', function(error) {
+		debug.log(1, 'arif', 'Error in ARiF register comms with IP: ' + IP);
+	});
+	
+	req.write('');
+	req.end();
+}
+
 
 /**
  * This function checks if the dataTransfer command from an Arduino is correct and comes from non-spoofed IP

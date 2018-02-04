@@ -157,14 +157,18 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 				var row = rows[i];
 				var raspyID = row.raspyID;
 				var ardID = row.ardID;
+				console.log("1 devices -> " + JSON.stringify(devices))
 				
-				if (typeof(devices[raspyID]) == 'undefined') {
+				if (typeof(devices.raspys[raspyID]) == 'undefined') {
 					devices.raspys[raspyID] = {};
 					devices.raspys[raspyID].arduinos = {};
 				}
+				console.log("2 devices -> " + JSON.stringify(devices))
 				devices.raspys[raspyID].arduinos[ardID] = {}
 				devices.raspys[raspyID].arduinos[ardID].devices = {}
 				devices.raspys[raspyID].arduinos[ardID].IP = row.IP;
+				devices.raspys[raspyID].arduinos[ardID].raspyID = raspyID;
+				console.log("3 devices -> " + JSON.stringify(devices))
 			}
 			
 			db.all(SQLDevices, [accountID], function(error, rows) {
@@ -182,6 +186,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 						}
 						if (typeof(devices.raspys[raspyID].arduinos[ardID]) == 'undefined') {
 							devices.raspys[raspyID].arduinos[ardID] = {};
+							devices.raspys[raspyID].arduinos[ardID].devices = {};
 						}
 						devices.raspys[raspyID].arduinos[ardID].devices[devID] = {};
 						devices.raspys[raspyID].arduinos[ardID].devices[devID].activated = row.activated ? true : false;

@@ -9,7 +9,8 @@
 	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
-	
+	<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+	<script src="js/smarthouse.js"></script>
 </head>
 <style>
 .top-buffer { 
@@ -57,32 +58,32 @@
 	border-color: #e5d695;
 }
 
-/* Off Button */
-.switch-button-off {
+/* Allow Button */
+.switch-button-allow {
 	margin-top:8px; 
 	margin-bottom:8px;
 	min-width:120px;
-	background: #aaaaaa;
-	border-color: #969696;
+	background: #44b21c;
+	border-color: #3a9918;
 }
 
-.switch-button-off:hover {
+.switch-button-allow:hover {
 	margin-top:8px; 
 	margin-bottom:8px;
 	min-width:120px;
-	background: #969696;
-	border-color: #969696;
+	background: #3a9918;
+	border-color: #3a9918;
 }
 
-.switch-button-off:active {
+.switch-button-allow:active {
 	margin-top:8px; 
 	margin-bottom:8px;
 	min-width:120px;
-	background: #898989;
-	border-color: #898989;
+	background: #2e7a13;
+	border-color: #2e7a13;
 }
 
-.switch-button-off:disabled {
+.switch-button-allow:disabled {
 	margin-top:8px; 
 	margin-bottom:8px;
 	min-width:120px;
@@ -137,28 +138,77 @@
 	<p> </p>
 </div>
 
-<div class="container">
-	<div class="row justify-content-md-center top-buffer">
-		<div class="col text-white row-settings">
-			Kitchen
-		</div>
-		<div class="col text-white row-settings">	
-		<button type="button" class="btn text-white switch-button-on">
-			<span class="fa fa-lightbulb-o" aria-hidden="true"></span>	
-			On
-		</button>
-		</div>
-	</div>
-  
-  <div class="row justify-content-md-center top-buffer">
-    <div class="col-sm text-white row-settings">
-      Room 1
-    </div>
-    <div class="col-sm text-white row-settings">
-		<button type="button" class="btn switch-button-off">Off</button>
-    </div>
-  </div>
+<div class="container" id="devices">
+	
 </div>
 
 </body>
+<script>
+	const ALLOW_PENDING_ARD = 0;
+	const REMOVE_PENDING_ARD = 1;
+
+    var socket = io('/iot');
+	
+	// set connection actions
+	socket.on('connect', onConnect);
+	socket.on('connect_error', onConnectError);
+	socket.on('error', onError);
+	socket.on('pending_arduino', onPendingArduino);
+	socket.on('message', onMessage);
+	
+	function onPendingArduino(message) {
+		var ardIP = message.ardIP
+		var ardIPConv = ardIP.replace(/\./g, '_');
+		var firstDate = message.firstDate;
+		var lastDate = message.lastDate;
+		var raspyID = message.raspyID;
+		console.log("new arduino message: " + ardIP);
+		if (document.getElementById(ardIPConv + '_row') == null) {
+			var row = '<div class="row justify-content-md-center top-buffer" id="' + ardIPConv + '_row"> \
+							<div class="col-sm text-white row-settings" id="' + ardIPConv + '_text"> New Arduino spotted, \
+							IP: ' + ardIP + '<br> First seen: ' + firstDate + ' Last seen: ' + lastDate + '</div> \
+							<div class="col-sm text-white row-settings"> \
+								<button type="button" class="btn switch-button-allow" id="' + ardIPConv + '_button"> \
+									<span class="fa fa-check" aria-hidden="true"></span> Allow</button> \
+								<button type="button" class="btn switch-button-on" id="' + ardIPConv + '_ignore"> \
+									<span class="fa fa-ban" aria-hidden="true"></span> Ignore</button> \
+							</div> \
+					</div>';
+			$("#devices").append(row);
+
+			$("#" + ardIPConv + "_button").on( 'click', function() {
+				allowPendingArduino(ardIP, raspyID);
+				$("#" + ardIPConv + "_row").remove();
+				
+			});
+			$("#" + ardIPConv + "_ignore").on( 'click', function() {
+				removePendingArduino(ardIP, raspyID);
+				$("#" + ardIPConv + "_row").remove();
+			});
+		} else {
+			$("#" + ardIPConv + "_text").text(' New Arduino spotted, \
+				IP: ' + ardIP + '<br> First seen: ' + firstDate + ' Last seen: ' + lastDate);
+		}
+	}
+
+	function allowPendingArduino(ardIP, raspyID) {
+		var message = {};
+		message.code = ALLOW_PENDING_ARD;
+		message.ardIP = ardIP;
+		message.raspyID = raspyID;
+		
+		socket.emit('update_pending_arduino', message);
+	}
+	
+	function removePendingArduino(ardIP, raspyID) {
+		var message = {};
+		message.code = REMOVE_PENDING_ARD;
+		message.ardIP = ardIP;
+		message.raspyID = raspyID;
+		
+		socket.emit('update_pending_arduino', message);
+	}
+	
+	//function update
+</script>
 </html>

@@ -3,14 +3,9 @@
 var config = require('./config.js');
 var debug = require('./debug.js');
 var arif = require('./arif.js');
-/* ARiF HTTP server */
-/*var app = require('express')();
-var express = require('express');
-var http = require('http');
-var server = http.createServer(app).listen(config.arif.port || 32300, onHTTPListen);
-server.on('error', onHTTPError);*/
-
 var arduino = require('./devices.js');
+
+var arguments = require('node-command-line-option');
 
 /* ARiF commands */
 const ARIF_HEARTBEAT = 'heartbeat';
@@ -21,7 +16,33 @@ const ARIF_LIGHTOFF = 'lightOFF';
 const ARDID = '1';
 const RASPYID = '001';
 const RASPYIP = '192.168.254.1'
-/*  */
+
+/* reading cmd args  */
+options = arguments.getOptions();
+for (var option in options) {
+	switch (option) {
+		case 'mode':
+			setMode(options.mode, options.ardid, options.raspyid);
+			break;
+		case 'srcip':
+			arif.setSourceIP(options.srcip);
+			break;
+		case 'ardid':
+			//setArdID(options.ardid);
+			break;
+		case 'raspyid':
+			break;
+		case 'help':
+			printHelp();
+			break;
+		default:
+			console.log('Unknown option: ' + option + '. Existing');
+			process.exit(1);
+			break;
+	}
+}
+
+arif.init();
 
 /* create readline interface for interactive CLI */
 var readline = require('readline');
@@ -73,18 +94,40 @@ function toggleDevice(line) {
 	var arduino = require('./devices.js');
 	
 	arduino.toggle(devID);
-		//arif.sendDeviceStatus(devID, ARDID, RASPYID, RASPYIP, 'digitOUT', arduino.getDeviceStatus(devID));
-	
 }
 
-/* send beacon */
-function sendBeacon() {
-	var url = '/smarthouse/' + ardID;
-    var message = new Buffer(url);
-	if (missingHeartbeats >= 3) {
-		server.send(message, 0, message.length, 5007, '224.1.1.1');
-		debug.log(5, 'arif', 'Sent URL: ' + message + ' beacon');
+function setMode(mode, ardID, raspyID) {
+	var newArdID = '1';
+	var newRaspyID = '001';
+	if (mode == 'fresh') {
+		arif.setRegisterFlag(false);
+		debug.log(2, 'arif', 'Setting mode to register as new Arduino');
+	} else if (mode == 'registered') {
+		arif.setRegisterFlag(true);
+		if (typeof(ardID) != 'undefined')
+			arif.ardID = ardID;
+		else
+			arif.ardID = newArdID;
+		if (typeof(raspyID) != 'undefined')
+			arif.raspyID = raspyID;
+		else
+			arif.raspyID = newRaspyID;
+		debug.log(2, 'arif', 'Setting mode to already registered as raspyID: ' + 
+				arif.raspyID + ', ardID: ' + arif.ardID);
+	} else {
+		console.log("unknown mode: " + mode);
+		process.exit(2);
 	}
-    //server.close();
 }
 
+function printHelp() {
+	console.log('\n Options:');
+	console.log('\t --mode=<mode> \t\t Select mode of operation. Available are:');
+	console.log('\t\t\t\t\t - fresh - Arduino initiates beacon indicating desire to register')
+	console.log('\t\t\t\t\t - registered - Arduino acts as registered \(ardID is taken from --ardid option\)');
+	console.log('\t --ardid=<ardid> \t Sets the ardID value. Works only mode is set to \'registered\'. Default value is 1');
+	console.log('\t --srcip=<IP> \t\t Sets the IP which the ard.js should use as the ARiF interface');
+	
+	console.log('\n');
+	process.exit(1);
+}
