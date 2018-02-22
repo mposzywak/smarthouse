@@ -138,6 +138,57 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 }
 
 /**
+ * This function updates the Arduino information in the DB
+ */
+ConfigDB.prototype.updateArduino = function(accountID, arduino) {
+	var debug = this.debug;
+	sql = 'UPDATE devices SET value = ?, date = ?, desc = ?, ip = ?, activated = ? \
+			WHERE devID = ? AND ardID = ? AND raspyID = ? AND accountID = ?';
+	SQLUpdate = 'UPDATE arduinos SET ';
+	SQLWhere = ' WHERE ardID = ? AND raspyID = ? AND accountID = ?';
+	values = [];
+	for (key in arduino) {
+		switch (key) {
+			case 'IP':
+				SQLUpdate += ' IP = ?,';
+				values.push(arduino.IP);
+				break;
+			case 'desc':
+				SQLUpdate += ' desc = ?,';
+				values.push(arduino.desc);
+				break;
+			case 'date':
+				SQLUpdate += ' date = ?,';
+				values.push(JSON.stringify(arduino.date));
+				break;
+			case 'ardID':
+			case 'raspyID':
+			case 'counter':
+			case 'alive': // there is no point in saving this, as it will be always updated real-time and on boot
+				break;
+			default:
+				debug.log(1, 'configdb', 'Error while parsing arduino fields, implementation issue: ' + key);
+				
+		}
+	}
+	SQLUpdate = SQLUpdate.substring(0, SQLUpdate.length - 1);
+	//console.log('query: ' + SQLUpdate + SQLWhere);
+	
+	values.push(arduino.ardID);
+	values.push(arduino.raspyID);
+	values.push(accountID);
+	//console.log('values: ' + values);
+	this.db.run(SQLUpdate + SQLWhere, values, function(error) {
+		if (error) {
+			debug.log(1, 'configdb', 'Error while updating Arduino: ' + error.message);
+		} else {
+			debug.log(5, 'configdb', 'Updated Arduino, accountid: ' + accountID + ', raspyid: ' + 
+					arduino.raspyID + ', ardID: ' + arduino.ardID);
+		}
+	});
+}
+
+/**
  * Get all devices or single accountID, this should be executed on the raspy on startup, and on the cloud when:
  * a) client connects to web GUI
  * b) first data arrives over RCP and there is no mem structure for that accountID
@@ -157,18 +208,17 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 				var row = rows[i];
 				var raspyID = row.raspyID;
 				var ardID = row.ardID;
-				console.log("1 devices -> " + JSON.stringify(devices))
 				
 				if (typeof(devices.raspys[raspyID]) == 'undefined') {
 					devices.raspys[raspyID] = {};
 					devices.raspys[raspyID].arduinos = {};
 				}
-				console.log("2 devices -> " + JSON.stringify(devices))
+				
 				devices.raspys[raspyID].arduinos[ardID] = {}
 				devices.raspys[raspyID].arduinos[ardID].devices = {}
 				devices.raspys[raspyID].arduinos[ardID].IP = row.IP;
 				devices.raspys[raspyID].arduinos[ardID].raspyID = raspyID;
-				console.log("3 devices -> " + JSON.stringify(devices))
+				
 			}
 			
 			db.all(SQLDevices, [accountID], function(error, rows) {
@@ -207,6 +257,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 		}
 	});
 }
+
 
 ConfigDB.prototype.getEverything = function(callback) {
 	var SQLAccounts = 'SELECT * FROM accounts';

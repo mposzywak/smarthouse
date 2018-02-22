@@ -34,7 +34,6 @@ var Mem = function() {
 			if (error) {
 				require('./debug.js').log(1, 'configdb', 'Failed to access configDB: ' + error.message);
 			} else {
-				console.log(JSON.stringify(raspys))
 				devices[accountID] = raspys;
 				devices[accountID].raspys[raspyID].pending = {};
 				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully [Raspy mode]');
@@ -125,11 +124,21 @@ Mem.prototype.getArduinoIP = function(accountID, ardID) {
 }
 
 Mem.prototype.updateArduinoIP = function(accountID, ardID, IP) {
-	var arduino = this.devices[accountID].raspys[this.raspyID].arduinos[ardID].IP = IP;
+	var arduino = this.devices[accountID].raspys[this.raspyID].arduinos[ardID];
 	var devices = this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices;
+	var updateArduino = {};
+	var db = require('./configdb.js');
+	
+	arduino.IP = IP;
+	updateArduino.ardID = ardID;
+	updateArduino.IP = IP;
+	updateArduino.raspyID = arduino.raspyID;
+	db.updateArduino(accountID, updateArduino);
+	
 	for (var devID in devices) {
 		if (devices.hasOwnProperty(devID)) {
 			devices[devID].IP = IP;
+			db.updateDevice(accountID, devices[devID]);
 		}
 	}
 }
@@ -179,7 +188,7 @@ Mem.prototype.setDeviceStatus = function(accountID, devID, ardID, devType, dataT
 	this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].value = value;
 	
 	this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].date = date.getTime();
-	console.log('old value: ' + oldValue + 'new: ' + value);
+
 	// when we detect that the new value is different then the old one.
 	if (oldValue != this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].value) {
 		onValueChange(accountID, devID, ardID, this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID]);
@@ -252,7 +261,7 @@ Mem.prototype.setRCPDeviceStatus = function(vpnid, raspyip, device) {
 	accountID = vpnid.split('-')[0];
 	raspyID = vpnid.split('-')[1];
 	var value;
-	console.log('device received: ' + JSON.stringify(device));
+
 	// TODO: put here the limitations on the number of devices, raspys, arduinos, etc...
 	if (typeof(this.devices[accountID]) == 'undefined') {
 		this.devices[accountID] = {};

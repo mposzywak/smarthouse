@@ -114,8 +114,13 @@ function onPostRequest(req, res) {
 	switch (command) {
 		case ARIF_HEARTBEAT:
 			arif.missingHeartbeats = 0;
-			res.writeHead(200, { 'Content-Type' : 'text/plain'});
-			res.end('');
+			if (ardID == arif.ardID) {
+				res.writeHead(200, { 'Content-Type' : 'text/plain'});
+				res.end('');
+			} else {
+				// timing out the HTTP connection because the ardID is incorrect.
+				debug.log(5, 'arif', 'Received HB from incorrect ardID: ' + ardID + ' raspyID: ' + raspyID);
+			}
 			break;
 		case ARIF_LIGHTON:
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
