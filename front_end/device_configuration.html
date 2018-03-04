@@ -155,7 +155,7 @@
     }
 	
 	function receiveArduino(msg) {
-		console.log('arduino received: ' + msg.ardID);
+		console.log('arduino received: ' + msg.ardID + ' ' + JSON.stringify(msg));
 		if (document.getElementById('arduino-' + msg.ardID) == null) {
 			/* this is a new arduino so whole div structure needs to be created */
 			addArduinoTableRow(msg);
@@ -228,8 +228,10 @@
 
 	/* display success message when the device was succesfully configuring and redirection 
 		comes from device-configuration-single */
-	if (urlParams['cmd'] == 'success')
+	if (urlParams['cmd'] == 'dev-save-success')
 		displaySuccessMsg('Device has been configured and saved.')
+	if (urlParams['cmd'] == 'ard-del-success')
+		displaySuccessMsg('Arduino has been deleted and saved from configuration.')
 	
 </script>
 </html>

@@ -188,6 +188,36 @@ ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 	});
 }
 
+ConfigDB.prototype.deleteArduino = function(accountID, arduino) {
+	var debug = this.debug;
+	var SQLArduinoDelete = 'DELETE FROM arduinos WHERE ardID = ? AND raspyID = ? AND accountID = ?';
+	var SQLDevicesDelete = 'DELETE FROM devices WHERE ardID = ? AND raspyID = ? AND accountID = ?';
+	var values = [];
+	var db = this.db;
+	
+	values.push(arduino.ardID);
+	values.push(arduino.raspyID);
+	values.push(accountID);
+	
+	//console.log('values: ' + values);
+	db.run(SQLDevicesDelete, values, function(error) {
+		if (error) {
+			debug.log(1, 'configdb', 'Error while deleting Arduino\'s devices: ' + error.message);
+		} else {
+			debug.log(5, 'configdb', 'Deleted Arduino\'s devices, accountid: ' + accountID + ', raspyid: ' + 
+					arduino.raspyID + ', ardID: ' + arduino.ardID);
+			db.run(SQLArduinoDelete, values, function(error) {
+				if (error) {
+					debug.log(1, 'configdb', 'Error while deleting Arduino: ' + error.message);
+				} else {
+					debug.log(5, 'configdb', 'Deleted Arduino, accountid: ' + accountID + ', raspyid: ' + 
+					arduino.raspyID + ', ardID: ' + arduino.ardID);
+				}
+			});
+		}
+	});
+}
+
 /**
  * Get all devices or single accountID, this should be executed on the raspy on startup, and on the cloud when:
  * a) client connects to web GUI
@@ -196,62 +226,73 @@ ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 	var SQLDevices = 'SELECT * FROM devices WHERE accountID = ?';
 	var SQLArduinos = 'SELECT * FROM arduinos WHERE accountID = ?';
+	var SQLRaspys = 'SELECT * FROM raspys WHERE accountID = ?';
 	var db = this.db;
 	var devices = {};
 	devices.raspys = {};
-
-	db.all(SQLArduinos, [accountID], function(error, rows) {
+	db.all(SQLRaspys, [accountID], function(error, rows) {
 		if (error) {
 			callback(error, null);
 		} else {
 			for (var i = 0; i < rows.length; i++) {
 				var row = rows[i];
-				var raspyID = row.raspyID;
-				var ardID = row.ardID;
-				
-				if (typeof(devices.raspys[raspyID]) == 'undefined') {
-					devices.raspys[raspyID] = {};
-					devices.raspys[raspyID].arduinos = {};
-				}
-				
-				devices.raspys[raspyID].arduinos[ardID] = {}
-				devices.raspys[raspyID].arduinos[ardID].devices = {}
-				devices.raspys[raspyID].arduinos[ardID].IP = row.IP;
-				devices.raspys[raspyID].arduinos[ardID].raspyID = raspyID;
-				
+				devices.raspys[row.raspyID] = {};
+				devices.raspys[row.raspyID].arduinos = {};
 			}
-			
-			db.all(SQLDevices, [accountID], function(error, rows) {
+			db.all(SQLArduinos, [accountID], function(error, rows) {
 				if (error) {
 					callback(error, null);
-				} else {					
-					for (var i = 0; i < rows.length; i++) {					
+				} else {
+					for (var i = 0; i < rows.length; i++) {
 						var row = rows[i];
 						var raspyID = row.raspyID;
 						var ardID = row.ardID;
-						var devID = row.devID;
+						
 						if (typeof(devices.raspys[raspyID]) == 'undefined') {
 							devices.raspys[raspyID] = {};
 							devices.raspys[raspyID].arduinos = {};
 						}
-						if (typeof(devices.raspys[raspyID].arduinos[ardID]) == 'undefined') {
-							devices.raspys[raspyID].arduinos[ardID] = {};
-							devices.raspys[raspyID].arduinos[ardID].devices = {};
+						
+						devices.raspys[raspyID].arduinos[ardID] = {}
+						devices.raspys[raspyID].arduinos[ardID].devices = {}
+						devices.raspys[raspyID].arduinos[ardID].IP = row.IP;
+						devices.raspys[raspyID].arduinos[ardID].raspyID = raspyID;
+				
+					}	
+			
+					db.all(SQLDevices, [accountID], function(error, rows) {
+						if (error) {
+							callback(error, null);
+						} else {					
+							for (var i = 0; i < rows.length; i++) {					
+								var row = rows[i];
+								var raspyID = row.raspyID;
+								var ardID = row.ardID;
+								var devID = row.devID;
+								if (typeof(devices.raspys[raspyID]) == 'undefined') {
+									devices.raspys[raspyID] = {};
+									devices.raspys[raspyID].arduinos = {};
+								}
+								if (typeof(devices.raspys[raspyID].arduinos[ardID]) == 'undefined') {
+									devices.raspys[raspyID].arduinos[ardID] = {};
+									devices.raspys[raspyID].arduinos[ardID].devices = {};
+								}
+								devices.raspys[raspyID].arduinos[ardID].devices[devID] = {};
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].activated = row.activated ? true : false;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].ardID = row.ardID;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].dataType = row.dataType;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].date = JSON.parse(row.date);
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].desc = row.desc;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].devType = row.devType;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].devID = row.devID;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].IP = row.IP;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].raspyID = row.raspyID;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].value = row.value;
+							}
+							//console.log(JSON.stringify(devices));
+							callback(error, devices);
 						}
-						devices.raspys[raspyID].arduinos[ardID].devices[devID] = {};
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].activated = row.activated ? true : false;
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].ardID = row.ardID;
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].dataType = row.dataType;
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].date = JSON.parse(row.date);
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].desc = row.desc;
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].devType = row.devType;
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].devID = row.devID;
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].IP = row.IP;
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].raspyID = row.raspyID;
-						devices.raspys[raspyID].arduinos[ardID].devices[devID].value = row.value;
-					}
-					//console.log(JSON.stringify(devices));
-					callback(error, devices);
+					});
 				}
 			});
 		}

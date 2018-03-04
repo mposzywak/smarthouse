@@ -413,9 +413,11 @@ function onDeleteArduino(msg, socket) {
 	var accountID = socket.session.email;
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: delete_arduino with: ' + JSON.stringify(msg));
 	var mem = components.getFacility('mem');
-	var devices = mem.getClientDevices(accountID);
+	//var devices = mem.getClientDevices(accountID);
 	var raspyID = msg.raspyID;
 	var ardID = msg.ardID;
+	
+	mem.deleteArduino(accountID, raspyID, ardID);
 }
 
 /**

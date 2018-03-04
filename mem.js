@@ -71,6 +71,7 @@ Mem.prototype.registerArduino = function(accountID, IP) {
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID] = {};
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices = {};
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].IP = IP; 
+		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].raspyID = this.raspyID;
 		this.db.insertArduino(accountID, this.raspyID, IP, ardID);
 		this.components.getFacility('debug').log(4, 'mem', 'accountID id: ' + accountID + 
 				', new Arduino registered: ' + ardID + ' from: ' + IP);
@@ -89,6 +90,7 @@ Mem.prototype.registerArduino = function(accountID, IP) {
 					this.devices[accountID].raspys[this.raspyID].arduinos[ardID] = {};
 					this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices = {}
 					this.devices[accountID].raspys[this.raspyID].arduinos[ardID].IP = IP;
+					this.devices[accountID].raspys[this.raspyID].arduinos[ardID].raspyID = this.raspyID;
 					this.db.insertArduino(accountID, this.raspyID, IP, ardID);
 					this.components.getFacility('debug').log(4, 'mem', 'accountID id: ' + accountID + 
 							', new Arduino registered: ' + ardID + ' from: ' + IP);
@@ -115,10 +117,10 @@ Mem.prototype.isArdIDRegistered = function(accountID, ardID) {
 /* returns Arduinos IP address */
 Mem.prototype.getArduinoIP = function(accountID, ardID) {
 	if (!this.devices[accountID] || !this.devices[accountID].raspys)
-		return;
-	var arduino = this.devices[accountID].raspys[this.raspyID].arduinos[ardID];
-	if (!arduino)
-		return;
+		return null;
+	//var arduino = this.devices[accountID].raspys[this.raspyID].arduinos[ardID];
+	if (!this.devices[accountID].raspys[this.raspyID].arduinos[ardID])
+		return null;
 	else
 		return this.devices[accountID].raspys[this.raspyID].arduinos[ardID].IP;
 }
@@ -156,6 +158,17 @@ Mem.prototype.isArduinoIPRegistered = function(accountID, IP) {
 	return false;
 }
 
+/**
+ * Delete Arduino and all it's devices from the mem and the DB
+ */
+Mem.prototype.deleteArduino = function(accountID, raspyID, ardID) {
+	var arduinos = this.devices[accountID].raspys[raspyID].arduinos;
+	var arduino = {}
+	arduino.ardID = ardID;
+	arduino.raspyID = raspyID;
+	delete arduinos[ardID];
+	this.db.deleteArduino(accountID, arduino);
+}
 /* the method puts the latest status into the mem cache 
 	Ideally it takes as arguments, URL of the incoming request (should already be validated)
 	IP address and the time the request came. 
@@ -566,14 +579,6 @@ Mem.prototype.updateArduino = function(accountID, raspyID, ardID, name) {
 	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
 	
 	arduino.name = name;
-}
-
-/**
- * Remove arduino information from the mem structure (both raspy and cloud function)
- * trigger also DB entries deletion.
- */
-Mem.prototype.deleteArduino = function(accountID, raspyID, ardID) {
-	
 }
 
 module.exports = memory;

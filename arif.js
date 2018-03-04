@@ -53,10 +53,24 @@ var ARiF = function() {
 		}
 		
 		var arduinoIP = m.getArduinoIP(c.cloud.id, ardID)
+
 		if (rinfo.address == arduinoIP || '::ffff:' + rinfo.address == arduinoIP) {
 			//console.log('ardIP: ' + m.getArduinoIP(c.cloud.id, ardID))
 			d.log(2, 'arif', 'Beacon src IP same as registered Ard IP of: ' + ardID);
+		} else if (!arduinoIP) {
+			d.log(2, 'arif', 'Beacon received of a reg. Arduino, but ardID not found: ' + ardID + ', IP: ' + rinfo.address);
+			if (m.isPendingArduinoAllowed(rinfo.address)) {
+				d.log(2, 'arif', 'Beacon received from ' + rinfo.address + ' is allowed, beginning registration');
+				var newArdID = m.registerArduino(c.cloud.id, rinfo.address);
+				a.sendRegisterCommand(rinfo.address, newArdID, 'EE:EA:DE:AD:BA:BE', function () {
+					d.log(2, 'arif', 'Registration finished of ardID: ' + newArdID);
+				});
+			}
+			else {
+				m.updatePendingArduino(rinfo.address);
+			}
 		} else {
+			
 			d.log(2, 'arif', 'Beacon src different than registered Ard IP of: ' + ardID + '. Updating.' );
 			m.updateArduinoIP(c.cloud.id, ardID, rinfo.address);
 		}
