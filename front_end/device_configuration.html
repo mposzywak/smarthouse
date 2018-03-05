@@ -155,7 +155,7 @@
     }
 	
 	function receiveArduino(msg) {
-		console.log('arduino received: ' + msg.ardID + ' ' + JSON.stringify(msg));
+		console.log('arduino received: ' + msg.ardID);
 		if (document.getElementById('arduino-' + msg.ardID) == null) {
 			/* this is a new arduino so whole div structure needs to be created */
 			addArduinoTableRow(msg);

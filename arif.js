@@ -42,9 +42,11 @@ var ARiF = function() {
 			if (m.isPendingArduinoAllowed(rinfo.address)) {
 				d.log(2, 'arif', 'Beacon received from ' + rinfo.address + ' is allowed, beginning registration');
 				var newArdID = m.registerArduino(c.cloud.id, rinfo.address);
-				a.sendRegisterCommand(rinfo.address, newArdID, 'EE:EA:DE:AD:BA:BE', function () {
+				a.sendRegisterCommand(rinfo.address, newArdID, 'EE:EA:DE:AD:BA:BE', function() {
 					d.log(2, 'arif', 'Registration finished of ardID: ' + newArdID);
+					m.deletePendingArduino(c.cloud.id, rinfo.address);
 				});
+				
 			}
 			else {
 				m.updatePendingArduino(rinfo.address);
@@ -64,6 +66,7 @@ var ARiF = function() {
 				var newArdID = m.registerArduino(c.cloud.id, rinfo.address);
 				a.sendRegisterCommand(rinfo.address, newArdID, 'EE:EA:DE:AD:BA:BE', function () {
 					d.log(2, 'arif', 'Registration finished of ardID: ' + newArdID);
+					m.deletePendingArduino(c.cloud.id, rinfo.address);
 				});
 			}
 			else {
@@ -181,6 +184,7 @@ ARiF.prototype.sendRegisterCommand = function(IP, ardID, MAC, callback) {
 	
 	var req = http.request(options, function (res){
 		debug.log(1, 'arif', 'Received Register cmd resp from IP: ' + IP);
+		callback();
 	}).on('error', function(error) {
 		debug.log(1, 'arif', 'Error in ARiF register comms with IP: ' + IP);
 	});

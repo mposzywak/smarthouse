@@ -400,7 +400,7 @@ function onDeviceCommand(msg, socket) {
 	if (!require('./config.js').cloud.enable) {
 		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as raspy, sending command over ARiF');
 		require('./arif.js').sendCommand(device, command, function(message) {
-			console.log('test ' + JSON.stringify(message));
+			//console.log('test ' + JSON.stringify(message));
 			socket.emit('device_response', message);
 		});
 	} else {

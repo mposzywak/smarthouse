@@ -344,6 +344,9 @@ function sendArduinoAliveMessage(accountID, raspyID, ardID) {
 	io.of('/iot').to(accountID).emit('message', message);
 }
 
+/**
+ *	Send to the GUI that a pending Arduino is awaiting confirmation or denial
+ */
 function sendPendingArduinoUpdate(raspyID, ardIP) {
 	var message = {};
 	var m = require('./mem.js');
@@ -359,15 +362,21 @@ function sendPendingArduinoUpdate(raspyID, ardIP) {
 	io.of('/iot').to(m.accountID).emit('pending_arduino', message);
 }
 
+/**
+ *	Set a pending Arduino state to allow
+ */
 Mem.prototype.allowPendingArduino = function(raspyID, ardIP) {
-	var pending = this.devices[m.accountID].raspys[m.raspyID].pending;
+	var pending = this.devices[this.accountID].raspys[this.raspyID].pending;
 	if (typeof(pending[ardIP]) != 'undefined') {
 		pending[ardIP].allowed = true;
 	}
 }
 
-Mem.prototype.removePendingArduino = function(raspyID, ardIP) {
-	var pending = this.devices[m.accountID].raspys[m.raspyID].pending;
+/**
+ * 	Delete a pending arduino from the list
+ */
+Mem.prototype.deletePendingArduino = function(raspyID, ardIP) {
+	var pending = this.devices[this.accountID].raspys[this.raspyID].pending;
 	if (typeof(pending[ardIP]) != 'undefined') {
 		delete pending[ardIP]
 	} 
