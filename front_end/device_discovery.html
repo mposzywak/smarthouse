@@ -155,9 +155,45 @@
 	socket.on('error', onError);
 	socket.on('pending_arduino', onPendingArduino);
 	socket.on('message', onMessage);
+	socket.on('device', receiveDevice);
+	
+	function receiveDevice(message) {
+		var devID = message.devID;
+		var ardID = message.ardID;
+		var raspyID = message.raspyID;
+		var devType = message.devType;
+		var value = message.value;
+		var FID = raspyID + '-' + ardID + '-' + devID;
+		if (document.getElementById(FID + '_row') == null) {
+			var row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row"> \
+							<div class="col-sm text-white row-settings" id="' + ardIPConv + '_text"> New Arduino spotted, \
+							IP: ' + ardIP + '<br> First seen: ' + firstDate + ' Last seen: ' + lastDate + '</div> \
+							<div class="col-sm text-white row-settings"> \
+								<button type="button" class="btn switch-button-allow" id="' + ardIPConv + '_button"> \
+									<span class="fa fa-check" aria-hidden="true"></span> Allow</button> \
+								<button type="button" class="btn switch-button-on" id="' + ardIPConv + '_ignore"> \
+									<span class="fa fa-ban" aria-hidden="true"></span> Ignore</button> \
+							</div> \
+					</div>';
+			$("#devices").append(row);
+
+			$("#" + ardIPConv + "_button").on( 'click', function() {
+				allowPendingArduino(ardIP, raspyID);
+				$("#" + ardIPConv + "_row").remove();
+				
+			});
+			$("#" + ardIPConv + "_ignore").on( 'click', function() {
+				removePendingArduino(ardIP, raspyID);
+				$("#" + ardIPConv + "_row").remove();
+			});
+		} else {
+			$("#" + ardIPConv + "_text").text(' New Arduino spotted, \
+				IP: ' + ardIP + '<br> First seen: ' + firstDate + ' Last seen: ' + lastDate);
+		}
+	}
 	
 	function onPendingArduino(message) {
-		var ardIP = message.ardIP
+		var ardIP = message.ardIP;
 		var ardIPConv = ardIP.replace(/\./g, '_');
 		var firstDate = message.firstDate;
 		var lastDate = message.lastDate;

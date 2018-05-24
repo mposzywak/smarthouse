@@ -190,6 +190,7 @@ Mem.prototype.setDeviceStatus = function(accountID, devID, ardID, devType, dataT
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].raspyID = this.raspyID;
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].ardID = ardID;
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].devID = devID;
+		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].alive = true;
 		isDeviceNew = true;
 		this.components.getFacility('debug').log(4, 'mem', 'existing accountID id: ' + accountID + ', existing Arduino registered: ' + 
 				ardID + ' and new device: ' + devID);
@@ -405,6 +406,11 @@ Mem.prototype.getClientDevices = function (accountID) {
 /* increment Arduino dead counter (only raspy) */
 Mem.prototype.increaseArduinoDeadCounter = function(accountID, raspyID, ardID) {
 	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
+	
+	// in case arduino has been delete meanwhile
+	if (!arduino) return;
+	
+	
 	if (!arduino.counter)
 		arduino.counter = 0
 	
@@ -419,13 +425,18 @@ Mem.prototype.increaseArduinoDeadCounter = function(accountID, raspyID, ardID) {
 
 /* increment Raspy dead counter (only cloud) */
 Mem.prototype.increaseRaspyDeadCounter = function(accountID, raspyID) {
-	if (!this.devices[accountID].raspys[raspyID].counter)
-		this.devices[accountID].raspys[raspyID].counter = 0
+	var raspy = this.devices[accountID].raspys[raspyID];
 	
-	if (this.devices[accountID].raspys[raspyID].counter < 3)
-		this.devices[accountID].raspys[raspyID].counter += 1;
+	// in case raspy has been deleted meanwhile
+	if (!raspy) return;
 	
-	if (this.devices[accountID].raspys[raspyID].counter == 3)
+	if (!raspy.counter)
+		raspy.counter = 0
+	
+	if (raspy.counter < 3)
+		raspy.counter += 1;
+	
+	if (raspy.counter == 3)
 		this.setRaspyDead(accountID, raspyID);
 		
 }
@@ -433,6 +444,10 @@ Mem.prototype.increaseRaspyDeadCounter = function(accountID, raspyID) {
 /* clear the Arduino dead counter (only raspy) */
 Mem.prototype.clearArduinoDeadCounter = function(accountID, raspyID, ardID) {
 	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
+	
+	// in case arduino has been delete meanwhile
+	if (!arduino) return;
+	
 	if (arduino.alive != true) { //true 
 		require('./rcpclient.js').sendArduinoAlive(ardID);
 		this.setArduinoAlive(accountID, raspyID, ardID);
