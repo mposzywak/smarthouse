@@ -33,7 +33,7 @@ for (var option in options) {
 		case 'raspyid':
 			break;
 		case 'help':
-			printHelp();
+			printCMDHelp();
 			break;
 		default:
 			console.log('Unknown option: ' + option + '. Existing');
@@ -120,7 +120,7 @@ function setMode(mode, ardID, raspyID) {
 	}
 }
 
-function printHelp() {
+function printCMDHelp() {
 	console.log('\n Options:');
 	console.log('\t --mode=<mode> \t\t Select mode of operation. Available are:');
 	console.log('\t\t\t\t\t - fresh - Arduino initiates beacon indicating desire to register')

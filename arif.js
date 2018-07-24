@@ -170,14 +170,17 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 ARiF.prototype.sendRegisterCommand = function(IP, ardID, MAC, callback) {
 	var debug = this.debug;
 	debug.log(1, 'arif', 'Sending ARiF register cmd to IP: ' + IP);
-				
+	var partMAC = 'FF:01:34:00:00:';
+	var hexArdID = ardID.toString(16);
+	if (ardID < 16) hexArdID = '0' + ardID.toString(16);
+	var fullMAC = partMAC + hexArdID;
 	var http = require('http');
 	
 	var options = {
 		hostname: IP,
 		port: this.config.arif.port,
 		path: '/?devID=0&ardID=' + ardID + 
-				'&raspyID=' + this.config.rcpclient.vpnID.split('-')[1] + '&cmd=register' + '&value=' + MAC,
+				'&raspyID=' + this.config.rcpclient.vpnID.split('-')[1] + '&cmd=register' + '&value=' + fullMAC,
 		method: 'POST',
 		agent: false
 	};

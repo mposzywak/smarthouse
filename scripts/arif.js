@@ -37,7 +37,7 @@ var ARIF = function() {
 	/* missing heartbeats */
 	this.missingHeartbeats = 3;
 
-	/* status if raspy seems to be aware of Ard presence */
+	/* status if raspy is aware of Ard presence */
 	this.isRaspyAware = false;
 
 	/* ardID and raspyID from raspy */
@@ -47,6 +47,9 @@ var ARIF = function() {
 	/* status if we should send registration beacon */
 	this.registered = false;
 	
+	/* status of the sync of the devices status */
+	this.synced = false;
+
 	/*setInterval(sendBeacon, 3000);
 	setInterval(addMissingHeartbeat, 3000) */
 
@@ -117,6 +120,11 @@ function onPostRequest(req, res) {
 			if (ardID == arif.ardID) {
 				res.writeHead(200, { 'Content-Type' : 'text/plain'});
 				res.end('');
+				if (arif.synced == false) {
+					/* send status of all devices */
+					arif.sendAllDeviceStatus();
+					arif.synced = true;
+				}
 			} else {
 				// timing out the HTTP connection because the ardID is incorrect.
 				debug.log(5, 'arif', 'Received HB from incorrect ardID: ' + ardID + ' raspyID: ' + raspyID);
@@ -202,6 +210,15 @@ ARIF.prototype.sendDeviceStatus = function(devID, status) {
 
 }
 
+/* send status of all configured devices */
+ARIF.prototype.sendAllDeviceStatus = function() {
+	var devices = require('./devices.js');
+	for (var devID in devices.devices) {
+		console.log('Sending devices status of device: ' + devID + ' status: ' + devices.getDeviceStatus(devID));
+		this.sendDeviceStatus(devID, devices.getDeviceStatus(devID));
+	}
+}
+
 function getParams(url) {
 	var urlParams;
     var match,
@@ -235,6 +252,7 @@ function sendBeacon() {
 	if (arif.missingHeartbeats >= 3 || arif.register) {
 		arif.BBserver.send(message, 0, message.length, 5007, '224.1.1.1');
 		arif.debug.log(5, 'arif', 'Sent URL: ' + message + ' beacon');
+		arif.synced = false;
 	}
     //server.close();
 }
