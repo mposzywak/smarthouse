@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Bootstrap Example</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+	<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+	<script src="js/smarthouse.js"></script>
+	<script src="js/ui_load.js"></script>
+</head>
+<style>
+.top-buffer { 
+	margin-top:20px; 
+	min-height:0px !important;
+	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.switch-button-margin {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px
+}
+
+/* On Button */
+.conf-button {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #4744ff;
+	border-color: #3331bc;
+}
+
+/* On Button */
+.switch-button-on {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #f4d142;
+	border-color: #d1b338;
+}
+
+.switch-button-on:hover {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #d1b338;
+	border-color: #d1b338;
+}
+
+.switch-button-on:active {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #c1a634;
+	border-color: #c1a634;
+}
+
+.switch-button-on:disabled {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #e5d695;
+	border-color: #e5d695;
+}
+
+.ignore-all-button  {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+}
+
+/* Allow Button */
+.switch-button-allow {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #44b21c;
+	border-color: #3a9918;
+}
+
+.switch-button-allow:hover {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #3a9918;
+	border-color: #3a9918;
+}
+
+.switch-button-allow:active {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #2e7a13;
+	border-color: #2e7a13;
+}
+
+.switch-button-allow:disabled {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #d1d1d1;
+	border-color: #d1d1d1;
+}
+
+.section-center__full {
+	height: 12vh;
+	display: flex;
+	justify-content: left;
+	align-items: center;
+}
+
+.container{
+    max-width: 1200px;
+}
+
+.row-settings {
+	background: #c4c4c4;
+}
+
+</style>
+<body>
+
+<div class="container">
+	<br><br>
+	<div id="message-holder">
+		
+	</div>
+	<br><h1>Settings and Status</h1>
+	<p> </p>
+	<div class="row">
+        <div class="col-md-4 order-md-2 mb-4">
+          <h4 class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted">Arduino Status</span>
+            <span class="badge badge-secondary badge-pill">2</span>
+          </h4>
+          <ul class="list-group mb-3" id="arduinos">
+
+          </ul>
+
+          <h4 class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted">Cloud Status</span>
+            <span class="badge badge-secondary badge-pill">2</span>
+          </h4>
+          <ul class="list-group mb-3" id="clouds">
+          	<li class="list-group-item d-flex justify-content-between bg-light" id="cloud1">
+              <div class="text-success">
+                <h6 class="my-0">Cloud</h6>
+                <small>Using raspyID: 001</small>
+                <small>(duinocloud.org)</small>
+              </div>
+              <span class="text-success">UP</span>
+            </li>
+          </ul>
+          
+        </div>
+        <div class="col-md-8 order-md-1">
+          <h4 class="mb-3">Cloud Settings</h4>
+          <form class="needs-validation" novalidate>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="firstName">Raspy Identification Number</label>
+                <input type="text" class="form-control" id="raspyID" placeholder="" value="" required>
+                <div class="invalid-feedback">
+                  Valid first name is required.
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="firstName">Raspy Secrect Key</label>
+                <input type="text" class="form-control" id="vpn-key" placeholder="" value="" required>
+                <div class="invalid-feedback">
+                  Valid first name is required.
+                </div>
+              </div>
+            </div>
+
+            <hr class="mb-4">
+            <div class="custom-control custom-checkbox">
+              <input type="checkbox" class="custom-control-input" id="same-address">
+              <label class="custom-control-label" for="same-address">Shipping address is the same as my billing address</label>
+            </div>
+            <div class="custom-control custom-checkbox">
+              <input type="checkbox" class="custom-control-input" id="save-info">
+              <label class="custom-control-label" for="save-info">Save this information for next time</label>
+            </div>
+            <hr class="mb-4">
+
+            <h4 class="mb-3">Payment</h4>
+
+            <div class="d-block my-3">
+              <div class="custom-control custom-radio">
+                <input id="credit" name="paymentMethod" type="radio" class="custom-control-input" checked required>
+                <label class="custom-control-label" for="credit">Credit card</label>
+              </div>
+              <div class="custom-control custom-radio">
+                <input id="debit" name="paymentMethod" type="radio" class="custom-control-input" required>
+                <label class="custom-control-label" for="debit">Debit card</label>
+              </div>
+              <div class="custom-control custom-radio">
+                <input id="paypal" name="paymentMethod" type="radio" class="custom-control-input" required>
+                <label class="custom-control-label" for="paypal">PayPal</label>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="cc-name">Name on card</label>
+                <input type="text" class="form-control" id="cc-name" placeholder="" required>
+                <small class="text-muted">Full name as displayed on card</small>
+                <div class="invalid-feedback">
+                  Name on card is required
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="cc-number">Credit card number</label>
+                <input type="text" class="form-control" id="cc-number" placeholder="" required>
+                <div class="invalid-feedback">
+                  Credit card number is required
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-3 mb-3">
+                <label for="cc-expiration">Expiration</label>
+                <input type="text" class="form-control" id="cc-expiration" placeholder="" required>
+                <div class="invalid-feedback">
+                  Expiration date required
+                </div>
+              </div>
+              <div class="col-md-3 mb-3">
+                <label for="cc-cvv">CVV</label>
+                <input type="text" class="form-control" id="cc-cvv" placeholder="" required>
+                <div class="invalid-feedback">
+                  Security code required
+                </div>
+              </div>
+            </div>
+            <hr class="mb-4">
+            <button class="btn btn-primary btn-lg btn-block" type="submit">Continue to checkout</button>
+          </form>
+        </div>
+      </div>
+</div>
+
+<div class="container" id="devices">
+	
+</div>
+
+</body>
+<script>
+	$('document').ready(loadNavbar('device-discovery'));
+
+	const ALLOW_PENDING_ARD = 0;
+	const REMOVE_PENDING_ARD = 1;
+
+	const IGNORE_DISCOVERED_DEVICE = 2;
+
+    var socket = io('/iot');
+	
+	// set connection actions
+	socket.on('connect', onConnect);
+	socket.on('connect_error', onConnectError);
+	socket.on('error', onError);
+	socket.on('message', onMessage);
+	socket.on('arduino', onArduino);
+
+	
+	function onArduino(msg) {
+		console.log('arduino received: ' + msg.ardID);
+		if (document.getElementById('arduino-' + msg.ardID) == null) {
+			/* this is a new arduino so whole div structure needs to be created */
+			addArduinoTableRow(msg);
+		} else {
+			/* the device already reported, structure needs to be filled in with new data */
+			$('#ardID-' + msg.ardID).html('ardID: ' + msg.ardID + '<br>name: ' + msg.name + '</strong> ');
+		}
+	}
+	
+	function addArduinoTableRow(device) {
+		console.log('device name: ' + JSON.stringify(device));
+		var name = 'name not set';
+		var alive = 'UP';
+		var textClass = "text-success";
+		var itemID = 'arduino-' + device.raspyID + '-' + device.ardID;
+		if (device.alive == false) {
+			alive = "DOWN";
+			textClass = "text-danger";
+		}
+		if (typeof(device.name) != 'undefined')
+			name = device.name;
+		
+		var row = '<li class="list-group-item d-flex justify-content-between bg-light" id="' + itemID + '"> \
+              <div class="' + textClass + '"> \
+                <h6 class="my-0">Arduino: ' + device.ardID + '</h6> \
+                <small>' + name + '</small> \
+                <small>(' + device.IP + ')</small> \
+              </div> \
+              <span class="' + textClass + '">' + alive + '</span> \
+            </li>';
+		
+        if (!document.getElementById(itemID)) {
+			$("#arduinos").append(row);
+        } else {
+        	removeElementFromList('arduinos', itemID);
+        	$("#arduinos").append(row);
+		}
+		//removeElementFromList('arduinos', itemID);
+	}
+
+	function removeElementFromList(parentID, childID) {
+		var list = document.getElementById('arduinos');
+		var removed = document.getElementById(childID);
+		list.removeChild(removed);
+
+		//console.log(list);
+	}
+	
+	//function update
+</script>
+</html>
