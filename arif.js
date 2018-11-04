@@ -92,6 +92,7 @@ var ARiF = function() {
 
 var arif = new ARiF();
 
+/* send heartbeat into each arduino */
 function heartbeatArduinos() {
 	var mem = require('./mem.js');
 	var config = require('./config.js');

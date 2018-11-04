@@ -10,6 +10,8 @@ const LOGIN_PAGE = 'login2.html'
 	const ALLOW_PENDING_ARD = 0;
 	const REMOVE_PENDING_ARD = 1;
 
+	const IGNORE_DISCOVERED_DEVICE = 2;
+
 
 /**
  * Backend is the HTTP server that is serving the client requests, it 
@@ -64,13 +66,16 @@ var Backend = function() {
 	this.app.get('/device-active', onDeviceActive);
 	this.app.get('/device-configuration', onDeviceConfiguration);
 	//this.app.get('\/device-configuration-single\/[0-9]{3}\/[0-9]{1,3}\/[0-9]{1,3}', onDeviceConfigurationSingle);
-	this.app.get('\/device-configuration-single', onDeviceConfigurationSingle);
-	this.app.get('\/device-configuration-arduino', onDeviceConfigurationArduino);
+	this.app.get('/device-configuration-single', onDeviceConfigurationSingle);
+	this.app.get('/device-configuration-arduino', onDeviceConfigurationArduino);
+	this.app.get('/device-configuration-discovered', onDeviceConfigurationDiscovered);
 	this.app.get('/device-discovery', onDeviceDiscovery);
-	
+	this.app.get('/settings', onSettings);
+
 	this.app.get('', onAnyHTML);       // redirect to login page on '/'
 	//executed on login inforamtion
 	this.app.post('/auth', onLogin);
+	//this.app.post('/logout', onLogout);
 
 	this.app.get('/logout', onLogout);
 	
@@ -153,6 +158,7 @@ function onLogin(req, res) {
 	});
 }
 
+
 /**
  * Load the administrative page upon succesfull login
  */
@@ -164,8 +170,7 @@ function onAdmin(req, res) {
 	}
 	else
 	{
-		res.write('<h1>Please login first.</h1>');
-		res.end('<a href='+'/'+'>Login</a>');
+		res.redirect('/');
 	}
 }
 
@@ -177,8 +182,7 @@ function onDeviceActive(req, res) {
 	}
 	else
 	{
-		res.write('<h1>Please login first.</h1>');
-		res.end('<a href='+'/'+'>Login</a>');
+		res.redirect('/');
 	}
 }
 
@@ -190,8 +194,7 @@ function onDeviceDiscovery(req, res) {
 	}
 	else
 	{
-		res.write('<h1>Please login first.</h1>');
-		res.end('<a href='+'/'+'>Login</a>');
+		res.redirect('/');
 	}
 }
 
@@ -203,8 +206,7 @@ function onDeviceConfiguration(req, res) {
 	}
 	else
 	{
-		res.write('<h1>Please login first.</h1>');
-		res.end('<a href='+'/'+'>Login</a>');
+		res.redirect('/');
 	}
 }
 
@@ -216,8 +218,7 @@ function onDeviceConfigurationSingle(req, res) {
 	}
 	else
 	{
-		res.write('<h1>Please login first.</h1>');
-		res.end('<a href='+'/'+'>Login</a>');
+		res.redirect('/');
 	}
 }
 
@@ -229,8 +230,36 @@ function onDeviceConfigurationArduino(req, res) {
 	}
 	else
 	{
-		res.write('<h1>Please login first.</h1>');
-		res.end('<a href='+'/'+'>Login</a>');
+		res.redirect('/');
+	}
+}
+
+function onDeviceConfigurationDiscovered(req, res) {
+	var sess = req.session;
+	if(sess.email)	
+	{
+		res.render('device_configuration_discovered.html');
+	}
+	else
+	{
+		res.redirect('/');
+	}
+}
+
+function onSettings(req, res) {
+	var sess = req.session;
+	var config 	= require('./config.js');
+
+	if(sess.email)	
+	{
+		if (!config.cloud.enabled)
+			res.render('settings_raspy.html');
+		else 
+			res.render('settings_cloud.html');
+	}
+	else
+	{
+		res.redirect('/');
 	}
 }
 
@@ -238,14 +267,28 @@ function onDeviceConfigurationArduino(req, res) {
  * Function executed on logout
  */
 function onLogout(req,res) {
+	var email = req.session.email;
 	req.session.destroy(function(err) {
 		if(err){
+			require('./debug.js').log(5, 'backend', 'Logout issue with email: ' + email + ' error: ' + err);
 			console.log(err);
 		} else {
 			res.redirect('/');
 		}
 	});
 }
+
+/*
+function onLogout(req, res) {
+	var email = req.session.email;
+	console.log('logout')
+	req.session.destroy(function(err) {
+  	// cannot access session here
+  	require('./debug.js').log(5, 'backend', 'Logout POST received with email: ' + email);
+  	res.end('done');
+	})
+}
+*/
 
 /**
  *
@@ -380,11 +423,22 @@ function onDeviceUpdate(msg, socket) {
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_update with: ' + JSON.stringify(msg));
 	var mem = components.getFacility('mem');
 	var devices = mem.getClientDevices(accountID);
+	var device = devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID];
+
+	/*if (msg.code == IGNORE_DISCOVERED_DEVICE) {
+		device.discovered = false;
+		return;
+	}*/
+
+	/* make the discovered device "undiscovered" so that once configured it disappears from the discovered devices page */
+	if (device.discovered == true) {
+		device.discovered = false;
+	}
 	
-	devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID].desc = msg.desc;
-	devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID].activated = msg.activated;
-	require('./configdb.js').updateDevice(accountID, devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID]);
-	socket.emit('device', devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID]);
+	device.desc = msg.desc;
+	device.activated = msg.activated;
+	require('./configdb.js').updateDevice(accountID, device);
+	socket.emit('device', device);
 }
 
 /**
@@ -442,7 +496,8 @@ function pushAllDevices(socket, accountID) {
 						if (devID > 0 && devID < 256) {
 							require('./debug.js').log(5, 'backend', '[' + accountID + '] Emitting device data of raspyID: ' + raspyID +
 									' ardID: ' + ardID + ' devID: ' + devID);
-							socket.emit('device', devices.raspys[raspyID].arduinos[ardID].devices[devID]);
+							var BFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(devices.raspys[raspyID].arduinos[ardID].devices[devID]);
+							socket.emit('device_status', BFPDeviceStatus);
 						}
 					}
 				}
@@ -452,7 +507,7 @@ function pushAllDevices(socket, accountID) {
 }
 
 /**
- * pushes all device data to a socket identified by accountID
+ * pushes all arduino data to a socket identified by accountID
  */
 function pushAllArduinos(socket, accountID) {
 	mem = components.getFacility('mem');
@@ -479,6 +534,7 @@ function pushAllArduinos(socket, accountID) {
 		}
 	}
 }
+
 
 /**
  * Function exectued on closure of WS connection
