@@ -1,0 +1,70 @@
+.top-buffer { 
+    margin-top:20px; 
+    min-height:0px !important;
+}
+
+.arduino-col { 
+    margin-top:40px; 
+    min-height:0px !important;
+    background: #ededed;
+}
+
+.switch-button-margin {
+    margin-top:8px; 
+    margin-bottom:8px;
+    min-width:120px
+}
+
+/* On Button */
+.conf-button {
+    margin-top:8px; 
+    margin-bottom:8px;
+    min-width:120px;
+    background: #4744ff;
+    border-color: #3331bc;
+}
+
+.conf-button:hover {
+    margin-top:8px; 
+    margin-bottom:8px;
+    min-width:120px;
+    background: #3331bc;
+    border-color: #3331bc;
+}
+
+.conf-button:active {
+    margin-top:8px; 
+    margin-bottom:8px;
+    min-width:120px;
+    background: #2a289b;
+    border-color: #2a289b;
+}
+
+.conf-button:disabled {
+    margin-top:8px; 
+    margin-bottom:8px;
+    min-width:120px;
+    background: #8987ff;
+    border-color: #8987ff;
+}
+
+
+.section-center__full {
+    height: 12vh;
+    display: flex;
+    justify-content: left;
+    align-items: center;
+}
+
+.container{
+    max-width: 450px;
+}
+
+.row-settings {
+    background: #c4c4c4;
+    margin-left: 8px;
+    margin-right: 8px;
+    min-width: 300px;
+}
+
+

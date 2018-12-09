@@ -1,0 +1,104 @@
+.top-buffer { 
+	margin-top:20px; 
+	min-height:0px !important;
+	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.switch-button-margin {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px
+}
+
+/* On Button */
+.switch-button-on {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #f4d142;
+	border-color: #d1b338;
+}
+
+.switch-button-on:hover {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #d1b338;
+	border-color: #d1b338;
+}
+
+.switch-button-on:active {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #c1a634;
+	border-color: #c1a634;
+}
+
+.switch-button-on:disabled {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #e5d695;
+	border-color: #e5d695;
+}
+
+/* Off Button */
+.switch-button-off {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #aaaaaa;
+	border-color: #969696;
+}
+
+.switch-button-off:hover {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #969696;
+	border-color: #969696;
+}
+
+.switch-button-off:active {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #898989;
+	border-color: #898989;
+}
+
+.switch-button-off:disabled {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #d1d1d1;
+	border-color: #d1d1d1;
+}
+
+/* Error button - when the device indicates an error */
+
+.switch-button-error:disabled {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #ffadad;
+	border-color: #ff5656;
+	color: #ff5656;
+}
+
+
+.section-center__full {
+	height: 12vh;
+	display: flex;
+	justify-content: left;
+	align-items: center;
+}
+
+.row-settings {
+	background: #c4c4c4;
+}
+
+.container{
+    max-width: 300px;
+}
