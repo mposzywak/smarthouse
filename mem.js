@@ -20,7 +20,15 @@ var Mem = function() {
 	//this.raspyID = require('./config.js').cloud.raspy;
     // raspyID parameter is only used by ARiF related function, so this setting on the cloud doesn't matter.
 	this.db = require('./configdb.js');
-	
+
+}
+
+var memory = new Mem();
+
+Mem.prototype.initialize = function(callback) {
+	var mem = this;
+	var devices = this.devices;
+
 	if (!this.config.cloud.enabled) {
 		this.raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
 		this.accountID = this.config.cloud.id;
@@ -37,6 +45,7 @@ var Mem = function() {
 				devices[accountID] = raspys;
 				devices[accountID].raspys[raspyID].pending = {};
 				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully [Raspy mode]');
+				callback(null);
 			}
 		});
 		this.rcpclient = require('./rcpclient.js');
@@ -48,16 +57,11 @@ var Mem = function() {
 				
 				mem['devices'] = accounts;
 				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully [Cloud mode]');
+				callback(null)
 			}
 		});
 	}
-    //this.raspyID = this.raspyid.split('-')[0];
-    
-	//this.db = require('./configdb.js');
-	
 }
-
-var memory = new Mem();
 
 /* function registers new Arduino to the system, should be called every time registration command is received on the ARIF 
    it returns arduino ID
@@ -98,7 +102,7 @@ Mem.prototype.registerArduino = function(accountID, IP) {
 				}
 				ardIDDec = parseInt(ardID, 10);
 				ardIDDec += 1
-				ardID = ardidDec.toString(10);
+				ardID = ardIDDec.toString(10);
 				/* we can register only 250 arduinos */
 				if (ardID == '250') return 0; /* fa is 250 */
 			}
@@ -170,56 +174,65 @@ Mem.prototype.deleteArduino = function(accountID, raspyID, ardID) {
 	this.db.deleteArduino(accountID, arduino);
 }
 /* the method puts the latest status into the mem cache 
-	Ideally it takes as arguments, URL of the incoming request (should already be validated)
-	IP address and the time the request came. 
-	URL - can be taken from req.originalUrl of express req object.
-	IP  - can be taken from req.connection.remoteAddress of express req object.
-	date - when the GET has been received
+	As an argument it takes BFPDeviceStatus object and accountID.
 */
-Mem.prototype.setDeviceStatus = function(accountID, devID, ardID, devType, dataType, value, date, IP) {
+Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	var isDeviceNew = false;
 	var db = this.db;
+	var device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
 
-	if (typeof(this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID]) == 'undefined') {
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID] = {};
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].desc = '';
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].activated = false;
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].IP = IP;
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].devType = devType;
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].dataType = dataType;
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].raspyID = this.raspyID;
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].ardID = ardID;
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].devID = devID;
-		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].alive = true;
+	if (typeof(device) == 'undefined') {
+		var newDevice = {};
+		newDevice.desc = '';
+		newDevice.activated = false;
+		newDevice.discovered = false;
+		newDevice.IP = BFPDeviceStatus.body.IP;
+		newDevice.devType = BFPDeviceStatus.body.devType;
+		newDevice.dataType = BFPDeviceStatus.body.dataType;
+		newDevice.raspyID = this.raspyID;
+		newDevice.ardID = BFPDeviceStatus.body.ardID;
+		newDevice.devID = BFPDeviceStatus.body.devID;
+		newDevice.alive = true;
 		isDeviceNew = true;
 		this.components.getFacility('debug').log(4, 'mem', 'existing accountID id: ' + accountID + ', existing Arduino registered: ' + 
-				ardID + ' and new device: ' + devID);
+				BFPDeviceStatus.body.ardID + ' and new device: ' + BFPDeviceStatus.body.devID);
+		this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
+		device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+	}
+
+	if (device.activated == true) { 
+		device.discovered = true;
+	} else {
+		device.discovered = false;
 	}
 	
 	// save the old value for later comparison
-	var oldValue = this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].value
+	var oldValue = device.value
 	
-	this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].value = value;
+	device.value = BFPDeviceStatus.body.value;
 	
-	this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].date = date.getTime();
+	device.date = BFPDeviceStatus.body.date.getTime();
 
 	// when we detect that the new value is different then the old one.
-	if (oldValue != this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].value) {
-		onValueChange(accountID, devID, ardID, this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID]);
+	if (oldValue != device.value) {
+		
 		if (isDeviceNew) {
-			this.db.insertDevice(accountID, this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID]);
+			this.db.insertDevice(accountID, device);
 		} else {
-			this.db.updateDevice(accountID, this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID]);
+			this.db.updateDevice(accountID, device);
 		}
-		this.rcpclient.sendDeviceStatus(this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID]);
-		this.components.getFacility('debug').log(5, 'mem', 
-			'For accountID id: ' + accountID + ', Arduino: "' + ardID + '", Device: "' + devID +
-			'" Record updated by ARIF -> IP: ' + this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].IP + 
-			' devType: ' + this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].devType +
-			' dataType: ' + this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].dataType +
-			' valule: ' + this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].value +
-			' date: ' + JSON.stringify(this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].date));
 	}
+	/* always send the newest device */
+	var newBFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
+	onValueChange(accountID, newBFPDeviceStatus);
+	this.rcpclient.sendDeviceStatus(device);
+	this.components.getFacility('debug').log(5, 'mem', 
+		'For accountID id: ' + accountID + ', Arduino: "' + device.ardID + '", Device: "' + device.devID +
+		'" Record updated by ARIF -> IP: ' + device.IP + 
+		' devType: ' + device.devType +
+		' dataType: ' + device.dataType +
+		' valule: ' + device.value +
+		' date: ' + JSON.stringify(device.date));
 }
 
 /* set new device. This procedure is initiated on CMD 0x32 devMapping */
@@ -229,6 +242,7 @@ Mem.prototype.setDevice = function(accountID, devID, ardID, devType, date, IP, c
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID] = {};
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].desc = '';
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].activated = false;
+		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].discovered = false;
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].IP = IP;
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].devType = devType;
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID].controlledDevs = '';
@@ -294,14 +308,16 @@ Mem.prototype.setRCPDeviceStatus = function(vpnid, raspyip, device) {
 		if  (typeof(this.devices[accountID].raspys[raspyID].arduinos[device.ardID].devices[device.devID]) == 'undefined') {
 			// device doesn't exist
 			this.devices[accountID].raspys[raspyID].arduinos[device.ardID].devices[device.devID] = device;
-			onValueChange(accountID, device.devID, device.ardID, this.devices[accountID].raspys[raspyID].arduinos[device.ardID].devices[device.devID]);
+			var BFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
+			onValueChange(accountID, BFPDeviceStatus);
 			this.db.insertDevice(accountID, this.devices[accountID].raspys[raspyID].arduinos[device.ardID].devices[device.devID])
 		} else {
 			// device exists, just check the value
 			if (this.devices[accountID].raspys[raspyID].arduinos[device.ardID].devices[device.devID].value != device.value){
 				this.devices[accountID].raspys[raspyID].arduinos[device.ardID].devices[device.devID].value = device.value;
 				this.devices[accountID].raspys[raspyID].arduinos[device.ardID].devices[device.devID].date = device.date;
-				onValueChange(accountID, device.devID, device.ardID, this.devices[accountID].raspys[raspyID].arduinos[device.ardID].devices[device.devID]);
+				var BFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
+				onValueChange(accountID, BFPDeviceStatus);
 				this.db.updateDevice(accountID, this.devices[accountID].raspys[raspyID].arduinos[device.ardID].devices[device.devID])
 			}
 		}
@@ -320,19 +336,38 @@ Mem.prototype.setRCPDeviceStatus = function(vpnid, raspyip, device) {
 
 /* function executed if the new value of the mem cache is different than the old one.
    The output interfaces, like the backend need to be updated */
-function onValueChange(accountID, devID, ardID, device) {
+function onValueChange(accountID, BFPDeviceStatus) {
 	io = this.components.getFacility('backend').io;
-	io.of('/iot').to(accountID).emit('device', device);
+	io.of('/iot').to(accountID).emit('device_status', BFPDeviceStatus);
+}
+
+
+function onArduinoChange(accountID, raspyID, ardID) {
+	var io = this.components.getFacility('backend').io;
+	var arduinoToSend = {};
+	var arduino = require('./mem.js').devices[accountID].raspys[raspyID].arduinos[ardID];
+
+	arduinoToSend.ardID = ardID;
+	if (typeof(arduino.name) != 'undefined')
+		arduinoToSend.name = arduino.name;
+	arduinoToSend.IP = arduino.IP;
+	arduinoToSend.alive = arduino.alive;
+	arduinoToSend.raspyID = raspyID;
+	require('./debug.js').log(5, 'mem', '[' + accountID + '] Emitting Arduino data of raspyID: ' + arduino.raspyID +
+									' ardID: ' + arduino.ardID);
+	io.of('/iot').to(accountID).emit('arduino', arduinoToSend);
 }
 
 function sendArduinoDeadMessage(accountID, raspyID, ardID) {
 	var message = {};
+	var arduino = 
 	message.code = MSG_ARDUINO_DEAD;
 	message.raspyID = raspyID;
 	message.ardID = ardID;
 	
 	io = this.components.getFacility('backend').io;
 	io.of('/iot').to(accountID).emit('message', message);
+	onArduinoChange(accountID, raspyID, ardID);
 }
 
 function sendArduinoAliveMessage(accountID, raspyID, ardID) {
@@ -343,6 +378,7 @@ function sendArduinoAliveMessage(accountID, raspyID, ardID) {
 	
 	io = this.components.getFacility('backend').io;
 	io.of('/iot').to(accountID).emit('message', message);
+	onArduinoChange(accountID, raspyID, ardID);
 }
 
 /**
@@ -464,17 +500,21 @@ Mem.prototype.clearRaspyDeadCounter = function(accountID, raspyID) {
 
 /* sets a given Arduino status dead and all its devices (both raspy and cloud) */
 Mem.prototype.setArduinoDead = function(accountID, raspyID, ardID) {
-	this.devices[accountID].raspys[raspyID].arduinos[ardID].alive = false;
-	for (var devID in this.devices[accountID].raspys[raspyID].arduinos[ardID].devices) {
-		if (this.devices[accountID].raspys[raspyID].arduinos[ardID].devices.hasOwnProperty(devID)){
+	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
+
+	arduino.alive = false;
+
+	for (var devID in arduino.devices) {
+		if (arduino.devices.hasOwnProperty(devID)){
 			var device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
 			
 			if (device.alive == true || typeof(device.alive) == 'undefined') {
 				this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
-				onValueChange(accountID, raspyID, ardID, device);
+				var BFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
+				onValueChange(accountID, BFPDeviceStatus);
 				
 				this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] ArdID and its devIDs declared dead: ' + 
-						ardID + ' on raspyID: ' + raspyID + 'devID: ' + devID);
+						ardID + ' on raspyID: ' + raspyID + ' devID: ' + devID);
 			}
 		}
 	}
@@ -491,8 +531,9 @@ Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
 			if (device.alive == false || typeof(device.alive) == 'undefined') {
 				device.alive = true;
 				this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] ArdID and its devIDs declared alive: ' + 
-						ardID + ' on raspyID: ' + raspyID + 'devID: ' + devID);
-				onValueChange(accountID, raspyID, ardID, device);
+						ardID + ' on raspyID: ' + raspyID + ' devID: ' + devID);
+				var BFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
+				onValueChange(accountID, BFPDeviceStatus);
 			}
 		}
 	}
@@ -603,6 +644,16 @@ Mem.prototype.updateArduino = function(accountID, raspyID, ardID, name) {
 	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
 	
 	arduino.name = name;
+}
+
+/**
+ * Clear the discovered flag, so that it doesn't appear anymore in discovered devices tab.
+ *
+ */
+Mem.prototype.clearDeviceDiscovered = function(accountID, raspyID, ardID, devID) {
+	var device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+
+	device.discovered = false;
 }
 
 module.exports = memory;
