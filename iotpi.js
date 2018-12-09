@@ -7,36 +7,51 @@
 
 /* load the config file */
 var config = require('./config.js');
-var debug = require('./debug.js')
-
+var debug = require('./debug.js');
+var bfp = require('./bfp.js');
 var init = require('./init.js');
 init.setInit('main');
 
 
 var debug = require('./debug.js').enableDebugServer();
 var mem = require('./mem.js');
-var backend = require('./backend.js');
-var rcp = require('./rcpserver.js');
 
-/* ARiF HTTP server */
-init.setInit('ARiF');
-var app = require('express')();
-var express = require('express');
-var http = require('http');
-var server = http.createServer(app).listen(config.arif.port || 32300, onHTTPListen);
-server.on('error', onHTTPError);
+var backend, rcp, app, express, http, server, arif;
 
-var arif = require('./arif.js');
+mem.initialize(function(error) {
+	if (error != null) {
+		debug.log(1, 'arif', 'Closing application. Could not initialize mem structure: ' + error);
+		process.exit(1);
+	}
 
-/* multicast server setup for BB */
-const dgram = require('dgram');
-const BBSocket = dgram.createSocket('udp4');
+	backend = require('./backend.js');
+	rcp = require('./rcpserver.js');
 
+	/* ARiF HTTP server */
+	if (!config.cloud.enabled) {
+		init.setInit('ARiF');
+		app = require('express')();
+		express = require('express');
+		http = require('http');
+		server = http.createServer(app).listen(config.arif.port || 32300, onHTTPListen);
+		server.on('error', onHTTPError);
 
+		arif = require('./arif.js');
 
-init.setCallback(onInitComplete);
-init.clearInit('main');
-/* end of all initialization actions */
+		app.post('/*', onPostRequest);
+	}
+	/* multicast server setup for BB */
+	//const dgram = require('dgram');
+	//const BBSocket = dgram.createSocket('udp4');
+
+	init.setCallback(onInitComplete);
+	init.clearInit('main');
+	/* end of all initialization actions */
+
+	/* accept requests for all URLs, filter later */
+
+});
+
 
 
 
@@ -48,8 +63,7 @@ const ARIF_LIGHT_OFF = '2';
 const ARIF_DEV_STATUS = 'status';
 const ARIF_DEV_MAPPING = '32';
 
-/* accept requests for all URLs, filter later */
-app.post('/*', onPostRequest);
+
 //app.use(express.static('smarthouse'))
 
 /* Execute each time when HTTP POST request comes into ARiF interface */
@@ -67,14 +81,12 @@ function onPostRequest(req, res) {
 	
 	var url = req.originalUrl;
 	var params = getParams(url);
-	//var result = url.match("^(\/[0-9a-fA-F]{1,2}){3}");
-	var devID = req.query.devID; //url.split('/')[1];
-	var ardID = params.ardID; //url.split('/')[2];
-	var raspyID = params.raspyID; //url.split('/')[3];
-	var cmd = params.cmd; //url.split('/')[4];
-	console.log('devID: ' + devID);
-	console.log('ardID: ' + ardID);
-	console.log('raspyID: ' + raspyID);
+	
+	var devID = req.query.devID; 
+	var ardID = params.ardID; 
+	var raspyID = params.raspyID; 
+	var cmd = params.cmd; 
+
 	
 	if (devID && ardID && raspyID && cmd && url.length < 256 && devID != '0') {
 		//debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + command);
@@ -87,9 +99,12 @@ function onPostRequest(req, res) {
 				var devType = params.devType; // url.split('/')[5];
 				var dataType = params.dataType; //url.split('/')[6];
 				var value = params.value; //url.split('/')[7];
-				if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP))
-					mem.setDeviceStatus(config.cloud.id, devID, ardID, devType, dataType, value, reqDate, srcIP);
-				else {
+				var userIndicaitonHeader = req.get('iot-user');
+				console.log('User indication Header: ' + userIndicaitonHeader);
+				if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP)) {
+					var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP);
+					mem.setDeviceStatus(config.cloud.id, BFPDeviceStatus);
+				} else {
 					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);
 					res.writeHead(404, { 'Content-Type' : 'text/plain'});
 					res.end('Error: probably wrong URL');

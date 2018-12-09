@@ -47,11 +47,11 @@ Devices.prototype.toggle = function(devID) {
 		return false;
 	} else {
 		var control = this.devices[devID].control;
-		require('./arif.js').sendDeviceStatus(devID, this.getDeviceStatus(devID));
+		require('./arif.js').sendDeviceStatus(devID, this.getDeviceStatus(devID), true);
 		for (var i in control) {
 			console.log('dev: ' + control[i]);
 			this.digitOUTChangeState(control[i]);
-			require('./arif.js').sendDeviceStatus(control[i], this.getDeviceStatus(control[i]));
+			require('./arif.js').sendDeviceStatus(control[i], this.getDeviceStatus(control[i]), true);
 		}
 		return true;
 	}

@@ -112,6 +112,7 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 			case 'ardID':
 			case 'devID':
 			case 'raspyID':
+			case 'discovered':
 			case 'alive': // there is no point in saving this, as it will be always updated real-time and on boot
 				break;
 			default:

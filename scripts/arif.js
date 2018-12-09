@@ -16,23 +16,6 @@ var ARIF = function() {
 	this.debug = require('./debug.js');
 	this.arduino = require('./devices');
 	
-	/* ARiF HTTP server */
-	/*var app = require('express')();
-	var express = require('express');
-	var http = require('http');
-	var server = http.createServer(app).listen(this.config.arif.port || 32300, onHTTPListen);
-	server.on('error', onHTTPError);
-
-	app.post('*', onPostRequest);
-
-	var dgram = require('dgram'); 
-	this.BBserver = dgram.createSocket("udp4"); 
-	var BBs = this.BBserver;
-	this.BBserver.bind(5007, function(){
-		BBs.setBroadcast(true);
-		BBs.setMulticastTTL(2);
-		BBs.addMembership('224.1.1.1');
-	}); */
 
 	/* missing heartbeats */
 	this.missingHeartbeats = 3;
@@ -174,7 +157,7 @@ function onHTTPError(err) {
 
 
 /* send status update of a device */
-ARIF.prototype.sendDeviceStatus = function(devID, status) {
+ARIF.prototype.sendDeviceStatus = function(devID, status, user) {
 	var http = require('http');
 	var config = require('./config.js');
 	var debug = this.debug;
@@ -184,6 +167,12 @@ ARIF.prototype.sendDeviceStatus = function(devID, status) {
 
 	var devType = this.arduino.getDeviceType(devID);
 	var dataType = 'bool';
+
+	var headers = {};
+	if (user) {
+		headers = { 'iot-user' : 'true' };
+	}
+
 	var options = {
 		hostname: RASPYIP,
 		port: this.config.arif.port || 32300,
@@ -192,7 +181,7 @@ ARIF.prototype.sendDeviceStatus = function(devID, status) {
 				'&dataType=' + dataType + '&value=' + status,
 		method: 'POST',
 		agent: false,
-		headers: {}
+		headers: headers
 	};
 	
 	if (this.srcIP)
@@ -214,7 +203,7 @@ ARIF.prototype.sendDeviceStatus = function(devID, status) {
 ARIF.prototype.sendAllDeviceStatus = function() {
 	var devices = require('./devices.js');
 	for (var devID in devices.devices) {
-		console.log('Sending devices status of device: ' + devID + ' status: ' + devices.getDeviceStatus(devID));
+		//console.log('Sending devices status of device: ' + devID + ' status: ' + devices.getDeviceStatus(devID));
 		this.sendDeviceStatus(devID, devices.getDeviceStatus(devID));
 	}
 }
