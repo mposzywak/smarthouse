@@ -27,6 +27,15 @@
 }
 
 /* On Button */
+.conf-button {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	background: #4744ff;
+	border-color: #3331bc;
+}
+
+/* On Button */
 .switch-button-on {
 	margin-top:8px; 
 	margin-bottom:8px;
@@ -57,6 +66,12 @@
 	min-width:120px;
 	background: #e5d695;
 	border-color: #e5d695;
+}
+
+.ignore-all-button  {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
 }
 
 /* Allow Button */
@@ -117,6 +132,11 @@
 	</div>
 	<br><h1>Discovered Devices</h1>
 	<p> </p>
+	<div class="row justify-content-md-center top-buffer" id="discovered_buttons"> 
+		<div class="col-sm text-white row-settings"> 
+			<button type="button" class="btn btn-danger ignore-all-button" onclick=""> Ignore All </button> 
+		</div> 
+	</div>
 </div>
 
 <div class="container" id="devices">
@@ -130,6 +150,8 @@
 	const ALLOW_PENDING_ARD = 0;
 	const REMOVE_PENDING_ARD = 1;
 
+	const IGNORE_DISCOVERED_DEVICE = 2;
+
     var socket = io('/iot');
 	
 	// set connection actions
@@ -138,41 +160,46 @@
 	socket.on('error', onError);
 	socket.on('pending_arduino', onPendingArduino);
 	socket.on('message', onMessage);
-	socket.on('device', receiveDevice);
+	socket.on('device_status', onDeviceStatus);
 	
-	function receiveDevice(message) {
-		var devID = message.devID;
-		var ardID = message.ardID;
-		var raspyID = message.raspyID;
-		var devType = message.devType;
-		var value = message.value;
-		var FID = raspyID + '-' + ardID + '-' + devID;
-		if (document.getElementById(FID + '_row') == null) {
-			var row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row"> \
-							<div class="col-sm text-white row-settings" id="' + ardIPConv + '_text"> New Arduino spotted, \
-							IP: ' + ardIP + '<br> First seen: ' + firstDate + ' Last seen: ' + lastDate + '</div> \
+	function onDeviceStatus(BFPDeviceStatus) {
+		var devID = BFPDeviceStatus.body.devID;
+		var ardID = BFPDeviceStatus.body.ardID;
+		var ardIP = BFPDeviceStatus.body.IP;
+		var raspyID = BFPDeviceStatus.body.raspyID;
+		var devType = BFPDeviceStatus.body.devType;
+		var value = BFPDeviceStatus.body.value;
+		var ardIPConv = ardIP.replace(/[\.\:]/g, '_');
+		var DDID = raspyID + '-' + ardID + '-' + devID + '-' + ardIPConv; // DDID - Device Discovery ID
+		var deviceIDArg = '?raspyID=' + raspyID + '&ardID=' + ardID + '&devID=' + devID;
+		console.log('Device status.');
+		//console.log('print ' + ardIP);
+		var ardIPConv = ardIP.replace(/\./g, '_');
+		if (document.getElementById(DDID + '_row') == null && BFPDeviceStatus.body.activated == false) {
+			var row = '<div class="row justify-content-md-center top-buffer" id="' + DDID + '_row"> \
+							<div class="col-sm text-white row-settings" id="' + DDID + '_text"> New Device spotted, \
+							type: ' + devType + '<br></div> \
 							<div class="col-sm text-white row-settings"> \
-								<button type="button" class="btn switch-button-allow" id="' + ardIPConv + '_button"> \
-									<span class="fa fa-check" aria-hidden="true"></span> Allow</button> \
-								<button type="button" class="btn switch-button-on" id="' + ardIPConv + '_ignore"> \
+								<button type="button" class="btn switch-button-on" id="' + DDID + '_ignore"> \
 									<span class="fa fa-ban" aria-hidden="true"></span> Ignore</button> \
+								<button type="button" class="btn text-white conf-button" onclick="location.href=\'device-configuration-discovered' + deviceIDArg + '\';"> \
+									<span class="fa fa-cog" aria-hidden="true"></span> \
+									Configure \
+							</button> \
 							</div> \
 					</div>';
 			$("#devices").append(row);
 
-			$("#" + ardIPConv + "_button").on( 'click', function() {
-				allowPendingArduino(ardIP, raspyID);
-				$("#" + ardIPConv + "_row").remove();
+			$("#" + DDID + "_button").on( 'click', function() {
+				configureDiscoveredDevice(raspyID, ardID, devID);
+				$("#" + DDID + "_row").remove();
 				
 			});
-			$("#" + ardIPConv + "_ignore").on( 'click', function() {
-				removePendingArduino(ardIP, raspyID);
-				$("#" + ardIPConv + "_row").remove();
+			$("#" + DDID + "_ignore").on( 'click', function() {
+				ignoreDiscoveredDevice(raspyID, ardID, devID);
+				$("#" + DDID + "_row").remove();
 			});
-		} else {
-			$("#" + ardIPConv + "_text").text(' New Arduino spotted, \
-				IP: ' + ardIP + '<br> First seen: ' + firstDate + ' Last seen: ' + lastDate);
-		}
+		} 
 	}
 	
 	function onPendingArduino(message) {
@@ -185,7 +212,7 @@
 		if (document.getElementById(ardIPConv + '_row') == null) {
 			var row = '<div class="row justify-content-md-center top-buffer" id="' + ardIPConv + '_row"> \
 							<div class="col-sm text-white row-settings" id="' + ardIPConv + '_text"> New Arduino spotted, \
-							IP: ' + ardIP + '<br> First seen: ' + firstDate + ' Last seen: ' + lastDate + '</div> \
+							IP: ' + ardIP + ' <br> First seen: ' + firstDate + ' <br> Last seen: ' + lastDate + '</div> \
 							<div class="col-sm text-white row-settings"> \
 								<button type="button" class="btn switch-button-allow" id="' + ardIPConv + '_button"> \
 									<span class="fa fa-check" aria-hidden="true"></span> Allow</button> \
@@ -205,9 +232,23 @@
 				$("#" + ardIPConv + "_row").remove();
 			});
 		} else {
-			$("#" + ardIPConv + "_text").text(' New Arduino spotted, \
-				IP: ' + ardIP + '<br> First seen: ' + firstDate + ' Last seen: ' + lastDate);
+			$("#" + ardIPConv + "_text").html(' New Arduino spotted, \
+				IP: ' + ardIP + ' <br> First seen: ' + firstDate.toLocaleString('en-GB', { hour:'numeric', minute:'numeric', second:'numeric', hour12:false } ) + ' <br> Last seen: ' + lastDate);
 		}
+	}
+
+	function configureDiscoveredDevice(raspyID, ardID, devID) {
+
+	}
+
+	function ignoreDiscoveredDevice(raspyID, ardID, devID) {
+		var message = {};
+		message.code = IGNORE_DISCOVERED_DEVICE;
+		message.ardID = ardID;
+		message.raspyID = raspyID;
+		message.devID = devID;
+		
+		socket.emit('device_update', message);
 	}
 
 	function allowPendingArduino(ardIP, raspyID) {

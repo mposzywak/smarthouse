@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>Bootstrap Example</title>
+	<title>Active Devices</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
@@ -11,115 +11,11 @@
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
 	<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
 	<script src="js/smarthouse.js"></script>
+	<script src="js/device-active.js"></script>
 	<script src="js/ui_load.js"></script>
+	<link type="text/css" rel="stylesheet" href="css/device-active.css" crossorigin="anonymous">
 </head>
-<style>
-.top-buffer { 
-	margin-top:20px; 
-	min-height:0px !important;
-	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-}
 
-.switch-button-margin {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px
-}
-
-/* On Button */
-.switch-button-on {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #f4d142;
-	border-color: #d1b338;
-}
-
-.switch-button-on:hover {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #d1b338;
-	border-color: #d1b338;
-}
-
-.switch-button-on:active {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #c1a634;
-	border-color: #c1a634;
-}
-
-.switch-button-on:disabled {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #e5d695;
-	border-color: #e5d695;
-}
-
-/* Off Button */
-.switch-button-off {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #aaaaaa;
-	border-color: #969696;
-}
-
-.switch-button-off:hover {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #969696;
-	border-color: #969696;
-}
-
-.switch-button-off:active {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #898989;
-	border-color: #898989;
-}
-
-.switch-button-off:disabled {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #d1d1d1;
-	border-color: #d1d1d1;
-}
-
-/* Error button - when the device indicates an error */
-
-.switch-button-error:disabled {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #ffadad;
-	border-color: #ff5656;
-	color: #ff5656;
-}
-
-
-.section-center__full {
-	height: 12vh;
-	display: flex;
-	justify-content: left;
-	align-items: center;
-}
-
-.row-settings {
-	background: #c4c4c4;
-}
-
-.container{
-    max-width: 300px;
-}
-
-</style>
 <body>
 
 
@@ -145,74 +41,79 @@
 	socket.on('connect', onConnect);
 	socket.on('connect_error', onConnectError);
 	socket.on('error', onError);
-    socket.on('device', receiveDevice);
+    socket.on('device_status', onDeviceStatus);
 	socket.on('device_response', onResponse);
 	socket.on('message', onMessage);
 	
-	function receiveDevice(msg) {
-		updateDevice(msg);
-		var FID = msg.raspyID + '-' + msg.devID + '-' + msg.ardID;
-		console.log('got value');
-		if (msg.activated == true && msg.devType == TYPE_DIGITOUT) {
-		
+	function onDeviceStatus(BFPDeviceStatus) {
+		updateDevice(BFPDeviceStatus.body);
+		var FID = BFPDeviceStatus.body.raspyID + '-' + BFPDeviceStatus.body.devID + '-' + BFPDeviceStatus.body.ardID;
+		console.log('got value: ' + BFPDeviceStatus.body.activated);
+		if (BFPDeviceStatus.body.devType == TYPE_DIGITOUT) {
 			if (document.getElementById(FID + '_row') == null) {
-				/* this is a new device so whole div structure needs to be created */
-				addActiveDeviceTableRow(msg);
-				$("#" + FID + "_button").on( 'click', function() {
-					console.log('on clicked FID: ' + FID)
-					var device = {};
-					var FMessage = {};
-					device.ardID = msg.ardID;
-					device.devID = msg.devID;
-					device.raspyID = msg.raspyID;
-					FMessage.command = BFP_LIGHTON;
-					if (getDeviceValue(device) == '1')
-						FMessage.command = BFP_LIGHTOFF;
-					FMessage.device = device;
-					var buttonFID = FID;
-					setDeviceCommandOn(device);
-					disableLightButton(device);
-					setDeviceTimer(device, setTimeout(function() { onCommandTimeout(device); }, 5000));
-					socket.emit('device_command', FMessage);
-				});
+				if (BFPDeviceStatus.body.activated == true) {
+					/* this is a new device so whole div structure needs to be created */
+					addActiveDeviceTableRow(BFPDeviceStatus.body);
+					$("#" + FID + "_button").on( 'click', function() {
+						console.log('on clicked FID: ' + FID)
+						/*var device = {};
+						var BFPDeviceCommand = {};
+						BFPDeviceCommand.body = {};
+						BFPDeviceCommand.header = {};
+						device.ardID = BFPDeviceStatus.body.ardID;
+						device.devID = BFPDeviceStatus.body.devID;
+						device.raspyID = BFPDeviceStatus.body.raspyID;
+						BFPDeviceCommand.header = BFP_LIGHTON;
+						if (getDeviceValue(device) == '1')
+							BFPDeviceCommand.header = BFP_LIGHTOFF;
+						BFPDeviceCommand.device = device;
+						var buttonFID = FID; */
+						var BFPDeviceCommand = BFPCreateDeviceCommandFromMem(BFPDeviceStatus.body);
+						setDeviceCommandOn(BFPDeviceStatus.body);
+						disableLightButton(BFPDeviceStatus.body);
+						setDeviceTimer(BFPDeviceStatus.body, setTimeout(function() { onCommandTimeout(BFPDeviceStatus.body); }, 5000));
+						socket.emit('device_command', BFPDeviceCommand);
+					});
+				}
 			} else {
 				/* the device already reported, structure needs to be filled in with new data */
 
-				if (msg.value == '0' && msg.alive == true)
-					offLightButton(msg);
-				else if (msg.value == '1' && msg.alive == true)
-					onLightButton(msg);
+				if (BFPDeviceStatus.body.value == '0' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
+					offLightButton(BFPDeviceStatus.body);
+				else if (BFPDeviceStatus.body.value == '1' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
+					onLightButton(BFPDeviceStatus.body);
 				else 
-					errorLightButton(msg);
+				{
+					errorLightButton(BFPDeviceStatus.body);
+				}
 
-				clearDeviceTimer(msg);
+				clearDeviceTimer(BFPDeviceStatus.body);
 			}
 		}
     }
 
-	function addActiveDeviceTableRow(device) {
-		var FID = device.raspyID + '-' + device.devID + '-' + device.ardID;
+	function addActiveDeviceTableRow(body) {
+		var FID = body.raspyID + '-' + body.devID + '-' + body.ardID;
 		var active = 'Off';
-		if (device.value == '1')
+		if (body.value == '1')
 			active = ' On';
 		
 		var row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row">';
-		row += '<div class="col-sm text-white row-settings">' + device.desc + '</div>';		
+		row += '<div class="col-sm text-white row-settings">' + body.desc + '</div>';		
 		row += '<div class="col-sm text-white row-settings">	\
 				<button type="button" class="btn" id="' + FID + '_button"> \
 				<span class="" aria-hidden="true" id="' + FID + '_icon"></span>' + active + '</button> \
 				</div> \
 				</div>';
-		//row += '<td id="' + FID + '_value">' + devValueGetName(device.devType, device.value) + '</td>';
-		//row += '<td>' + createLightButton(device) + createActivationButton(device) + '</td></tr>';
+
 		$("#devices").append(row);
 		
-		if (device.value == '0' && device.alive == true)
-			offLightButton(device);
-		else if (device.value == '1' && device.alive == true)
-			onLightButton(device);
+		if (body.value == '0' && body.alive == true)
+			offLightButton(body);
+		else if (body.value == '1' && body.alive == true)
+			onLightButton(body);
 		else 
-			errorLightButton(device);
+			errorLightButton(body);
 	}
 	
 	function updateActiveDeviceTableRow(device) {

@@ -21,7 +21,7 @@ BFP.prototype.BFPValidateDeviceCommand = function() {
  * 				function(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, activated, alive, desc)
  */
 BFP.prototype.BFPCreateDeviceStatus = function(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, activated, alive, desc) {
-	message = {};
+	var message = {};
 	message.header = {};
 	message.header.code = BFP_DEVICE_STATUS;
 	message.body = {};

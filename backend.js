@@ -345,7 +345,7 @@ function onWSAuthorize(socket, next) {
 			{
 				require('./debug.js').log(5, 'backend', 'Error while reading session data from DB for: ' + source + ' error: ' + error);
 			} else {
-				if (session) {
+				if (session || session.email) {
 					email = session.email;
 					require('./debug.js').log(5, 'backend', '[' + email + '] WS session established from: ' + source);
 					socket.session = session;
@@ -357,12 +357,12 @@ function onWSAuthorize(socket, next) {
 					socket.session = session;
 					pushAllDevices(socket, email);
 					pushAllArduinos(socket, email);
-					socket.on('device_update', function (msg) {
+					socket.on('device_settings', function (msg) {
 						//console.log('device_activate received');
 						onDeviceUpdate(msg, socket);
 					});
-					socket.on('device_command', function (msg) {
-						onDeviceCommand(msg, socket);
+					socket.on('device_command', function (BFPDeviceCommand) {
+						onDeviceCommand(BFPDeviceCommand, socket);
 					});
 					socket.on('update_pending_arduino', function (msg) {
 						onUpdatePendingArduino(msg, socket);
@@ -420,7 +420,7 @@ function onUpdateArduino(msg, socket) {
  */
 function onDeviceUpdate(msg, socket) {
 	var accountID = socket.session.email;
-	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_update with: ' + JSON.stringify(msg));
+	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_settings with: ' + JSON.stringify(msg));
 	var mem = components.getFacility('mem');
 	var devices = mem.getClientDevices(accountID);
 	var device = devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID];
@@ -438,19 +438,24 @@ function onDeviceUpdate(msg, socket) {
 	device.desc = msg.desc;
 	device.activated = msg.activated;
 	require('./configdb.js').updateDevice(accountID, device);
-	socket.emit('device', device);
+	var bfp = require('./bfp.js');
+	var BFPDeviceStatus = bfp.BFPCreateDeviceStatusFromMem(device);
+	console.log(JSON.stringify(BFPDeviceStatus));
+	var io = this.components.getFacility('backend').io;
+	io.of('/iot').to(accountID).emit('device_status', BFPDeviceStatus);
+	//socket.emit('device_status', BFPDeviceStatus);
 }
 
 /**
  * executed on received even 'device_command' from the front-end
  */
-function onDeviceCommand(msg, socket) {
+function onDeviceCommand(BFPDeviceCommand, socket) {
 	var accountID = socket.session.email;
-	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_command with: ' + JSON.stringify(msg));
+	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_command with: ' + JSON.stringify(BFPDeviceCommand));
 	var mem = components.getFacility('mem');
 	var devices = mem.getClientDevices(accountID);
-	var command = msg.command;
-	var device = mem.getDeviceStatus(accountID, msg.device.raspyID, msg.device.ardID, msg.device.devID);
+	var command = BFPDeviceCommand.header.command;
+	var device = mem.getDeviceStatus(accountID, BFPDeviceCommand.body.raspyID, BFPDeviceCommand.body.ardID, BFPDeviceCommand.body.devID);
 	if (!require('./config.js').cloud.enable) {
 		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as raspy, sending command over ARiF');
 		require('./arif.js').sendCommand(device, command, function(message) {

@@ -157,19 +157,20 @@
 	socket.on('connect', onConnect);
 	socket.on('connect_error', onConnectError);
 	socket.on('error', onError);
-    socket.on('device', receiveDevice);
+    socket.on('device_status', onDeviceStatus);
 	socket.on('device_response', onResponse);
 	socket.on('message', onMessage);
 	
 	
 	
-	function receiveDevice(msg) {
-		updateDevice(msg);
-		var FID = msg.raspyID + '-' + msg.devID + '-' + msg.ardID;
-		if (msg.raspyID == urlParams['raspyID'] && msg.ardID == urlParams['ardID'] && msg.devID == urlParams['devID']) {
-			$("#enabled").attr("checked", msg.activated);
-			if (msg.desc != '')
-				$("#name-input").attr("placeholder", msg.desc);
+	function onDeviceStatus(BFPDeviceStatus) {
+		updateDevice(BFPDeviceStatus.body);
+		
+		var FID = BFPDeviceStatus.body.raspyID + '-' + BFPDeviceStatus.body.devID + '-' + BFPDeviceStatus.body.ardID;
+		if (BFPDeviceStatus.body.raspyID == urlParams['raspyID'] && BFPDeviceStatus.body.ardID == urlParams['ardID'] && BFPDeviceStatus.body.devID == urlParams['devID']) {
+			$("#enabled").attr("checked", BFPDeviceStatus.body.activated);
+			if (BFPDeviceStatus.body.desc != '')
+				$("#name-input").attr("placeholder", BFPDeviceStatus.body.desc);
 		}
 	}
 	
@@ -192,7 +193,7 @@
 		device.devID = urlParams['devID'];
 		device.desc = $('#name-input').val();
 		device.activated = $('#enabled').is(':checked');
-		socket.emit('device_update', device);
+		socket.emit('device_settings', device);
 	});
 
 	

@@ -9,80 +9,12 @@
 	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
-	<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+	<script src="js/socket.io-1.2.0.js"></script>
 	<script src="js/smarthouse.js"></script>
 	<script src="js/ui_load.js"></script>
+	<link type="text/css" rel="stylesheet" href="css/device-configuration.css" crossorigin="anonymous">
 </head>
 <style>
-.top-buffer { 
-	margin-top:20px; 
-	min-height:0px !important;
-}
-
-.arduino-col { 
-	margin-top:40px; 
-	min-height:0px !important;
-	background: #ededed;
-}
-
-.switch-button-margin {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px
-}
-
-/* On Button */
-.conf-button {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #4744ff;
-	border-color: #3331bc;
-}
-
-.conf-button:hover {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #3331bc;
-	border-color: #3331bc;
-}
-
-.conf-button:active {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #2a289b;
-	border-color: #2a289b;
-}
-
-.conf-button:disabled {
-	margin-top:8px; 
-	margin-bottom:8px;
-	min-width:120px;
-	background: #8987ff;
-	border-color: #8987ff;
-}
-
-
-.section-center__full {
-	height: 12vh;
-	display: flex;
-	justify-content: left;
-	align-items: center;
-}
-
-.container{
-    max-width: 450px;
-}
-
-.row-settings {
-	background: #c4c4c4;
-	margin-left: 8px;
-	margin-right: 8px;
-	min-width: 300px;
-}
-
 
 </style>
 <body>
@@ -111,18 +43,20 @@
 	socket.on('connect', onConnect);
 	socket.on('connect_error', onConnectError);
 	socket.on('error', onError);
-    socket.on('device', receiveDevice);
+    socket.on('device_status', onDeviceStatus);
 	socket.on('arduino', receiveArduino);
+	socket.on('reconnect_error', onReconnectError);
+	socket.on('reconnect_failed', onReconnectFailed);
 	//socket.on('device_response', onResponse);
 	
-	function receiveDevice(msg) {
-		updateDevice(msg);
-		var FID = msg.raspyID + '-' + msg.devID + '-' + msg.ardID;
+	function onDeviceStatus(BFPDeviceStatus) {
+		updateDevice(BFPDeviceStatus.body);
+		var FID = BFPDeviceStatus.body.raspyID + '-' + BFPDeviceStatus.body.devID + '-' + BFPDeviceStatus.body.ardID;
 		//console.log('got value');
 		
-		if (document.getElementById('arduino-' + msg.ardID) == null) {
+		if (document.getElementById('arduino-' + BFPDeviceStatus.body.ardID) == null) {
 			/* this is a new device so whole div structure needs to be created */
-			addArduinoTableRow(msg);
+			addArduinoTableRow(BFPDeviceStatus.body);
 			
 		} else {
 			/* the device already reported, structure needs to be filled in with new data */
@@ -130,7 +64,7 @@
 		
 		if (document.getElementById(FID + '_row') == null) {
 			/* this is a new device so whole div structure needs to be created */
-			addDeviceTableRow(msg);
+			addDeviceTableRow(BFPDeviceStatus.body);
 			
 		} else {
 			/* the device already reported, structure needs to be filled in with new data */
@@ -164,7 +98,7 @@
 							<div class="col-sm text-white row-settings"> \
 								<button type="button" class="btn text-white conf-button" onclick="location.href=\'device-configuration-arduino' + deviceIDArg + '\';"> \
 									<span class="fa fa-cog" aria-hidden="true"></span> \
-									Configuration \
+									Configure \
 								</button> \
 							</div> \
 						</div> \
@@ -195,7 +129,7 @@
 						<div class="col-sm text-white row-settings"> \
 							<button type="button" class="btn text-white conf-button" onclick="location.href=\'device-configuration-single' + deviceIDArg + '\';"> \
 								<span class="fa fa-cog" aria-hidden="true"></span> \
-								Configuration \
+								Configure \
 							</button> \
 						</div> \
 					</div>';

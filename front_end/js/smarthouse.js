@@ -16,6 +16,7 @@ const TYPE_DIGITOUT = 'digitOUT';
 const MSG_ARDUINO_DEAD = 0;
 const MSG_ARDUINO_ALIVE = 1;
  
+const BFP_DEVICE_COMMAND = 'BFP_DEVICE_COMMAND';
 
 var devices = {};
 
@@ -100,64 +101,6 @@ function devTypeGetName(devType) {
 	}
 }
 
-
-function onLightButton(device) {
-	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
-	var iconID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_icon';
-	$('#' + buttonID).removeAttr("disabled", "disabled");
-	$('#' + buttonID).removeClass('switch-button-off');
-	$('#' + buttonID).removeClass('switch-button-error');
-	$('#' + buttonID).addClass('switch-button-on');
-	$('#' + buttonID).addClass('text-white');
-	$('#' + buttonID).html('<span class="fa fa-lightbulb-o" aria-hidden="true" id="' + iconID + '"></span> On');
-}
-
-function offLightButton(device) {
-	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
-	var iconID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_icon';
-	$('#' + buttonID).removeAttr("disabled", "disabled");
-	$('#' + buttonID).removeClass('switch-button-on');
-	$('#' + buttonID).removeClass('switch-button-error');
-	$('#' + buttonID).removeClass('text-white');
-	$('#' + buttonID).addClass('switch-button-off');
-	$('#' + buttonID).html('Off');
-}
-
-function errorLightButton(device) {
-	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
-	var iconID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_icon';
-	$('#' + buttonID).removeClass('switch-button-on');
-	$('#' + buttonID).removeClass('switch-button-off');
-	$('#' + buttonID).removeClass('text-white');
-	$('#' + buttonID).addClass('switch-button-error');
-	$('#' + buttonID).attr("disabled", "disabled");
-	$('#' + buttonID).html('<span class="fa fa-exclamation-circle" aria-hidden="true" id="' + iconID + '"></span> Disabled');
-	
-}
-
-function disableLightButton(device) {
-	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
-	$('#' + buttonID).attr("disabled", "disabled");
-	$('#' + buttonID).text('working...');
-}
-
-function enableLightButton(device) {
-	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
-	var iconID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_icon';
-	var value = devices[device.raspyID][device.ardID][device.devID].value;
-	
-	$('#' + buttonID).removeAttr("disabled");
-	$('#' + buttonID).removeClass('switch-button-error');
-	
-	if (value == '0') {
-		$('#' + buttonID).addClass('switch-button-off');
-		$('#' + buttonID).text('Off');
-	} else {
-		$('#' + buttonID).addClass('switch-button-on');
-		$('#' + buttonID).html('<span class="fa fa-lightbulb-o" aria-hidden="true" id="' + iconID + '"></span> On');
-	}
-
-}
 
 function getDeviceCommandStatus(device) {
 	return devices[device.raspyID][device.ardID][device.devID].command;
@@ -255,6 +198,8 @@ function onError() {
 	removeMsg();
 	displayErrorMsg('Cannot establish properly connection to the cloud. Try to re-login.');
 	WSConnection = CONNECTION_ERROR;
+	//window.location.replace('');
+	window.location.href = '/'
 }
 
 /* executed each time there is a failure during WS connection to the back end */
@@ -264,6 +209,14 @@ function onConnect() {
 		displaySuccessMsg('Connection to the cloud established succesfully.');
 		WSConnection = CONNECTION_EXISTS;
 	}
+}
+
+function onReconnectError(error) {
+	console.log('WS reconnect_error received: ' + error);
+}
+
+function onReconnectFailed() {
+	console.log('WS reconnect_failed received.');
 }
 
 /* executed each time when "message" call comes out of WS */
@@ -299,4 +252,30 @@ var urlParams;
     while (match = search.exec(query))
        urlParams[decode(match[1])] = decode(match[2]);
 })();
+
+/*
+ * BFP section; functions used to build the BFP messages
+ */ 
+
+
+function BFPCreateDeviceCommandFromMem(device) {
+	var message = {};
+	message.header = {};
+	message.header.code = BFP_DEVICE_COMMAND;
+	message.body = {};
+	message.body.raspyID = device.raspyID;
+	message.body.ardID = device.ardID;
+	message.body.devID = device.devID;
+	message.body.devType = device.devType;
+	message.body.dataType = device.dataType;
+
+	if (getDeviceValue(device) == '1')
+		message.header.command = BFP_LIGHTOFF;
+	else 
+		message.header.command = BFP_LIGHTON;
+
+	return message;
+}
+
+
 	  
