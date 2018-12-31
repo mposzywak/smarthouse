@@ -180,6 +180,7 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	var isDeviceNew = false;
 	var db = this.db;
 	var device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+	var userIndicaitonHeader = BFPDeviceStatus.header.user;
 
 	if (typeof(device) == 'undefined') {
 		var newDevice = {};
@@ -224,6 +225,8 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	}
 	/* always send the newest device */
 	var newBFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
+	newBFPDeviceStatus.header.user = userIndicaitonHeader;
+	
 	onValueChange(accountID, newBFPDeviceStatus);
 	this.rcpclient.sendDeviceStatus(device);
 	this.components.getFacility('debug').log(5, 'mem', 

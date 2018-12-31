@@ -99,10 +99,12 @@ function onPostRequest(req, res) {
 				var devType = params.devType; // url.split('/')[5];
 				var dataType = params.dataType; //url.split('/')[6];
 				var value = params.value; //url.split('/')[7];
-				var userIndicaitonHeader = req.get('iot-user');
-				console.log('User indication Header: ' + userIndicaitonHeader);
+				var userIndicaitonHeader = false;
+				if (req.get('iot-user') == 'true')
+					userIndicaitonHeader = true;
+				
 				if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP)) {
-					var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP);
+					var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, userIndicaitonHeader);
 					mem.setDeviceStatus(config.cloud.id, BFPDeviceStatus);
 				} else {
 					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);

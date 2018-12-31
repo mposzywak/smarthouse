@@ -173,9 +173,9 @@
 		var DDID = raspyID + '-' + ardID + '-' + devID + '-' + ardIPConv; // DDID - Device Discovery ID
 		var deviceIDArg = '?raspyID=' + raspyID + '&ardID=' + ardID + '&devID=' + devID;
 		console.log('Device status.');
-		//console.log('print ' + ardIP);
+		console.log('print ' + JSON.stringify(BFPDeviceStatus.body));
 		var ardIPConv = ardIP.replace(/\./g, '_');
-		if (document.getElementById(DDID + '_row') == null && BFPDeviceStatus.body.activated == false) {
+		if ((document.getElementById(DDID + '_row') == null && BFPDeviceStatus.body.activated == false && BFPDeviceStatus.header.user == true) || (document.getElementById(DDID + '_row') == null && BFPDeviceStatus.body.activated == false && BFPDeviceStatus.body.discovered == true)) {
 			var row = '<div class="row justify-content-md-center top-buffer" id="' + DDID + '_row"> \
 							<div class="col-sm text-white row-settings" id="' + DDID + '_text"> New Device spotted, \
 							type: ' + devType + '<br></div> \
@@ -199,6 +199,7 @@
 				ignoreDiscoveredDevice(raspyID, ardID, devID);
 				$("#" + DDID + "_row").remove();
 			});
+			sendDeviceDiscovered(raspyID, ardID, devID);
 		} 
 	}
 	
@@ -237,18 +238,32 @@
 		}
 	}
 
+	function sendDeviceDiscovered(raspyID, ardID, devID) {
+		var message = {};
+		message.header = {};
+		message.header.code = 'BFP_DEVICE_DISCOVERED';
+		message.body = {};
+		message.body.ardID = ardID;
+		message.body.raspyID = raspyID;
+		message.body.devID = devID;
+		
+		socket.emit('device_discovered', message);
+	}
+
 	function configureDiscoveredDevice(raspyID, ardID, devID) {
 
 	}
 
 	function ignoreDiscoveredDevice(raspyID, ardID, devID) {
 		var message = {};
-		message.code = IGNORE_DISCOVERED_DEVICE;
-		message.ardID = ardID;
-		message.raspyID = raspyID;
-		message.devID = devID;
+		message.header = {};
+		message.header.code = 'BFP_DEVICE_IGNORE';
+		message.body = {};
+		message.body.ardID = ardID;
+		message.body.raspyID = raspyID;
+		message.body.devID = devID;
 		
-		socket.emit('device_update', message);
+		socket.emit('device_ignore', message);
 	}
 
 	function allowPendingArduino(ardIP, raspyID) {
@@ -268,7 +283,7 @@
 		
 		socket.emit('update_pending_arduino', message);
 	}
-	
+
 	//function update
 </script>
 </html>

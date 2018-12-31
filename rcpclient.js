@@ -20,7 +20,7 @@ function sendHeartbeat() {
 	var http = require('http');
 	var config = require('./config.js');
 	
-	require('./debug.js').log(4, 'rcpclient', 'Sending heartbeat to: ' + config.rcpclient.host);
+	require('./debug.js').log(5, 'rcpclient', 'Sending heartbeat to: ' + config.rcpclient.host);
 
 	var options = {
 		hostname: config.rcpclient.host,
@@ -38,7 +38,7 @@ function sendHeartbeat() {
 		require('./debug.js').log(4, 'rcpclient', 'Heartbeat Received STATUS: ' + res.statusCode);
 		onHeartbeatResponse(res);
 	}).on('error', function(error) {
-		require('./debug.js').log(1, 'rcpclient', 'Heartbeat failed to establish connection with the cloud: ', 
+		require('./debug.js').log(1, 'rcpclient', 'Heartbeat failed to establish connection with the cloud: ' + 
 				error.message);
 		require('./rcpclient.js').isCloudAlive = false;
 	});
@@ -73,8 +73,8 @@ RCPClient.prototype.sendDeviceStatus = function(device) {
 		require('./debug.js').log(4, 'rcpclient', 'Received STATUS: ' + res.statusCode + 
 				' for ardID: ' + device.ardID + ' devid: ' + device.devID);
 	}).on('error', function(error) {
-		require('./debug.js').log(1, 'rcpclient', 'Failed to send Device Status: ', 
-				error.message);
+		require('./debug.js').log(1, 'rcpclient', 'Failed to send Device Status: ' + error.message);
+		require('./rcpclient.js').isCloudAlive = false;
 	});
 	
 	req.write(JSON.stringify(device), encoding='utf8');
@@ -91,7 +91,8 @@ RCPClient.prototype.sendArduinoAlive = function(ardID) {
 		if (res)
 			require('./debug.js').log(4, 'rcpclient', 'Received STATUS: ' + res.statusCode + ' to arduino-alive');
 		if (error)
-			require('./debug.js').log(1, 'rcpclient', 'Failed to send arduino-alive: ', error.message);
+			require('./debug.js').log(1, 'rcpclient', 'Failed to send arduino-alive: ' + error.message);
+			require('./rcpclient.js').isCloudAlive = false;
 	});
 }
 
@@ -104,7 +105,8 @@ RCPClient.prototype.sendArduinoDead = function(ardID) {
 		if (res)
 			require('./debug.js').log(4, 'rcpclient', 'Received STATUS: ' + res.statusCode + ' to arduino-dead');
 		if (error)
-			require('./debug.js').log(1, 'rcpclient', 'Failed to send arduino-dead: ', error.message);
+			require('./debug.js').log(1, 'rcpclient', 'Failed to send arduino-dead: ' + error.message);
+			require('./rcpclient.js').isCloudAlive = false;
 	});
 }
 

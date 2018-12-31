@@ -18,12 +18,13 @@ BFP.prototype.BFPValidateDeviceCommand = function() {
  * - at ARiF inbound message: 
  *				function(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP)
  * - at Mem originated status change, re-connect, ack, etc: 
- * 				function(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, activated, alive, desc)
+ * 				function(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, activated, alive, user, desc)
  */
-BFP.prototype.BFPCreateDeviceStatus = function(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, activated, alive, desc) {
+BFP.prototype.BFPCreateDeviceStatus = function(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, user, activated, alive, desc) {
 	var message = {};
 	message.header = {};
 	message.header.code = BFP_DEVICE_STATUS;
+	message.header.user = user;
 	message.body = {};
 	message.body.raspyID = raspyID;
 	message.body.ardID = ardID;
@@ -65,8 +66,15 @@ BFP.prototype.BFPCreateDeviceStatusFromMem = function(device) {
 	message.body.activated = device.activated;
 	message.body.alive = device.alive;
 	message.body.desc = device.desc;
+	if (device.discovered) {
+		message.body.discovered = device.discovered;
+	}
 
 	return message;
+}
+
+BFP.prototype.BFPFlagUserOriginated = function(BFPDeviceStatus) {
+
 }
 
 

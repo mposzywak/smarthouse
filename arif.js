@@ -206,8 +206,9 @@ ARiF.prototype.validateDeviceStatusData = function(devID, ardID, raspyID, devTyp
 
 	var ardIP = require('./mem.js').getArduinoIP(this.config.cloud.id, ardID);
 
+	/* ardID reported received on ARiF isn't registered within the app */
 	if (!ardIP) {
-		debug.log(1, 'arif', 'Arduino with ardID: ' + ardID + ' could not be found, URL: ' + url);
+		debug.log(1, 'arif', 'Arduino with ardID: ' + ardID + ' coming from IP: ' + srcIP + ', is not registered');
 		return;
 	}
 	
@@ -216,7 +217,7 @@ ARiF.prototype.validateDeviceStatusData = function(devID, ardID, raspyID, devTyp
 		return;
 	}	
 	if (!devType || !dataType || !value) {
-		debug.log(1, 'arif', 'ARiF message URL incorrect: ' + url);
+		debug.log(1, 'arif', 'ARiF message is incorrect: devID: ' + devID + ', ardID: ' + ardID + ', raspyID: ' + raspyID + ', devType: ' + devType + ', value: ' + value + ', srcIP: ' + srcIP);
 		return;
 	}
 	

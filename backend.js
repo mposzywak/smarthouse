@@ -345,38 +345,49 @@ function onWSAuthorize(socket, next) {
 			{
 				require('./debug.js').log(5, 'backend', 'Error while reading session data from DB for: ' + source + ' error: ' + error);
 			} else {
-				if (session || session.email) {
-					email = session.email;
-					require('./debug.js').log(5, 'backend', '[' + email + '] WS session established from: ' + source);
-					socket.session = session;
-					socket.on('disconnect', function() {
-						onWSDisconnect(session);
-					});
-	
-					socket.join(email);
-					socket.session = session;
-					pushAllDevices(socket, email);
-					pushAllArduinos(socket, email);
-					socket.on('device_settings', function (msg) {
-						//console.log('device_activate received');
-						onDeviceUpdate(msg, socket);
-					});
-					socket.on('device_command', function (BFPDeviceCommand) {
-						onDeviceCommand(BFPDeviceCommand, socket);
-					});
-					socket.on('update_pending_arduino', function (msg) {
-						onUpdatePendingArduino(msg, socket);
-					});
-					socket.on('update_arduino', function (msg) {
-						onUpdateArduino(msg, socket);
-					});
-					socket.on('delete_arduino', function (msg) {
-						onDeleteArduino(msg, socket);
-					});
-					next();
+				if (session) {
+					if (session.email) {
+						email = session.email;
+						require('./debug.js').log(5, 'backend', '[' + email + '] WS session established from: ' + source);
+						socket.session = session;
+						socket.on('disconnect', function() {
+							onWSDisconnect(session);
+						});
+		
+						socket.join(email);
+						socket.session = session;
+						pushAllDevices(socket, email);
+						pushAllArduinos(socket, email);
+						socket.on('device_settings', function (msg) {
+							//console.log('device_activate received');
+							onDeviceUpdate(msg, socket);
+						});
+						socket.on('device_command', function (BFPDeviceCommand) {
+							onDeviceCommand(BFPDeviceCommand, socket);
+						});
+						socket.on('update_pending_arduino', function (msg) {
+							onUpdatePendingArduino(msg, socket);
+						});
+						socket.on('update_arduino', function (msg) {
+							onUpdateArduino(msg, socket);
+						});
+						socket.on('delete_arduino', function (msg) {
+							onDeleteArduino(msg, socket);
+						});
+						socket.on('device_discovered', function (BFPDeviceDiscovered) {
+							onDeviceDiscovered(BFPDeviceDiscovered, socket);
+						});
+						socket.on('device_ignore', function (BFPDeviceIgnore) {
+							onDeviceIgnore(BFPDeviceIgnore, socket);
+						});
+						next();
+					} else {
+						require('./debug.js').log(5, 'backend', 'WS cookie received, session present, but no accountID associatiated, hence closing from: ' + source);
+						next(new Error('Bad cookie, no email. Please relogin.'));
+					}
 				} else {
 					//socket.disconnect();
-					require('./debug.js').log(5, 'backend', 'WS cookie received but no email associatiated, hence closing from: ' + source);
+					require('./debug.js').log(5, 'backend', 'WS cookie received but no session associatiated, hence closing from: ' + source);
 					next(new Error('Bad cookie, no email. Please relogin.'));
 				}
 			}
@@ -425,11 +436,6 @@ function onDeviceUpdate(msg, socket) {
 	var devices = mem.getClientDevices(accountID);
 	var device = devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID];
 
-	/*if (msg.code == IGNORE_DISCOVERED_DEVICE) {
-		device.discovered = false;
-		return;
-	}*/
-
 	/* make the discovered device "undiscovered" so that once configured it disappears from the discovered devices page */
 	if (device.discovered == true) {
 		device.discovered = false;
@@ -444,6 +450,32 @@ function onDeviceUpdate(msg, socket) {
 	var io = this.components.getFacility('backend').io;
 	io.of('/iot').to(accountID).emit('device_status', BFPDeviceStatus);
 	//socket.emit('device_status', BFPDeviceStatus);
+}
+
+/**
+ * executed when the 'device_discovered' comes from the front-end
+ */
+function onDeviceDiscovered(BFPDeviceDiscovered, socket) {
+	var accountID = socket.session.email;
+	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_discovered with: ' + JSON.stringify(BFPDeviceDiscovered));
+	var mem = components.getFacility('mem');
+	var devices = mem.getClientDevices(accountID);
+	var device = devices.raspys[BFPDeviceDiscovered.body.raspyID].arduinos[BFPDeviceDiscovered.body.ardID].devices[BFPDeviceDiscovered.body.devID];
+
+	device.discovered = true;
+}
+
+/**
+ * executed when the 'device_ignore' comes from the front-end
+ */
+function onDeviceIgnore(BFPDeviceIgnore, socket) {
+	var accountID = socket.session.email;
+	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_discovered with: ' + JSON.stringify(BFPDeviceIgnore));
+	var mem = components.getFacility('mem');
+	var devices = mem.getClientDevices(accountID);
+	var device = devices.raspys[BFPDeviceIgnore.body.raspyID].arduinos[BFPDeviceIgnore.body.ardID].devices[BFPDeviceIgnore.body.devID];
+
+	device.discovered = false;
 }
 
 /**
