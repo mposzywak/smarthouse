@@ -333,6 +333,7 @@ function onWSAuthorize(socket, next) {
 	var clientIp = socket.request.connection.remoteAddress;
 	var clientPort = socket.request.connection.remotePort;
 	var source = clientIp + ':' + clientPort;
+	var config = require('./config.js');
 	require('./debug.js').log(5, 'backend', 'New WS connection received from: ' + source);
 	
 	cookie = socket.request.headers.cookie;
@@ -358,27 +359,30 @@ function onWSAuthorize(socket, next) {
 						socket.session = session;
 						pushAllDevices(socket, email);
 						pushAllArduinos(socket, email);
-						socket.on('device_settings', function (msg) {
+						if (!config.cloud.enabled)
+							sendBFPCloudStatus(socket, email);
+						//require('./rcpclient.js').sendBFPCloudStatus(null);
+						socket.on('device_settings', function (BFPPayload) {
 							//console.log('device_activate received');
-							onDeviceUpdate(msg, socket);
+							onBFPGenericMessage('device_settings', BFPPayload, socket);
 						});
-						socket.on('device_command', function (BFPDeviceCommand) {
-							onDeviceCommand(BFPDeviceCommand, socket);
+						socket.on('device_command', function (BFPPayload) {
+							onBFPGenericMessage('device_command', BFPPayload, socket);
 						});
-						socket.on('update_pending_arduino', function (msg) {
-							onUpdatePendingArduino(msg, socket);
+						socket.on('update_pending_arduino', function (BFPPayload) {
+							onBFPGenericMessage('update_pending_arduino', BFPPayload, socket);
 						});
-						socket.on('update_arduino', function (msg) {
-							onUpdateArduino(msg, socket);
+						socket.on('update_arduino', function (BFPPayload) {
+							onBFPGenericMessage('update_arduino', BFPPayload, socket);
 						});
-						socket.on('delete_arduino', function (msg) {
-							onDeleteArduino(msg, socket);
+						socket.on('delete_arduino', function (BFPPayload) {
+							onBFPGenericMessage('delete_arduino', BFPPayload, socket);
 						});
-						socket.on('device_discovered', function (BFPDeviceDiscovered) {
-							onDeviceDiscovered(BFPDeviceDiscovered, socket);
+						socket.on('device_discovered', function (BFPPayload) {
+							onBFPGenericMessage('device_discovered', BFPPayload, socket);
 						});
-						socket.on('device_ignore', function (BFPDeviceIgnore) {
-							onDeviceIgnore(BFPDeviceIgnore, socket);
+						socket.on('device_ignore', function (BFPPayload) {
+							onBFPGenericMessage('device_ignore', BFPPayload, socket);
 						});
 						next();
 					} else {
@@ -399,10 +403,43 @@ function onWSAuthorize(socket, next) {
 	}
 }
 
+function onBFPGenericMessage(msg, BFPPayload, socket) {
+	var config = require('./config.js');
+	if (!config.cloud.enabled) {
+		switch(msg) {
+			case 'device_settings':
+				onBFPDeviceUpdate(BFPPayload, socket);
+				break;
+			case 'device_command':	
+				onBFPDeviceCommand(BFPPayload, socket);
+				break;
+			case 'update_pending_arduino':
+				onBFPUpdatePendingArduino(BFPPayload, socket);
+				break;
+			case 'update_arduino':
+				onBFPUpdateArduino(BFPPayload, socket);
+				break;
+			case 'delete_arduino':
+				onBFPDeleteArduino(BFPPayload, socket);
+				break;
+			case 'device_discovered':
+				onBFPDeviceDiscovered(BFPPayload, socket);
+				break;
+			case 'device_ignore':
+				onBFPDeviceIgnore(BFPPayload, socket);
+				break;
+			default:
+				require('./debug.js').log(1, 'backend', 'received unimplemented BFP message: ' + msg);
+		}
+	} else {
+		require('./debug.js').log(4, 'backend', 'received BFP message: ' + msg + ' - sending down to raspy over RCP');
+	}
+}
+
 /**
  * executed on receiving event 'update_pending_arduino' from the front-end
  */
-function onUpdatePendingArduino(msg, socket) {
+function onBFPUpdatePendingArduino(msg, socket) {
 	var debug = require('./debug.js');
 	var accountID = socket.session.email;
 	var m = require('./mem.js');
@@ -417,7 +454,7 @@ function onUpdatePendingArduino(msg, socket) {
 /**
  * executed on receiving event 'update_arduino' from the front-end
  */
-function onUpdateArduino(msg, socket) {
+function onBFPUpdateArduino(msg, socket) {
 	var debug = require('./debug.js');
 	var accountID = socket.session.email;
 	var m = require('./mem.js');
@@ -429,7 +466,7 @@ function onUpdateArduino(msg, socket) {
 /**
  * executed on receiving even 'device_update' from the front-end
  */
-function onDeviceUpdate(msg, socket) {
+function onBFPDeviceUpdate(msg, socket) {
 	var accountID = socket.session.email;
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_settings with: ' + JSON.stringify(msg));
 	var mem = components.getFacility('mem');
@@ -455,7 +492,7 @@ function onDeviceUpdate(msg, socket) {
 /**
  * executed when the 'device_discovered' comes from the front-end
  */
-function onDeviceDiscovered(BFPDeviceDiscovered, socket) {
+function onBFPDeviceDiscovered(BFPDeviceDiscovered, socket) {
 	var accountID = socket.session.email;
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_discovered with: ' + JSON.stringify(BFPDeviceDiscovered));
 	var mem = components.getFacility('mem');
@@ -468,7 +505,7 @@ function onDeviceDiscovered(BFPDeviceDiscovered, socket) {
 /**
  * executed when the 'device_ignore' comes from the front-end
  */
-function onDeviceIgnore(BFPDeviceIgnore, socket) {
+function onBFPDeviceIgnore(BFPDeviceIgnore, socket) {
 	var accountID = socket.session.email;
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_discovered with: ' + JSON.stringify(BFPDeviceIgnore));
 	var mem = components.getFacility('mem');
@@ -481,14 +518,14 @@ function onDeviceIgnore(BFPDeviceIgnore, socket) {
 /**
  * executed on received even 'device_command' from the front-end
  */
-function onDeviceCommand(BFPDeviceCommand, socket) {
+function onBFPDeviceCommand(BFPDeviceCommand, socket) {
 	var accountID = socket.session.email;
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_command with: ' + JSON.stringify(BFPDeviceCommand));
 	var mem = components.getFacility('mem');
 	var devices = mem.getClientDevices(accountID);
 	var command = BFPDeviceCommand.header.command;
 	var device = mem.getDeviceStatus(accountID, BFPDeviceCommand.body.raspyID, BFPDeviceCommand.body.ardID, BFPDeviceCommand.body.devID);
-	if (!require('./config.js').cloud.enable) {
+	if (!require('./config.js').cloud.enabled) {
 		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as raspy, sending command over ARiF');
 		require('./arif.js').sendCommand(device, command, function(message) {
 			//console.log('test ' + JSON.stringify(message));
@@ -496,11 +533,11 @@ function onDeviceCommand(BFPDeviceCommand, socket) {
 		});
 	} else {
 		// send to appropriate raspy
-		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as raspy, sending command over ARiF');
+		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as cloud, sending command over RCP');
 	}
 }
 
-function onDeleteArduino(msg, socket) {
+function onBFPDeleteArduino(msg, socket) {
 	var accountID = socket.session.email;
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: delete_arduino with: ' + JSON.stringify(msg));
 	var mem = components.getFacility('mem');
@@ -541,6 +578,31 @@ function pushAllDevices(socket, accountID) {
 			}
 		}
 	}
+}
+
+/** 
+ * Sends Cloud Status to the Front-End.
+ */ 
+function sendBFPCloudStatus(socket, accountID) {
+	var config = require('./config.js');
+	var debug = require('./debug.js');
+	var host;
+	var port;
+	var vpnID;
+	var BFPCloudStatus;
+
+	if (config.cloud.connection) {
+		status = require('./rcpclient.js').isCloudAlive;
+		host = config.rcpclient.host;
+		port = config.rcpclient.port;
+		vpnID = config.rcpclient.vpnID;
+		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(true, status, host, port, vpnID, null);
+	} else {
+		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(false);
+	}
+	
+	socket.emit('cloud_status', BFPCloudStatus);
+	debug.log(4, 'rcpclient', 'Emitting cloud status message: ' + JSON.stringify(BFPCloudStatus));
 }
 
 /**

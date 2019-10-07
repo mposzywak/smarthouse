@@ -68,7 +68,7 @@ const ARIF_DEV_MAPPING = '32';
 
 /* Execute each time when HTTP POST request comes into ARiF interface */
 function onPostRequest(req, res) {
-	var reqDate = new Date();
+	var reqDate = new Date().getTime();
 	srcIP = req.connection.remoteAddress;
 	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcIP);
 
@@ -90,6 +90,12 @@ function onPostRequest(req, res) {
 	
 	if (devID && ardID && raspyID && cmd && url.length < 256 && devID != '0') {
 		//debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + command);
+		if (raspyID != require('./config.js').rcpclient.vpnID.split('-')[1]) {
+			debug.log(1, 'arif', 'Sending 403: ARIF received raspyID different from the one configured!');
+			res.writeHead(403, { 'Content-Type' : 'text/plain'});
+        	res.end('Error: incorrect raspyID');
+			return;
+		}
 		switch (cmd) {
 			case ARIF_REGISTER:
 				var newArdID = mem.registerArduino(config.cloud.id, srcIP);

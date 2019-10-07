@@ -17,10 +17,20 @@ var RCPServer = function () {
 		this.app.post('/device', onDevice);
 		this.app.post('/heartbeat', onHeartbeat);
 		this.app.post('/arduino-dead', onArduinoDead);
-		this.app.post('/arduino-alive', onArduinoAlive)
-		
+		this.app.post('/arduino-alive', onArduinoAlive);
+		this.app.post('/uplink', onUplink);
 		
 		setInterval(monitorRaspys, 3000);
+	} else {
+		require('./init.js').setInit('rcpserver');
+		this.app = require('express')();
+		this.bodyParser = require('body-parser');
+		this.app.use(this.bodyParser.json());
+		this.express = require('express');
+		this.http = require('http');
+		this.server = this.http.createServer(this.app).listen(this.config.rcpserver.port || 32400, onRCPListen);
+		this.server.on('error', onRCPError);
+		this.app.post('/downlink', onDownlink);
 	}
 }
 
@@ -62,6 +72,72 @@ function onDevice(req, res) {
 			require('./mem.js').clearRaspyDeadCounter(accountID, raspyID);
 			require('./mem.js').setRCPDeviceStatus(vpnid, srcip, req.body);
 		
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+			res.end('HB ok');
+		}
+	});
+}
+
+function onUplink(req, res) {
+	authRCP(req, res, function(error) {
+		if (error == null) {
+			var vpnid = req.get('iot-raspyid');
+			var accountID = vpnid.split('-')[0]
+			var raspyID = vpnid.split('-')[1]
+			var debug = require('./debug.js');
+			var mem = require('./mem.js');
+			var BFPMessage = req.body;
+
+			mem.updateRaspyIP(accountID, raspyID, req.connection.remoteAddress);
+			mem.clearRaspyDeadCounter(accountID, raspyID);
+			if (BFPMessage.header) {
+				switch (BFPMessage.header.code) {
+					case 'BFP_DEVICE_STATUS':
+						debug.log(1, 'rcpserver', 'Code BFP_DEVICE_STATUS received, passing to mem');
+						mem.setDeviceStatus(accountID, req.body);
+						break;
+					case undefined: 
+						debug.log(1, 'rcpserver', 'Undefined Code in BFP, dropping message!');
+						break;
+					default: 
+						debug.log(1, 'rcpserver', 'Unrecognized Code in BFP: ' + BFPMessage.header.code + ', dropping message!');
+				}
+			}
+			
+			//require('./mem.js').setRCPDeviceStatus(vpnid, srcip, req.body);
+			
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+			res.end('HB ok');
+		}
+	});
+}
+
+function onDownlink(req, res) {
+	authRCP(req, res, function(error) {
+		if (error == null) {
+			var vpnid = req.get('iot-raspyid');
+			var accountID = vpnid.split('-')[0]
+			var raspyID = vpnid.split('-')[1]
+			var debug = require('./debug.js');
+			var mem = require('./mem.js');
+			var BFPMessage = req.body;
+
+			if (BFPMessage.header) {
+				switch (BFPMessage.header.code) {
+					case 'BFP_DEVICE_COMMAND':
+						debug.log(1, 'rcpserver', 'Code BFP_DEVICE_COMMAND received, passing to mem');
+						//mem.setDeviceStatus(accountID, req.body);
+						break;
+					case undefined: 
+						debug.log(1, 'rcpserver', 'Undefined Code in BFP, dropping message!');
+						break;
+					default: 
+						debug.log(1, 'rcpserver', 'Unrecognized Code in BFP: ' + BFPMessage.header.code + ', dropping message!');
+				}
+			}
+			
+			//require('./mem.js').setRCPDeviceStatus(vpnid, srcip, req.body);
+			
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
 			res.end('HB ok');
 		}

@@ -7,6 +7,7 @@ var BFP = function() {
 var bfp = new BFP();
 
 const BFP_DEVICE_STATUS = "BFP_DEVICE_STATUS";
+const BFP_CLOUD_STATUS = "BFP_CLOUD_STATUS";
 
 /* set new init, takes string */
 BFP.prototype.BFPValidateDeviceCommand = function() {
@@ -70,6 +71,25 @@ BFP.prototype.BFPCreateDeviceStatusFromMem = function(device) {
 		message.body.discovered = device.discovered;
 	}
 
+	return message;
+}
+
+BFP.prototype.BFPCreateCloudStatus = function(enabled, status, host, port, vpnID, response) {
+	message = {};
+	message.header = {};
+	message.header.code = BFP_CLOUD_STATUS;
+
+	if (enabled) {
+		message.header.enabled = enabled;
+		message.header.status = status;
+		message.header.host = host;
+		message.header.port = port;
+		message.header.vpnID = vpnID;
+		message.header.response = response;
+	} else {
+		message.header.enabled = false;
+	}
+	
 	return message;
 }
 

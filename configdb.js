@@ -16,20 +16,31 @@ var ConfigDB = function() {
 	});
 }
 
+/**
+ * (only Raspy) function returns vpnID value for the raspy, if it is not configured, returns null
+ */
+ConfigDB.prototype.getVpnID = function(accountID, callback) {
+	var sql = 'SELECT vpnID, vpnKey FROM raspys WHERE accountID = ?';
 
-/*
-ConfigDB.prototype.getArdID = function(accountID, raspyID, ip) {
-	sql = 'SELECT ardid FROM arduinos WHERE accountid = ? AND raspyid = ? AND ip = ?;';
-	
-	this.db.all(sql, [accountID, raspyID, ip], function (error, row) {
+	this.db.all(sql, [accountID], function(error, rows) {
 		if (error) {
-			console.log('Error while executing DB query: ' + error.message);
-		}
-		if (row[0]) {
-			console.log('result: ' + JSON.stringify(row));
+			callback(error, null);
+		} else {
+			for (var i = 0; i < rows.length; i++) {
+				var row = rows[i];
+				callback(null, row.vpnID, row.vpnKey);
+			}
 		}
 	});
-} */
+}
+
+/**
+ * (only Raspy) function sets the new vpnID and vpnKey (also changes raspyID in all devices and arduinos)
+ */
+ConfigDB.prototype.setVpnID = function(accountID, vpnID, vpnKey) {
+
+}
+
 
 /**
  * inserts an Arduino in the DB. This would typically happen on registering new Arduino on the raspy,
@@ -277,6 +288,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 								if (typeof(devices.raspys[raspyID].arduinos[ardID]) == 'undefined') {
 									devices.raspys[raspyID].arduinos[ardID] = {};
 									devices.raspys[raspyID].arduinos[ardID].devices = {};
+									devices.raspys[raspyID].arduinos[ardID].alive = false;
 								}
 								devices.raspys[raspyID].arduinos[ardID].devices[devID] = {};
 								devices.raspys[raspyID].arduinos[ardID].devices[devID].activated = row.activated ? true : false;
@@ -289,6 +301,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 								devices.raspys[raspyID].arduinos[ardID].devices[devID].IP = row.IP;
 								devices.raspys[raspyID].arduinos[ardID].devices[devID].raspyID = row.raspyID;
 								devices.raspys[raspyID].arduinos[ardID].devices[devID].value = row.value;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
 							}
 							//console.log(JSON.stringify(devices));
 							callback(error, devices);

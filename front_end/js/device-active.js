@@ -29,7 +29,7 @@ function errorLightButton(device) {
 	$('#' + buttonID).removeClass('text-white');
 	$('#' + buttonID).addClass('switch-button-error');
 	$('#' + buttonID).attr("disabled", "disabled");
-	$('#' + buttonID).html('<span class="fa fa-exclamation-circle" aria-hidden="true" id="' + iconID + '"></span> Disabled');
+	$('#' + buttonID).html('<span class="fa fa-exclamation-circle" aria-hidden="true" id="' + iconID + '"></span> Unreachable');
 	
 }
 

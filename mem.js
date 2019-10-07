@@ -179,7 +179,13 @@ Mem.prototype.deleteArduino = function(accountID, raspyID, ardID) {
 Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	var isDeviceNew = false;
 	var db = this.db;
-	var device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+	var device;
+
+	/*if (!this.config.cloud.enabled)
+		device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+	else*/
+		device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+
 	var userIndicaitonHeader = BFPDeviceStatus.header.user;
 
 	if (typeof(device) == 'undefined') {
@@ -197,8 +203,15 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		isDeviceNew = true;
 		this.components.getFacility('debug').log(4, 'mem', 'existing accountID id: ' + accountID + ', existing Arduino registered: ' + 
 				BFPDeviceStatus.body.ardID + ' and new device: ' + BFPDeviceStatus.body.devID);
-		this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
-		device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+		/*if (!this.config.cloud.enabled) {
+			newDevice.raspyID = this.raspyID;
+			this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
+			device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+		} else {
+			newDevice.raspyID = this.raspyID;*/
+			this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
+			device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+		//}
 	}
 
 	if (device.activated == true) { 
@@ -212,7 +225,7 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	
 	device.value = BFPDeviceStatus.body.value;
 	
-	device.date = BFPDeviceStatus.body.date.getTime();
+	device.date = BFPDeviceStatus.body.date;
 
 	// when we detect that the new value is different then the old one.
 	if (oldValue != device.value) {
@@ -228,7 +241,10 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	newBFPDeviceStatus.header.user = userIndicaitonHeader;
 	
 	onValueChange(accountID, newBFPDeviceStatus);
-	this.rcpclient.sendDeviceStatus(device);
+
+	if (!this.config.cloud.enabled)
+		this.rcpclient.sendUplinkMessage(newBFPDeviceStatus);
+
 	this.components.getFacility('debug').log(5, 'mem', 
 		'For accountID id: ' + accountID + ', Arduino: "' + device.ardID + '", Device: "' + device.devID +
 		'" Record updated by ARIF -> IP: ' + device.IP + 
@@ -361,6 +377,7 @@ function onArduinoChange(accountID, raspyID, ardID) {
 	io.of('/iot').to(accountID).emit('arduino', arduinoToSend);
 }
 
+
 function sendArduinoDeadMessage(accountID, raspyID, ardID) {
 	var message = {};
 	var arduino = 
@@ -430,7 +447,7 @@ Mem.prototype.getDeviceStatus = function(accountID, raspyID, ardID, devID) {
 		return;
 	}
 	
-	return this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices[devID];
+	return this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
 }
 
 /* return the whole devices structure */
@@ -484,7 +501,7 @@ Mem.prototype.increaseRaspyDeadCounter = function(accountID, raspyID) {
 Mem.prototype.clearArduinoDeadCounter = function(accountID, raspyID, ardID) {
 	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
 	
-	// in case arduino has been delete meanwhile
+	// in case arduino has been deleted meanwhile
 	if (!arduino) return;
 	
 	if (arduino.alive != true) { //true 
@@ -527,10 +544,10 @@ Mem.prototype.setArduinoDead = function(accountID, raspyID, ardID) {
 /* sets a given Arduino status alive and all its devices (both raspy and cloud) */
 Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
 	this.devices[accountID].raspys[raspyID].arduinos[ardID].alive = true;
+	
 	for (var devID in this.devices[accountID].raspys[raspyID].arduinos[ardID].devices) {
 		if (this.devices[accountID].raspys[raspyID].arduinos[ardID].devices.hasOwnProperty(devID)){
 			var device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
-			
 			if (device.alive == false || typeof(device.alive) == 'undefined') {
 				device.alive = true;
 				this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] ArdID and its devIDs declared alive: ' + 
@@ -580,16 +597,21 @@ Mem.prototype.sendRCPAllDeviceStatus = function(rcpclient) {
 	for (var ardID in arduinos) {
 		if (arduinos.hasOwnProperty(ardID)) {
 			var devices = arduinos[ardID].devices;
+
+			if (arduinos[ardID].alive == true)
+				require('./rcpclient.js').sendArduinoAlive(ardID);
+			else
+				require('./rcpclient.js').sendArduinoDead(ardID);
+
 			for (var devID in devices) {
 				if (devices.hasOwnProperty(devID)){
 					var device = devices[devID];
-				
-					if (device.alive == true) {
-						rcpclient.sendDeviceStatus(this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID]);
-						//this needs to be removed.
-						this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] Device found to update Cloud, ardID: ' + 
-								device.ardID + ' on raspyID: ' + device.raspyID + ' devID: ' + device.devID);
-					}
+					var BFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
+					//rcpclient.sendDeviceStatus(this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID]);
+
+					rcpclient.sendUplinkMessage(BFPDeviceStatus);
+					this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] Device found to update Cloud, ardID: ' + 
+							device.ardID + ' on raspyID: ' + device.raspyID + ' devID: ' + device.devID);
 				}
 			}
 		}

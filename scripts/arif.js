@@ -183,6 +183,10 @@ ARIF.prototype.sendDeviceStatus = function(devID, status, user) {
 		agent: false,
 		headers: headers
 	};
+	shadeID = this.arduino.getDeviceShadeID(devID);
+	if (shadeID) {
+		options.path = options.path + '&shadeID=' + shadeID;
+	}
 	
 	if (this.srcIP)
 		options.localAddress = this.srcIP;

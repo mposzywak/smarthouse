@@ -118,7 +118,7 @@ function onCommandTimeout(device) {
 	
 	if (getDeviceCommandStatus(device) == COMMAND_ON) {
 		console.log('timeout');
-		onError('Timeout while waiting for device status: ' + getDeviceDesc(device) + ' (3)');
+		displayErrorMsg('Timeout while waiting for device status: ' + getDeviceDesc(device) + ' (3)');
 		enableLightButton(device);
 		setDeviceCommandClear(device)
 	} else {
@@ -193,6 +193,7 @@ function onConnectError() {
 		WSConnection = CONNECTION_ERROR;
 	}
 }
+
 
 function onError() {
 	removeMsg();
