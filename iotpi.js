@@ -127,7 +127,7 @@ function onPostRequest(req, res) {
 				mem.setDevice(config.cloud.id, devid, ardid, devType, reqDate, srcIP, controlledDevs)
 				break;
 			default:
-				debug.log(1, 'arif', 'command: ' + command + ' from: ' + srcIP + ' is unknown!');
+				debug.log(1, 'arif', 'command: ' + cmd + ' from: ' + srcIP + ' is unknown!');
 		}
 		debug.log(4, 'arif', 'Sending 200 OK to: ' + srcIP + ' for GET URL: ' + url);
 		res.writeHead(200, { 'Content-Type' : 'text/plain'});
