@@ -56,7 +56,7 @@ BFP.prototype.BFPCreateDeviceStatusFromMem = function(device) {
 	message.header = {};
 	message.header.code = BFP_DEVICE_STATUS;
 	message.body = {};
-	message.body.raspyID = device.raspyID;
+	/*message.body.raspyID = device.raspyID;
 	message.body.ardID = device.ardID;
 	message.body.devID = device.devID;
 	message.body.devType = device.devType;
@@ -69,7 +69,8 @@ BFP.prototype.BFPCreateDeviceStatusFromMem = function(device) {
 	message.body.desc = device.desc;
 	if (device.discovered) {
 		message.body.discovered = device.discovered;
-	}
+	}*/
+	message.body = device;
 
 	return message;
 }

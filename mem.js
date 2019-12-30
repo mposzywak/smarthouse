@@ -177,17 +177,19 @@ Mem.prototype.deleteArduino = function(accountID, raspyID, ardID) {
 	As an argument it takes BFPDeviceStatus object and accountID.
 */
 Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
-	var isDeviceNew = false;
-	var db = this.db;
-	var device;
-
+	let isDeviceNew = false;
+	let db = this.db;
+	let device;
+	let identityLog = 'For accountID id: ' + accountID + ', Arduino: "' + BFPDeviceStatus.body.ardID + '", Device: "' + BFPDeviceStatus.body.devID + '" ';
+	let debug = this.components.getFacility('debug');
 	/*if (!this.config.cloud.enabled)
 		device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
 	else*/
-		device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+	device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
 
-	var userIndicaitonHeader = BFPDeviceStatus.header.user;
+	let userIndicaitonHeader = BFPDeviceStatus.header.user;
 
+	/* generic settings for a new Device */
 	if (typeof(device) == 'undefined') {
 		var newDevice = {};
 		newDevice.desc = '';
@@ -195,23 +197,16 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		newDevice.discovered = false;
 		newDevice.IP = BFPDeviceStatus.body.IP;
 		newDevice.devType = BFPDeviceStatus.body.devType;
-		newDevice.dataType = BFPDeviceStatus.body.dataType;
 		newDevice.raspyID = this.raspyID;
 		newDevice.ardID = BFPDeviceStatus.body.ardID;
 		newDevice.devID = BFPDeviceStatus.body.devID;
 		newDevice.alive = true;
 		isDeviceNew = true;
-		this.components.getFacility('debug').log(4, 'mem', 'existing accountID id: ' + accountID + ', existing Arduino registered: ' + 
-				BFPDeviceStatus.body.ardID + ' and new device: ' + BFPDeviceStatus.body.devID);
-		/*if (!this.config.cloud.enabled) {
-			newDevice.raspyID = this.raspyID;
-			this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
-			device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
-		} else {
-			newDevice.raspyID = this.raspyID;*/
-			this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
-			device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
-		//}
+		this.components.getFacility('debug').log(4, 'mem', identityLog + 'New Device registered.');
+
+
+		this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
+		device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
 	}
 
 	if (device.activated == true) { 
@@ -219,38 +214,52 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	} else {
 		device.discovered = false;
 	}
-	
-	// save the old value for later comparison
-	var oldValue = device.value
-	
-	device.value = BFPDeviceStatus.body.value;
-	
-	device.date = BFPDeviceStatus.body.date;
-
-	// when we detect that the new value is different then the old one.
-	if (oldValue != device.value) {
-		
+	/* section with specific settings for different type of devices, currently: shades, digitOUT
+	   This sections should contain handling for new and existing devices */
+	if (BFPDeviceStatus.body.devType == 'digitOUT') { /* digitOUT (mostly lights) specific handling */
+		debug.log(5, 'mem', identityLog + 'DigitOUT device type received at mem.');
+		newDevice.dataType = BFPDeviceStatus.body.dataType;
 		if (isDeviceNew) {
 			this.db.insertDevice(accountID, device);
 		} else {
-			this.db.updateDevice(accountID, device);
+			var oldValue = device.value
+			device.value = BFPDeviceStatus.body.value;
+			device.date = BFPDeviceStatus.body.date;
+			if (oldValue != device.value) {
+				this.db.updateDevice(accountID, device);
+			}
 		}
+	} else if (BFPDeviceStatus.body.devType == 'shade') { /* shades specific handling */
+		debug.log(5, 'mem', identityLog + 'Shade device type received at mem.');
+		if (BFPDeviceStatus.body.dataType == 'direction') {
+			device.direction = BFPDeviceStatus.body.value;
+		} else if (BFPDeviceStatus.body.dataType == 'position') {
+			device.position = BFPDeviceStatus.body.value;
+		} else if (BFPDeviceStatus.body.dataType == 'tilt') {
+			device.tilt = BFPDeviceStatus.body.value;
+		} else {
+			debug.log(5, 'mem', identityLog + 'Shade device unknown dataType received: ' + BFPDeviceStatus.body.dataType);
+		}
+	} else { /* unknown device handling */
+		debug.log(5, 'mem', identityLog + 'Unknown device type received: ' + BFPDeviceStatus.body.devType);
+		return;
 	}
-	/* always send the newest device */
-	var newBFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
-	newBFPDeviceStatus.header.user = userIndicaitonHeader;
 	
+
+	/* always send the newest device */
+	let newBFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
+	newBFPDeviceStatus.header.user = userIndicaitonHeader;
 	onValueChange(accountID, newBFPDeviceStatus);
 
 	if (!this.config.cloud.enabled)
 		this.rcpclient.sendUplinkMessage(newBFPDeviceStatus);
 
-	this.components.getFacility('debug').log(5, 'mem', 
+	debug.log(5, 'mem', 
 		'For accountID id: ' + accountID + ', Arduino: "' + device.ardID + '", Device: "' + device.devID +
 		'" Record updated by ARIF -> IP: ' + device.IP + 
 		' devType: ' + device.devType +
 		' dataType: ' + device.dataType +
-		' valule: ' + device.value +
+		' value: ' + device.value +
 		' date: ' + JSON.stringify(device.date));
 }
 

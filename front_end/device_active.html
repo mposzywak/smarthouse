@@ -89,16 +89,57 @@
 
 				clearDeviceTimer(BFPDeviceStatus.body);
 			}
+		} else if (BFPDeviceStatus.body.devType == TYPE_SHADE) {
+			if (document.getElementById(FID + '_row') == null) { /* this is a new device so whole div structure needs to be created */
+				if (BFPDeviceStatus.body.activated == true) {
+					addActiveShadeDeviceTableRow(BFPDeviceStatus.body);
+				}
+			} else { /* the device already reported, structure needs to be filled in with new data */
+				console.log(JSON.stringify(BFPDeviceStatus.body));
+				if (BFPDeviceStatus.body.direction == 'up' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
+					upShade(BFPDeviceStatus.body);
+				} else if (BFPDeviceStatus.body.direction == 'down' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
+					downShade(BFPDeviceStatus.body);
+				} else if (BFPDeviceStatus.body.direction == 'stop' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
+					stopShade(BFPDeviceStatus.body);
+				} else {
+					errorLightButton(BFPDeviceStatus.body);
+				}
+			}
 		}
     }
+	
+	function addActiveShadeDeviceTableRow(body) {
+		let FID = body.raspyID + '-' + body.devID + '-' + body.ardID;
+		
+		let row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row">';
+		row += '<div class="col-sm text-white row-settings">' + body.desc + '</div>';		
+		row += '<div class="col-sm text-white row-settings">	\
+				<button type="button" class="btn btn-primary" id="' + FID + '_button"> \
+				</button> \
+				</div> \
+				</div>';
+
+		$("#devices").append(row);
+		
+		if (body.direction = 'stop' && body.alive == true) {
+			stopShade(body);
+		} else if (body.direction = 'up' && body.alive == true) {
+			upShade(body);
+		} else if (body.direction = 'down' && body.alive == true) {
+			downShade(body);
+		} else {
+			errorLightButton(body);
+		}
+	}
 
 	function addActiveDeviceTableRow(body) {
-		var FID = body.raspyID + '-' + body.devID + '-' + body.ardID;
-		var active = 'Off';
+		let FID = body.raspyID + '-' + body.devID + '-' + body.ardID;
+		let active = 'Off';
 		if (body.value == '1')
 			active = ' On';
 		
-		var row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row">';
+		let row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row">';
 		row += '<div class="col-sm text-white row-settings">' + body.desc + '</div>';		
 		row += '<div class="col-sm text-white row-settings">	\
 				<button type="button" class="btn" id="' + FID + '_button"> \

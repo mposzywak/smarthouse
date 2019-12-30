@@ -62,7 +62,9 @@ const ARIF_LIGHT_ON  = '1';
 const ARIF_LIGHT_OFF = '2';
 const ARIF_DEV_STATUS = 'status';
 const ARIF_DEV_MAPPING = '32';
-
+const ARIF_DEV_STATUS_DIR = 'statusDIR';
+const ARIF_DEV_STATUS_POS = 'statusPOS';
+const ARIF_DEV_STATUS_TILT = 'statusTILT';
 
 //app.use(express.static('smarthouse'))
 
@@ -125,6 +127,28 @@ function onPostRequest(req, res) {
 				controlledDevs = url.split('/').slice(5); // get rest of array from 5th element
 				console.log(controlledDevs);
 				mem.setDevice(config.cloud.id, devid, ardid, devType, reqDate, srcIP, controlledDevs)
+				break;
+			case ARIF_DEV_STATUS_DIR:
+				var devType = params.devType; // url.split('/')[5];
+				var dataType = params.dataType; //url.split('/')[6];
+				var value = params.value; //url.split('/')[7];
+				var userIndicaitonHeader = false;
+				if (req.get('iot-user') == 'true')
+					userIndicaitonHeader = true;
+				
+				if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP)) {
+					var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, userIndicaitonHeader);
+					mem.setDeviceStatus(config.cloud.id, BFPDeviceStatus);
+				} else {
+					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);
+					res.writeHead(404, { 'Content-Type' : 'text/plain'});
+					res.end('Error: probably wrong URL');
+					return;
+				}
+				break;
+			case ARIF_DEV_STATUS_POS:
+				break;
+			case ARIF_DEV_STATUS_TILT:
 				break;
 			default:
 				debug.log(1, 'arif', 'command: ' + cmd + ' from: ' + srcIP + ' is unknown!');

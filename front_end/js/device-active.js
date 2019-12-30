@@ -1,4 +1,19 @@
 
+function downShade(device) {
+	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
+	$('#' + buttonID).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> going down...');
+}
+
+function upShade(device) {
+	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
+	$('#' + buttonID).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> going up...');
+}
+
+function stopShade(device) {
+	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
+	$('#' + buttonID).html('<span role="status" aria-hidden="true"></span> stopped');
+}
+
 function onLightButton(device) {
 	var buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_button';
 	var iconID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_icon';
