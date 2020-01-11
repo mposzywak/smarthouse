@@ -525,15 +525,18 @@ function onBFPDeviceCommand(BFPDeviceCommand, socket) {
 	var devices = mem.getClientDevices(accountID);
 	var command = BFPDeviceCommand.header.command;
 	var device = mem.getDeviceStatus(accountID, BFPDeviceCommand.body.raspyID, BFPDeviceCommand.body.ardID, BFPDeviceCommand.body.devID);
+	//if (typeof(BFPDeviceCommand.body.position) != 'undefined') /* overwrite the position of the mem with the one from the BFP command */
+	//	device.position = BFPDeviceCommand.body.position
+	BFPDeviceCommand.body.IP = device.IP;
 	if (!require('./config.js').cloud.enabled) {
 		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as raspy, sending command over ARiF');
-		require('./arif.js').sendCommand(device, command, function(message) {
+		require('./arif.js').sendCommand(BFPDeviceCommand.body, command, function(message) {
 			//console.log('test ' + JSON.stringify(message));
 			socket.emit('device_response', message);
 		});
 	} else {
 		// send to appropriate raspy
-		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as cloud, sending command over RCP');
+		require('./debug.js').log(5, 'backend', '[' + accountID + '] TODO: System working as cloud, sending command over RCP');
 	}
 }
 

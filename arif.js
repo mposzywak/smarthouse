@@ -155,6 +155,11 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 		agent: false
 	};
 	
+	/* add specifics of the shade */
+	if (command == 'shadePOS') {
+		options.path += 'value=' + device.position;
+	}
+	
 	var req = http.request(options, function (res){
 		debug.log(1, 'arif', 'Received ARiF command resp from: ' + device.devID + ' ardID: ' + 
 			device.ardID + ' IP: ' + device.IP);

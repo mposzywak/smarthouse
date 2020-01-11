@@ -365,7 +365,10 @@ Mem.prototype.setRCPDeviceStatus = function(vpnid, raspyip, device) {
 /* function executed if the new value of the mem cache is different than the old one.
    The output interfaces, like the backend need to be updated */
 function onValueChange(accountID, BFPDeviceStatus) {
-	io = this.components.getFacility('backend').io;
+	let io = this.components.getFacility('backend').io;
+	let debug = require('./debug.js');
+	
+	debug.log(5, 'mem', '[' + accountID + '] Emitting device_status: ' + JSON.stringify(BFPDeviceStatus));
 	io.of('/iot').to(accountID).emit('device_status', BFPDeviceStatus);
 }
 

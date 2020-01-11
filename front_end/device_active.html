@@ -4,7 +4,7 @@
 	<title>Active Devices</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
@@ -48,26 +48,13 @@
 	function onDeviceStatus(BFPDeviceStatus) {
 		updateDevice(BFPDeviceStatus.body);
 		var FID = BFPDeviceStatus.body.raspyID + '-' + BFPDeviceStatus.body.devID + '-' + BFPDeviceStatus.body.ardID;
-		console.log('got value: ' + BFPDeviceStatus.body.activated);
-		if (BFPDeviceStatus.body.devType == TYPE_DIGITOUT) {
+		if (BFPDeviceStatus.body.devType == TYPE_DIGITOUT) { /* ------------- the DigitOUT device handling */
 			if (document.getElementById(FID + '_row') == null) {
 				if (BFPDeviceStatus.body.activated == true) {
 					/* this is a new device so whole div structure needs to be created */
 					addActiveDeviceTableRow(BFPDeviceStatus.body);
-					$("#" + FID + "_button").on( 'click', function() {
-						console.log('on clicked FID: ' + FID)
-						/*var device = {};
-						var BFPDeviceCommand = {};
-						BFPDeviceCommand.body = {};
-						BFPDeviceCommand.header = {};
-						device.ardID = BFPDeviceStatus.body.ardID;
-						device.devID = BFPDeviceStatus.body.devID;
-						device.raspyID = BFPDeviceStatus.body.raspyID;
-						BFPDeviceCommand.header = BFP_LIGHTON;
-						if (getDeviceValue(device) == '1')
-							BFPDeviceCommand.header = BFP_LIGHTOFF;
-						BFPDeviceCommand.device = device;
-						var buttonFID = FID; */
+					$("#" + FID + "_button").on('click', function() {
+						console.log('on clicked FID: ' + FID);
 						var BFPDeviceCommand = BFPCreateDeviceCommandFromMem(BFPDeviceStatus.body);
 						setDeviceCommandOn(BFPDeviceStatus.body);
 						disableLightButton(BFPDeviceStatus.body);
@@ -77,7 +64,6 @@
 				}
 			} else {
 				/* the device already reported, structure needs to be filled in with new data */
-
 				if (BFPDeviceStatus.body.value == '0' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
 					offLightButton(BFPDeviceStatus.body);
 				else if (BFPDeviceStatus.body.value == '1' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
@@ -89,7 +75,7 @@
 
 				clearDeviceTimer(BFPDeviceStatus.body);
 			}
-		} else if (BFPDeviceStatus.body.devType == TYPE_SHADE) {
+		} else if (BFPDeviceStatus.body.devType == TYPE_SHADE) { /* ------------- the shades device handling */
 			if (document.getElementById(FID + '_row') == null) { /* this is a new device so whole div structure needs to be created */
 				if (BFPDeviceStatus.body.activated == true) {
 					addActiveShadeDeviceTableRow(BFPDeviceStatus.body);
@@ -102,9 +88,22 @@
 					downShade(BFPDeviceStatus.body);
 				} else if (BFPDeviceStatus.body.direction == 'stop' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
 					stopShade(BFPDeviceStatus.body);
-				} else {
-					errorLightButton(BFPDeviceStatus.body);
+				} else if (BFPDeviceStatus.body.alive == false) {
+					disableShadeDevice(BFPDeviceStatus.body);
 				}
+				
+				if (BFPDeviceStatus.body.position == document.getElementById(FID + '_position_slider').value) {
+					console.log('movement reached desired value.')
+					setDeviceShadeStopped(BFPDeviceStatus.body)
+				}
+				
+				if (getDeviceShadeMotion(BFPDeviceStatus.body)) {
+					setPositionSlider(BFPDeviceStatus.body);
+					console.log('moving the slider..')
+				}
+				//setTiltSlider(BFPDeviceStatus.body);
+				
+				
 			}
 		}
     }
@@ -113,24 +112,78 @@
 		let FID = body.raspyID + '-' + body.devID + '-' + body.ardID;
 		
 		let row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row">';
-		row += '<div class="col-sm text-white row-settings">' + body.desc + '</div>';		
-		row += '<div class="col-sm text-white row-settings">	\
-				<button type="button" class="btn btn-primary" id="' + FID + '_button"> \
-				</button> \
-				</div> \
-				</div>';
+		row += '<div class="col-sm text-white row-settings">' + body.desc + '<br> \
+			<span style="width:250px" class="fa fa-adjust" aria-hidden="true"> \
+				<input style="width:200px" type="range" min="0" max="100" step="25" id="' + FID + '_position_slider" disabled> \
+				<label class="range-label text-white" id="' + FID + '_position_label"></label> \
+			</span> \
+			<span style="width:250px" class="fa fa-retweet" aria-hidden="true"> \
+				<input style="width:100px" type="range" min="0" max="5" id="' + FID +'_tilt_slider" disabled> \
+				<label class="range-label" id="' + FID + '_tilt_label"></label> \
+			</span> \
+			<button class="btn btn-primary shade-status" type="button" id="' + FID + '_direction" disabled> \
+			</button> \
+		</div> \
+	</div>';
 
 		$("#devices").append(row);
 		
-		if (body.direction = 'stop' && body.alive == true) {
+		let positionSlider = document.getElementById(FID + '_position_slider');
+		let tiltSlider = document.getElementById(FID + '_tilt_slider');
+		
+		if (body.direction == 'stop' && body.alive == true) {
 			stopShade(body);
-		} else if (body.direction = 'up' && body.alive == true) {
+		} else if (body.direction == 'up' && body.alive == true) {
 			upShade(body);
-		} else if (body.direction = 'down' && body.alive == true) {
+		} else if (body.direction == 'down' && body.alive == true) {
 			downShade(body);
-		} else {
-			errorLightButton(body);
+		} else if (body.alive == false) {
+			disableShadeDevice(body);
 		}
+		
+		//setTiltSlider(body);
+		setPositionSlider(body);
+
+		
+		/* position slider user movement detection */
+		positionSlider.onmouseup = function() {
+			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADEPOS);
+			console.log('position changed: ' + FID);
+			BFPDeviceCommand.body.position = this.value; /* overwrite the device position value with the value taken from the moved slider */
+			socket.emit('device_command', BFPDeviceCommand);
+			setDeviceShadeInMotion(body);
+		}
+		
+		positionSlider.ontouchend = function() {
+			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADEPOS);
+			console.log('position changed: ' + FID);
+			BFPDeviceCommand.body.position = this.value; /* overwrite the device position value with the value taken from the moved slider */
+			socket.emit('device_command', BFPDeviceCommand);
+			setDeviceShadeInMotion(body);
+		}
+		
+		/* tilt slider user movement detection */
+		tiltSlider.onmouseup = function() {
+			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADETILT);
+			console.log('position changed: ' + FID);
+			socket.emit('device_command', BFPDeviceCommand);
+		}
+		
+		tiltSlider.ontouchend = function() {
+			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADETILT);
+			console.log('position changed: ' + FID);
+			socket.emit('device_command', BFPDeviceCommand);
+		}
+		
+		/* value change for both sliders detection */
+		positionSlider.oninput = function() {
+			console.log('value changed');
+		}
+		
+		tiltSlider.oninput = function() {
+			
+		}
+		
 	}
 
 	function addActiveDeviceTableRow(body) {

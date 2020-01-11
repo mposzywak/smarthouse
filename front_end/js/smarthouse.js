@@ -3,6 +3,11 @@
 const BFP_HEARTBEAT = 'heartbeat';
 const BFP_LIGHTON = 'lightON';
 const BFP_LIGHTOFF = 'lightOFF';
+const BFP_SHADEPOS = 'shadePOS';
+const BFP_SHADETILT = 'shadeTILT';
+const BFP_SHADEUP = 'shadeUP';		/* not used right now from the front-end */
+const BFP_SHADEDOWN = 'shadeDOWN';  /* not used right now from the front-end */
+const BFP_SHADESTOP = 'shadeSTOP';  /* not used right now from the front-end */
 
 /* command send status */
 const COMMAND_ON = 1;
@@ -38,6 +43,21 @@ function updateDevice(device) {
 	}
 	
 	devices[raspyID][ardID][devID] = device;
+}
+
+/* set the Slider of the device in motion (it should then not be updated according to the incoming status msgs) */
+function setDeviceShadeInMotion(device) {
+	devices[device.raspyID][device.ardID][device.devID].inMotion = true;
+}
+
+/* sets the Slider of the device as stopped */
+function setDeviceShadeStopped(device) {
+	devices[device.raspyID][device.ardID][device.devID].inMotion = false;
+}
+
+/* return inMotion boolean variable */
+function getDeviceShadeMotion(device) {
+	return devices[device.raspyID][device.ardID][device.devID].inMotion;
 }
 
 /* get device value */
@@ -144,7 +164,10 @@ function createActivationButton(device) {
 	
 	return button;
 }
-/* Message displaying section */
+
+/*
+ * Message displaying section
+ */
 
 /* this variable represents last status so that the error message is not updated all the time,
    but only during change of condition */
@@ -276,6 +299,26 @@ function BFPCreateDeviceCommandFromMem(device) {
 	else 
 		message.header.command = BFP_LIGHTON;
 
+	return message;
+}
+
+function BFPCreateDeviceCommandShade(device, value, cmd) {
+	var message = {};
+	message.header = {};
+	message.header.code = BFP_DEVICE_COMMAND;
+	message.body = {};
+	message.body.raspyID = device.raspyID;
+	message.body.ardID = device.ardID;
+	message.body.devID = device.devID;
+	message.body.devType = device.devType;
+	message.body.dataType = 'byte';
+
+	message.header.command = cmd;
+	if (cmd == BFP_SHADEPOS)
+		message.body.position = value;
+	if (cmd == BFP_SHADETILT)
+		message.body.tilt = value;
+	
 	return message;
 }
 

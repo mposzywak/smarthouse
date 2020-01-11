@@ -87,7 +87,27 @@
 	color: #ff5656;
 }
 
+/* shades section CSS */
 
+/* label for display the current position and tilt of the shades */
+.range-label {
+	-moz-box-sizing:    border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing:        border-box;	
+    float:				right;
+    margin: 			0 1% 1% 0
+}
+
+/* shade status disabled button */
+.shade-status {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	width:160px;
+}
+
+
+/* others */
 .section-center__full {
 	height: 12vh;
 	display: flex;
