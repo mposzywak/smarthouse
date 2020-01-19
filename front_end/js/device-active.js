@@ -2,22 +2,41 @@
 function downShade(device) {
 	let buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_direction';
 	let position = '';
+	
 	if (typeof(device.position) != 'undefined')
 		position = '(' + device.position + ')'
 	$('#' + buttonID).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> going down...');
 	$('#' + buttonID).removeClass('switch-button-error');
+	$('#' + buttonID).removeClass('switch-button-on');
+	$('#' + buttonID).attr("disabled", "disabled");
 }
 
 function upShade(device) {
 	let buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_direction';
+	let positionSliderID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_position_slider';
+	let tiltSliderID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_position_slider';
+
 	$('#' + buttonID).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> going up...');
 	$('#' + buttonID).removeClass('switch-button-error');
+	$('#' + buttonID).removeClass('switch-button-on');
+	$('#' + buttonID).attr("disabled", "disabled");
 }
 
 function stopShade(device) {
 	let buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_direction';
+	
 	$('#' + buttonID).html('<span role="status" aria-hidden="true"></span> stopped');
 	$('#' + buttonID).removeClass('switch-button-error');
+	$('#' + buttonID).removeClass('switch-button-on');
+	$('#' + buttonID).attr("disabled", "disabled");
+}
+
+function unsyncShade(device) {
+	let buttonID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_direction';
+	$('#' + buttonID).html('<span role="status" aria-hidden="true"></span> synchronize!');
+	$('#' + buttonID).removeAttr("disabled", "disabled");
+	$('#' + buttonID).removeClass('switch-button-error');
+	$('#' + buttonID).addClass('switch-button-on');
 }
 
 function enableTilt(device) {

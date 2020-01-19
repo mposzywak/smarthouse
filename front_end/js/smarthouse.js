@@ -42,17 +42,33 @@ function updateDevice(device) {
 		console.log('new ard: ' + ardID)
 	}
 	
-	devices[raspyID][ardID][devID] = device;
+	if (typeof(devices[raspyID][ardID][devID]) == 'undefined') {
+		devices[raspyID][ardID][devID] = device;
+	} else {
+		devices[raspyID][ardID][devID].value == device.value;
+		//devices[raspyID][ardID][devID].direction == device.direction;
+	}
+	
 }
 
 /* set the Slider of the device in motion (it should then not be updated according to the incoming status msgs) */
 function setDeviceShadeInMotion(device) {
 	devices[device.raspyID][device.ardID][device.devID].inMotion = true;
+	console.log("setting inMotion to true: " + JSON.stringify(devices[device.raspyID][device.ardID][device.devID]));
 }
 
 /* sets the Slider of the device as stopped */
 function setDeviceShadeStopped(device) {
 	devices[device.raspyID][device.ardID][device.devID].inMotion = false;
+	console.log("setting inMotion to false.");
+}
+
+function isDeviceInMotion(device) {
+	//if (typeof(devices[device.raspyID][device.ardID][device.devID].inMotion) != 'undefined')
+	console.log("getting value out: " + JSON.stringify(devices[device.raspyID][device.ardID][device.devID]));
+		return devices[device.raspyID][device.ardID][device.devID].inMotion;
+	//else
+		//return false;
 }
 
 /* return inMotion boolean variable */
@@ -318,6 +334,10 @@ function BFPCreateDeviceCommandShade(device, value, cmd) {
 		message.body.position = value;
 	if (cmd == BFP_SHADETILT)
 		message.body.tilt = value;
+	if (cmd == BFP_SHADEUP)
+		message.body.direction = 'up';
+	if (cmd == BFP_SHADEDOWN)
+		message.body.direction = 'down';
 	
 	return message;
 }

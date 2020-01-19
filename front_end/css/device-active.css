@@ -106,6 +106,14 @@
 	width:160px;
 }
 
+.shade-status-synced {
+	margin-top:8px; 
+	margin-bottom:8px;
+	min-width:120px;
+	width:160px;
+	
+}
+
 
 /* others */
 .section-center__full {

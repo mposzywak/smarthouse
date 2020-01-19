@@ -29,16 +29,13 @@ var Backend = function() {
 	this.http 		= require('http');
 	this.session	= require('express-session');
 	this.bodyParser = require('body-parser');
-//	this.decode 	= require('client-sessions').util.decode;
 	this.config 	= require('./config.js');
 	this.cookie 	= require('cookie-parser');
 	var EventEmitter = require('events').EventEmitter;
 	this.emitter      = new EventEmitter();
 	
 	this.fileStore = require('session-file-store')(this.session);
-	// TODO: Remove the rethink DB cookie store configuration
-	//this.RDBStore 	= require('express-session-rethinkdb')(this.session);
-	//this.rdbStore   = new this.RDBStore(this.components.getFacility('config').backend.sessionStoreOptions);
+
 	this.FILEStore = new this.fileStore();
 	this.app.set('views', __dirname + '/front_end');
 	this.app.engine('html', require('ejs').renderFile);
@@ -50,12 +47,7 @@ var Backend = function() {
 		saveUninitialized: true,
 		resave: true
 	}));
-/*	this.app.use(this.session({
-		secret: 'fdsifoa4efioehfrafoeffjisaofew',
-		saveUninitialized: true,
-		resave: true, 
-		store: this.rdbStore
-	}));*/
+
 	this.app.use(this.bodyParser.json());      
 	this.app.use(this.bodyParser.urlencoded({extended: true}));
 	this.app.use('/css', this.express.static('front_end/css'));
@@ -69,6 +61,7 @@ var Backend = function() {
 	this.app.get('/device-configuration-single', onDeviceConfigurationSingle);
 	this.app.get('/device-configuration-arduino', onDeviceConfigurationArduino);
 	this.app.get('/device-configuration-discovered', onDeviceConfigurationDiscovered);
+	this.app.get('/device-configuration-shade', onDeviceConfigurationShade);
 	this.app.get('/device-discovery', onDeviceDiscovery);
 	this.app.get('/settings', onSettings);
 
@@ -239,6 +232,18 @@ function onDeviceConfigurationDiscovered(req, res) {
 	if(sess.email)	
 	{
 		res.render('device_configuration_discovered.html');
+	}
+	else
+	{
+		res.redirect('/');
+	}
+}
+
+function onDeviceConfigurationShade(req, res) {
+	var sess = req.session;
+	if(sess.email)	
+	{
+		res.render('device_configuration_shade.html');
 	}
 	else
 	{

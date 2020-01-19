@@ -82,28 +82,50 @@
 				}
 			} else { /* the device already reported, structure needs to be filled in with new data */
 				console.log(JSON.stringify(BFPDeviceStatus.body));
-				if (BFPDeviceStatus.body.direction == 'up' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
-					upShade(BFPDeviceStatus.body);
-				} else if (BFPDeviceStatus.body.direction == 'down' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
-					downShade(BFPDeviceStatus.body);
-				} else if (BFPDeviceStatus.body.direction == 'stop' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
-					stopShade(BFPDeviceStatus.body);
-				} else if (BFPDeviceStatus.body.alive == false) {
-					disableShadeDevice(BFPDeviceStatus.body);
+				if (BFPDeviceStatus.body.activated == true) {
+					if (BFPDeviceStatus.body.alive == true) {
+						if (BFPDeviceStatus.body.direction == 'up') {
+							upShade(BFPDeviceStatus.body);
+							if (!isDeviceInMotion(BFPDeviceStatus.body) && BFPDeviceStatus.body.sync == true) {
+								setPositionSlider(BFPDeviceStatus.body);
+								setTiltSlider(BFPDeviceStatus.body)
+								console.log('moving sliders: ' + isDeviceInMotion(BFPDeviceStatus.body));
+							}
+						} else if (BFPDeviceStatus.body.direction == 'down') {
+							downShade(BFPDeviceStatus.body);
+							if (!isDeviceInMotion(BFPDeviceStatus.body) && BFPDeviceStatus.body.sync == true) {
+								setPositionSlider(BFPDeviceStatus.body);
+								setTiltSlider(BFPDeviceStatus.body);
+								console.log('moving sliders: '  + isDeviceInMotion(BFPDeviceStatus.body));
+							}
+						} else if (BFPDeviceStatus.body.direction == 'stop' && BFPDeviceStatus.body.sync == true) {
+							/* this state of the status button is reserved only for the synced state */
+							stopShade(BFPDeviceStatus.body);
+							if (!isDeviceInMotion(BFPDeviceStatus.body)) {
+								setPositionSlider(BFPDeviceStatus.body);
+								setTiltSlider(BFPDeviceStatus.body);
+								console.log('moving sliders: ' + isDeviceInMotion(BFPDeviceStatus.body));
+							}
+						} else if (BFPDeviceStatus.body.sync == false && (BFPDeviceStatus.body.direction == 'stop' || typeof(BFPDeviceStatus.body.direction) == 'undefined')) {
+							unsyncShade(BFPDeviceStatus.body);
+						}
+						if (BFPDeviceStatus.body.sync == false) {
+							disablePosition(BFPDeviceStatus.body);
+							disableTilt(BFPDeviceStatus.body);
+						}
+						
+						if (BFPDeviceStatus.body.position == document.getElementById(FID + '_position_slider').value) {
+							console.log('movement reached desired value.')
+							setDeviceShadeStopped(BFPDeviceStatus.body)
+						}
+						/*if (getDeviceShadeMotion(BFPDeviceStatus.body)) {
+							setPositionSlider(BFPDeviceStatus.body);
+							console.log('moving the slider..')
+						}*/
+					} else if (BFPDeviceStatus.body.alive == false) {
+						disableShadeDevice(BFPDeviceStatus.body);
+					}
 				}
-				
-				if (BFPDeviceStatus.body.position == document.getElementById(FID + '_position_slider').value) {
-					console.log('movement reached desired value.')
-					setDeviceShadeStopped(BFPDeviceStatus.body)
-				}
-				
-				if (getDeviceShadeMotion(BFPDeviceStatus.body)) {
-					setPositionSlider(BFPDeviceStatus.body);
-					console.log('moving the slider..')
-				}
-				//setTiltSlider(BFPDeviceStatus.body);
-				
-				
 			}
 		}
     }
@@ -130,13 +152,18 @@
 		
 		let positionSlider = document.getElementById(FID + '_position_slider');
 		let tiltSlider = document.getElementById(FID + '_tilt_slider');
+		let button = document.getElementById(FID + '_direction');
 		
-		if (body.direction == 'stop' && body.alive == true) {
+		if (body.direction == 'stop' && body.alive == true && body.sync == true) {
 			stopShade(body);
-		} else if (body.direction == 'up' && body.alive == true) {
+		} else if (body.direction == 'up' && body.alive == true && body.sync == true) {
 			upShade(body);
-		} else if (body.direction == 'down' && body.alive == true) {
+		} else if (body.direction == 'down' && body.alive == true && body.sync == true) {
 			downShade(body);
+		} else if (body.sync == false && body.alive == true) {
+			unsyncShade(body);
+			disablePosition(body);
+			disableTilt(body);
 		} else if (body.alive == false) {
 			disableShadeDevice(body);
 		}
@@ -144,22 +171,34 @@
 		//setTiltSlider(body);
 		setPositionSlider(body);
 
+
+		button.onmouseup = function () {
+			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADEUP);
+			console.log('position changed: ' + FID);
+			socket.emit('device_command', BFPDeviceCommand);
+		}
+		
+		button.ontouchend = function () {
+			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADEUP);
+			console.log('position changed: ' + FID);
+			socket.emit('device_command', BFPDeviceCommand);
+		}
 		
 		/* position slider user movement detection */
 		positionSlider.onmouseup = function() {
+			setDeviceShadeInMotion(body);
 			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADEPOS);
 			console.log('position changed: ' + FID);
 			BFPDeviceCommand.body.position = this.value; /* overwrite the device position value with the value taken from the moved slider */
 			socket.emit('device_command', BFPDeviceCommand);
-			setDeviceShadeInMotion(body);
 		}
 		
 		positionSlider.ontouchend = function() {
+			setDeviceShadeInMotion(body);
 			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADEPOS);
 			console.log('position changed: ' + FID);
 			BFPDeviceCommand.body.position = this.value; /* overwrite the device position value with the value taken from the moved slider */
 			socket.emit('device_command', BFPDeviceCommand);
-			setDeviceShadeInMotion(body);
 		}
 		
 		/* tilt slider user movement detection */

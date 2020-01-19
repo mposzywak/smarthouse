@@ -235,13 +235,24 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 			device.direction = BFPDeviceStatus.body.value;
 		} else if (BFPDeviceStatus.body.dataType == 'position') {
 			device.position = BFPDeviceStatus.body.value;
+			device.sync = true;
 		} else if (BFPDeviceStatus.body.dataType == 'tilt') {
 			device.tilt = BFPDeviceStatus.body.value;
+		} else if (BFPDeviceStatus.body.dataType == 'sync') {
+			if(BFPDeviceStatus.body.value == 0) {
+				if (typeof(device.sync) != 'undefined')
+					device.sync = false;
+				delete device.position;
+			} else if (BFPDeviceStatus.body.value == 1) {
+				device.sync = true;
+			} else {
+				debug.log(2, 'mem', identityLog + 'Shade sync status incorrect value: ' + BFPDeviceStatus.body.value);
+			}
 		} else {
 			debug.log(5, 'mem', identityLog + 'Shade device unknown dataType received: ' + BFPDeviceStatus.body.dataType);
 		}
 	} else { /* unknown device handling */
-		debug.log(5, 'mem', identityLog + 'Unknown device type received: ' + BFPDeviceStatus.body.devType);
+		debug.log(2, 'mem', identityLog + 'Unknown device type received: ' + BFPDeviceStatus.body.devType);
 		return;
 	}
 	

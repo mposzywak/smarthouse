@@ -112,6 +112,12 @@
 		var deviceIDArg = '?raspyID=' + device.raspyID + '&ardID=' + device.ardID + '&devID=' + device.devID;
 		var desc;
 		var enabled = '<font color="#911414"><strong> \(Disabled\)</strong></font>';
+		var redirectPage;
+		
+		if (device.devType == 'digitOUT' || device.devType == 'digitIN') 
+			redirectPage = 'device-configuration-single';
+		else if (device.devType == 'shade')
+			redirectPage = 'device-configuration-shade';
 		
 		if (typeof(device.desc) == 'undefined' || device.desc == '' || device.desc == null)
 			desc = '<font color="#911414">\(Not set\)</font>';
@@ -127,7 +133,7 @@
 							name: <strong>' + desc + '</strong> \
 						</div> \
 						<div class="col-sm text-white row-settings"> \
-							<button type="button" class="btn text-white conf-button" onclick="location.href=\'device-configuration-single' + deviceIDArg + '\';"> \
+							<button type="button" class="btn text-white conf-button" onclick="location.href=\'' + redirectPage + deviceIDArg + '\';"> \
 								<span class="fa fa-cog" aria-hidden="true"></span> \
 								Configure \
 							</button> \
