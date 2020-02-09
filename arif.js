@@ -160,6 +160,10 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 		options.path += 'value=' + device.position;
 	}
 	
+	if (command == 'shadeTILT') {
+		options.path += 'value=' + device.tilt;
+	}
+	
 	var req = http.request(options, function (res){
 		debug.log(1, 'arif', 'Received ARiF command resp from: ' + device.devID + ' ardID: ' + 
 			device.ardID + ' IP: ' + device.IP);

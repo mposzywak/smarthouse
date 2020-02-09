@@ -532,6 +532,12 @@ function onBFPDeviceCommand(BFPDeviceCommand, socket) {
 	var device = mem.getDeviceStatus(accountID, BFPDeviceCommand.body.raspyID, BFPDeviceCommand.body.ardID, BFPDeviceCommand.body.devID);
 	//if (typeof(BFPDeviceCommand.body.position) != 'undefined') /* overwrite the position of the mem with the one from the BFP command */
 	//	device.position = BFPDeviceCommand.body.position
+	if (typeof(device) == 'undefined') {
+		/* this situation normally shouldn't happen. It means that either someone is manipulating with the front end or the backend refreshed
+		i. e. removed the device while it still exists on the front-end */
+		require('./debug.js').log(1, 'backend', '[' + accountID + '] Received BFPDeviceCommand for unknown device! Doing nothing.');
+		return;
+	}
 	BFPDeviceCommand.body.IP = device.IP;
 	if (!require('./config.js').cloud.enabled) {
 		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as raspy, sending command over ARiF');

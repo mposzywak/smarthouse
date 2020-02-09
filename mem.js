@@ -188,6 +188,8 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
 
 	let userIndicaitonHeader = BFPDeviceStatus.header.user;
+	
+	debug.log(5, 'mem', identityLog + 'BFPDeviceStatus arrived at mem: ' + JSON.stringify(BFPDeviceStatus));
 
 	/* generic settings for a new Device */
 	if (typeof(device) == 'undefined') {
@@ -202,7 +204,7 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		newDevice.devID = BFPDeviceStatus.body.devID;
 		newDevice.alive = true;
 		isDeviceNew = true;
-		this.components.getFacility('debug').log(4, 'mem', identityLog + 'New Device registered.');
+		debug.log(4, 'mem', identityLog + 'New Device registered.');
 
 
 		this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
@@ -240,8 +242,7 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 			device.tilt = BFPDeviceStatus.body.value;
 		} else if (BFPDeviceStatus.body.dataType == 'sync') {
 			if(BFPDeviceStatus.body.value == 0) {
-				if (typeof(device.sync) != 'undefined')
-					device.sync = false;
+				device.sync = false;
 				delete device.position;
 			} else if (BFPDeviceStatus.body.value == 1) {
 				device.sync = true;

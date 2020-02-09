@@ -54,19 +54,16 @@ function updateDevice(device) {
 /* set the Slider of the device in motion (it should then not be updated according to the incoming status msgs) */
 function setDeviceShadeInMotion(device) {
 	devices[device.raspyID][device.ardID][device.devID].inMotion = true;
-	console.log("setting inMotion to true: " + JSON.stringify(devices[device.raspyID][device.ardID][device.devID]));
 }
 
 /* sets the Slider of the device as stopped */
 function setDeviceShadeStopped(device) {
 	devices[device.raspyID][device.ardID][device.devID].inMotion = false;
-	console.log("setting inMotion to false.");
 }
 
 function isDeviceInMotion(device) {
 	//if (typeof(devices[device.raspyID][device.ardID][device.devID].inMotion) != 'undefined')
-	console.log("getting value out: " + JSON.stringify(devices[device.raspyID][device.ardID][device.devID]));
-		return devices[device.raspyID][device.ardID][device.devID].inMotion;
+	return devices[device.raspyID][device.ardID][device.devID].inMotion;
 	//else
 		//return false;
 }

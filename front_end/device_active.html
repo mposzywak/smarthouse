@@ -115,13 +115,8 @@
 						}
 						
 						if (BFPDeviceStatus.body.position == document.getElementById(FID + '_position_slider').value) {
-							console.log('movement reached desired value.')
 							setDeviceShadeStopped(BFPDeviceStatus.body)
 						}
-						/*if (getDeviceShadeMotion(BFPDeviceStatus.body)) {
-							setPositionSlider(BFPDeviceStatus.body);
-							console.log('moving the slider..')
-						}*/
 					} else if (BFPDeviceStatus.body.alive == false) {
 						disableShadeDevice(BFPDeviceStatus.body);
 					}
@@ -132,7 +127,7 @@
 	
 	function addActiveShadeDeviceTableRow(body) {
 		let FID = body.raspyID + '-' + body.devID + '-' + body.ardID;
-		
+		console.log(JSON.stringify(body));
 		let row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row">';
 		row += '<div class="col-sm text-white row-settings">' + body.desc + '<br> \
 			<span style="width:250px" class="fa fa-adjust" aria-hidden="true"> \
@@ -140,7 +135,7 @@
 				<label class="range-label text-white" id="' + FID + '_position_label"></label> \
 			</span> \
 			<span style="width:250px" class="fa fa-retweet" aria-hidden="true"> \
-				<input style="width:100px" type="range" min="0" max="5" id="' + FID +'_tilt_slider" disabled> \
+				<input style="width:100px" type="range" min="0" max="90" step="45" id="' + FID +'_tilt_slider" disabled> \
 				<label class="range-label" id="' + FID + '_tilt_label"></label> \
 			</span> \
 			<button class="btn btn-primary shade-status" type="button" id="' + FID + '_direction" disabled> \
@@ -161,6 +156,7 @@
 		} else if (body.direction == 'down' && body.alive == true && body.sync == true) {
 			downShade(body);
 		} else if (body.sync == false && body.alive == true) {
+			console.log("unsyc found");
 			unsyncShade(body);
 			disablePosition(body);
 			disableTilt(body);
@@ -168,7 +164,7 @@
 			disableShadeDevice(body);
 		}
 		
-		//setTiltSlider(body);
+		setTiltSlider(body);
 		setPositionSlider(body);
 
 
