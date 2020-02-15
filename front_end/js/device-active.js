@@ -63,9 +63,18 @@ function disablePosition(device) {
 /* sets the Tilt slider to appropriate value based on the tilt value */
 function setTiltSlider(device) {
 	let sliderID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_tilt_slider';
+	let slider = document.getElementById(sliderID);
 	if (typeof(device.tilt) != 'undefined') {
-		sliderID.value = device.tilt;
+		//sliderID.value = device.tilt;
 		enableTilt(device);
+		while (slider.value > device.tilt) {
+			slider.stepDown();
+			if (slider.value = device.tilt) break;
+		} 
+		while (slider.value < device.tilt) {
+			slider.stepUp();
+			if (slider.value = device.tilt) break;
+		}
 	}
 }
 
@@ -86,7 +95,7 @@ function setPositionSlider(device) {
 	let slider = document.getElementById(sliderID);
 	if (typeof(device.position) != 'undefined') {
 		enablePosition(device);
-		
+		console.log("setting position slider: enabled")
 		while (slider.value > device.position) {
 			slider.stepDown();
 			if (slider.value = device.position) break;

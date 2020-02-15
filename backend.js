@@ -541,6 +541,10 @@ function onBFPDeviceCommand(BFPDeviceCommand, socket) {
 	BFPDeviceCommand.body.IP = device.IP;
 	if (!require('./config.js').cloud.enabled) {
 		require('./debug.js').log(5, 'backend', '[' + accountID + '] System working as raspy, sending command over ARiF');
+		if (command == 'shadeTILT') {
+			device.tilt = BFPDeviceCommand.body.tilt;
+			console.log("Setting device's tilt");
+		}
 		require('./arif.js').sendCommand(BFPDeviceCommand.body, command, function(message) {
 			//console.log('test ' + JSON.stringify(message));
 			socket.emit('device_response', message);
