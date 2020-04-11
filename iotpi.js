@@ -16,7 +16,7 @@ init.setInit('main');
 var debug = require('./debug.js').enableDebugServer();
 var mem = require('./mem.js');
 
-var backend, rcp, app, express, http, server, arif;
+var backend, rcp, app, express, http, server, arif, mqtt;
 
 mem.initialize(function(error) {
 	if (error != null) {
@@ -26,6 +26,7 @@ mem.initialize(function(error) {
 
 	backend = require('./backend.js');
 	rcp = require('./rcpserver.js');
+	mqtt = require('./mqtt.js');
 
 	/* ARiF HTTP server */
 	if (!config.cloud.enabled) {
@@ -71,7 +72,7 @@ const ARIF_DEV_STATUS_TILT = 'statusTILT';
 /* Execute each time when HTTP POST request comes into ARiF interface */
 function onPostRequest(req, res) {
 	var reqDate = new Date().getTime();
-	srcIP = req.connection.remoteAddress;
+	let srcIP = req.connection.remoteAddress;
 	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcIP);
 
 	if (!config.cloud.id) {

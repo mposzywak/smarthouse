@@ -8,7 +8,7 @@ var ConfigDB = function() {
 	var debug = this.debug;
 	this.db = new sqlite3.Database(this.config.configdb.dbfile, (err) => {
 		if (err) {
-			debug.log(1, 'configdb', 'Error while opening DB file: ' + error.message);
+			debug.log(1, 'configdb', 'Error while opening DB file: ' + err.message);
 		} else {
 			debug.log(1, 'configdb', 'ConfigDB file opened succesfully');
 		}

@@ -138,6 +138,8 @@ function sendHeartbeat(ardID, IP) {
 
 /**
  * Sends a command to an Arduino
+ * Arguments:
+ * device must have the following attributes: devID, ardID, IP.
  */
 ARiF.prototype.sendCommand = function(device, command, callback) {
 	var debug = this.debug;

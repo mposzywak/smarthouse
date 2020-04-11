@@ -1,7 +1,7 @@
 
 /* initialize the facilities, the entry is required here for debug.log() to work with that facility */
 var config = {};
-var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init', 'rcpclient', 'configdb', 'bfp'];
+var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init', 'rcpclient', 'configdb', 'bfp', 'mqtt'];
 facilities.forEach(function(item) {
 	config[item] = {};
 });
@@ -95,6 +95,12 @@ config.rcpserver.debug = 5;
 // config of the SQLite DB for config store and device status
 config.configdb.dbfile = '/home/maciej/configdb/test.db';
 config.configdb.debug = 5;
+
+// config of the MQTT client
+config.mqtt.enabled = true;
+config.mqtt.broker = 'mqtt://192.168.1.113';
+config.mqtt.topicPrefix = 'velen-mqtt';
+
 module.exports = config;
 
 
