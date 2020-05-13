@@ -9,6 +9,7 @@ var bfp = new BFP();
 const BFP_DEVICE_STATUS = "BFP_DEVICE_STATUS";
 const BFP_CLOUD_STATUS = "BFP_CLOUD_STATUS";
 const BFP_DEVICE_COMMAND = 'BFP_DEVICE_COMMAND';
+const BFP_MQTT_STATUS = 'BFP_MQTT_STATUS';
 
 /* BFP (Backend Frontend Protocol) commands */
 const BFP_HEARTBEAT = 'heartbeat';
@@ -91,6 +92,7 @@ BFP.prototype.BFPCreateDeviceStatusFromMem = function(device) {
 	return message;
 }
 
+/* Create a Cloud Status BFP message */
 BFP.prototype.BFPCreateCloudStatus = function(enabled, status, host, port, vpnID, response) {
 	message = {};
 	message.header = {};
@@ -103,6 +105,23 @@ BFP.prototype.BFPCreateCloudStatus = function(enabled, status, host, port, vpnID
 		message.header.port = port;
 		message.header.vpnID = vpnID;
 		message.header.response = response;
+	} else {
+		message.header.enabled = false;
+	}
+	
+	return message;
+}
+
+/* Create a MQTT Connection to the Broker status message */
+BFP.prototype.BFPCreateMQTTStatus = function(enabled, status, host) {
+	message = {};
+	message.header = {};
+	message.header.code = BFP_MQTT_STATUS;
+
+	if (enabled) {
+		message.header.enabled = enabled;
+		message.header.status = status;
+		message.header.host = host;
 	} else {
 		message.header.enabled = false;
 	}

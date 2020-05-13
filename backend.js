@@ -364,6 +364,7 @@ function onWSAuthorize(socket, next) {
 						socket.session = session;
 						pushAllDevices(socket, email);
 						pushAllArduinos(socket, email);
+						sendBFPMQTTStatus(socket, email);
 						if (!config.cloud.enabled)
 							sendBFPCloudStatus(socket, email);
 						//require('./rcpclient.js').sendBFPCloudStatus(null);
@@ -621,6 +622,28 @@ function sendBFPCloudStatus(socket, accountID) {
 	
 	socket.emit('cloud_status', BFPCloudStatus);
 	debug.log(4, 'rcpclient', 'Emitting cloud status message: ' + JSON.stringify(BFPCloudStatus));
+}
+
+/*
+ * Sends MQTT connection status to the Front End
+ */ 
+
+function sendBFPMQTTStatus(socket, accountID) {
+	let config = require('./config.js');
+	let debug = require('./debug.js');
+	let mqtt = require('./mqtt.js');
+	let status;
+	let BFPMQTTStatus;
+	
+	if (config.mqtt.enabled) {
+		status = mqtt.isMQTTConnected()
+		BFPMQTTStatus = require('./bfp.js').BFPCreateMQTTStatus(true, status, config.mqtt.broker);
+	} else {
+		BFPMQTTStatus = require('./bfp.js').BFPCreateMQTTStatus(false);
+	}
+	
+	socket.emit('mqtt_status', BFPMQTTStatus);
+	debug.log(4, 'mqtt', 'Emitting MQTT status message: ' + JSON.stringify(BFPMQTTStatus));
 }
 
 /**
