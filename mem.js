@@ -182,6 +182,7 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	let device;
 	let identityLog = 'For accountID id: ' + accountID + ', Arduino: "' + BFPDeviceStatus.body.ardID + '", Device: "' + BFPDeviceStatus.body.devID + '" ';
 	let debug = this.components.getFacility('debug');
+	let mqtt = require('./mqtt.js');
 	/*if (!this.config.cloud.enabled)
 		device = this.devices[accountID].raspys[this.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
 	else*/
@@ -209,6 +210,13 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 
 		this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
 		device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
+		
+		/* new device so time to subscribe to MQTT topics */
+		if (newDevice.devType == 'shade') {
+			mqtt.subscribeShade(newDevice.raspyID, newDevice.ardID, newDevice.devID);
+		} else if (newDevice.devType == 'digitOUT') {
+			
+		}
 	}
 
 	if (device.activated == true) { 
@@ -262,6 +270,13 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	let newBFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
 	newBFPDeviceStatus.header.user = userIndicaitonHeader;
 	onValueChange(accountID, newBFPDeviceStatus);
+
+	/* also send to MQTT */
+	mqtt.publishShadeOnline(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
+	if (BFPDeviceStatus.body.dataType == 'position')
+		mqtt.publishShadePosition(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.position);
+	if (BFPDeviceStatus.body.dataType == 'tilt')
+		mqtt.publishShadeTilt(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.tilt);
 
 	if (!this.config.cloud.enabled)
 		this.rcpclient.sendUplinkMessage(newBFPDeviceStatus);
@@ -556,6 +571,9 @@ Mem.prototype.setArduinoDead = function(accountID, raspyID, ardID) {
 				this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
 				var BFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
 				onValueChange(accountID, BFPDeviceStatus);
+				/* also send to MQTT */
+				let mqtt = require('./mqtt.js');
+				mqtt.publishShadeOffline(raspyID, ardID, devID);
 				
 				this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] ArdID and its devIDs declared dead: ' + 
 						ardID + ' on raspyID: ' + raspyID + ' devID: ' + devID);
@@ -578,6 +596,10 @@ Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
 						ardID + ' on raspyID: ' + raspyID + ' devID: ' + devID);
 				var BFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
 				onValueChange(accountID, BFPDeviceStatus);
+				
+				/* also send to MQTT */
+				let mqtt = require('./mqtt.js');
+				mqtt.publishShadeOnline(raspyID, ardID, devID);
 			}
 		}
 	}

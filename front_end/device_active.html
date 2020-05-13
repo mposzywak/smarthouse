@@ -149,7 +149,7 @@
 		let tiltSlider = document.getElementById(FID + '_tilt_slider');
 		let button = document.getElementById(FID + '_direction');
 		
-		if (body.direction == 'stop' && body.alive == true && body.sync == true) {
+		if (body.alive == true && body.sync == true) {
 			stopShade(body);
 		} else if (body.direction == 'up' && body.alive == true && body.sync == true) {
 			upShade(body);

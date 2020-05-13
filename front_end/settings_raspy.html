@@ -149,6 +149,14 @@
           <ul class="list-group mb-3" id="clouds">
           	
           </ul>
+		  
+          <h4 class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted">MQTT Connection Status</span>
+            <span class="badge badge-secondary badge-pill">1</span>
+          </h4>
+          <ul class="list-group mb-3" id="mqtts">
+          	
+          </ul>
           
         </div>
         <div class="col-md-8 order-md-1">
@@ -214,6 +222,7 @@
 	socket.on('message', onMessage);
 	socket.on('arduino', onArduino);
 	socket.on('cloud_status', onCloudStatus);
+	socket.on('mqtt_status', onMQTTStatus);
 
 	
 	function onArduino(msg) {
@@ -291,16 +300,55 @@
                 <small>Cloud disabled</small> \
               </div> \
             </li>'
-
         }
-
-        //$("#clouds").append(row);
 
         if (!document.getElementById(itemID)) {
 			$("#clouds").append(row);
         } else {
         	removeElementFromList('clouds', itemID);
         	$("#clouds").append(row);
+		}
+	}
+	
+	function onMQTTStatus(BFPMQTTStatus) {
+		console.log('MQTT status received.');
+		var itemID = 'mqtt-' + BFPMQTTStatus.header.host;
+
+		if (BFPMQTTStatus.header.enabled) {
+			if (BFPMQTTStatus.header.status) { // MQTT UP
+				row = '<li class="list-group-item d-flex justify-content-between bg-light" id="' + itemID + '"> \
+            	  	<div class="text-success"> \
+                	<h6 class="my-0">MQTT</h6> \
+                	<small>MQTT Broker: </small> \
+                	<small>(' + BFPMQTTStatus.header.host + ')</small> \
+              		</div> \
+              		<span class="text-success">UP</span> \
+            		</li>'
+        	} else { // MQTT DOWN
+        		row = '<li class="list-group-item d-flex justify-content-between bg-light" id="' + itemID + '"> \
+              		<div class="text-danger"> \
+                	<h6 class="my-0">MQTT</h6> \
+                	<small>MQTT Broker: </small> \
+                	<small>(' + BFPMQTTStatus.header.host + ')</small> \
+              		</div> \
+            		<span class="text-danger">DOWN</span> \
+            		</li>'
+            }
+        } else { // MQTT connection disabled
+
+        var row = '<li class="list-group-item d-flex justify-content-between bg-light" id="' + itemID + '"> \
+              <div > \
+                <h6 class="my-0">MQTT</h6> \
+                <small>MQTT disabled</small> \
+              </div> \
+            </li>'
+        }
+		
+        if (!document.getElementById(itemID)) {
+			$("#mqtts").append(row);
+        } else {
+        	removeElementFromList('mqtts', itemID);
+        	$("#mqtts").append(row);
 		}
 	}
 
