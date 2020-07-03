@@ -93,20 +93,21 @@ BFP.prototype.BFPCreateDeviceStatusFromMem = function(device) {
 }
 
 /* Create a Cloud Status BFP message */
-BFP.prototype.BFPCreateCloudStatus = function(enabled, status, host, port, vpnID, response) {
+BFP.prototype.BFPCreateCloudStatus = function(cloud, status, vpnStatus, host, port, vpnID, response) {
 	message = {};
 	message.header = {};
 	message.header.code = BFP_CLOUD_STATUS;
 
-	if (enabled) {
-		message.header.enabled = enabled;
+	if (cloud) {
+		message.header.cloud = cloud;
 		message.header.status = status;
 		message.header.host = host;
 		message.header.port = port;
 		message.header.vpnID = vpnID;
+		message.header.vpnStatus = vpnStatus
 		message.header.response = response;
 	} else {
-		message.header.enabled = false;
+		message.header.cloud = false;
 	}
 	
 	return message;

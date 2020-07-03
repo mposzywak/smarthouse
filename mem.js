@@ -727,4 +727,28 @@ Mem.prototype.clearDeviceDiscovered = function(accountID, raspyID, ardID, devID)
 	device.discovered = false;
 }
 
+/**
+ * Function to set the VPN status UP
+ *
+ */
+
+Mem.prototype.setVPNStateUP = function() {
+	var accountID = this.config.cloud.id;
+	var raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	var raspy = this.devices[accountID].raspys[raspyID];
+	raspy.VPNConnected = true;
+}
+
+/**
+ * Function to set the VPN status UP
+ *
+ */
+
+Mem.prototype.setVPNStateDOWN = function() {
+	var accountID = this.config.cloud.id;
+	var raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	var raspy = this.devices[accountID].raspys[raspyID];
+	raspy.VPNConnected = false;
+}
+
 module.exports = memory;

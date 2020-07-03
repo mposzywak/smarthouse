@@ -20,7 +20,7 @@ var ConfigDB = function() {
  * (only Raspy) function returns vpnID value for the raspy, if it is not configured, returns null
  */
 ConfigDB.prototype.getVpnID = function(accountID, callback) {
-	var sql = 'SELECT vpnID, vpnKey FROM raspys WHERE accountID = ?';
+	var sql = 'SELECT vpnID, vpnKey, cloud FROM raspys WHERE accountID = ?';
 
 	this.db.all(sql, [accountID], function(error, rows) {
 		if (error) {
@@ -28,7 +28,7 @@ ConfigDB.prototype.getVpnID = function(accountID, callback) {
 		} else {
 			for (var i = 0; i < rows.length; i++) {
 				var row = rows[i];
-				callback(null, row.vpnID, row.vpnKey);
+				callback(null, row.vpnID, row.vpnKey, row.cloud);
 			}
 		}
 	});
@@ -37,8 +37,45 @@ ConfigDB.prototype.getVpnID = function(accountID, callback) {
 /**
  * (only Raspy) function sets the new vpnID and vpnKey (also changes raspyID in all devices and arduinos)
  */
-ConfigDB.prototype.setVpnID = function(accountID, vpnID, vpnKey) {
+ConfigDB.prototype.setVpnID = function(accountID, raspyID, enabled, vpnID, vpnKey) {
+	var debug = this.debug;
+	sql = 'UPDATE raspys SET vpnID = ?, vpnKey = ?, cloud = ? \
+			WHERE accountID = ? AND raspyID ?'
+	SQLUpdate = 'UPDATE raspys SET ';
+	SQLWhere = ' WHERE raspyID = ? AND accountID = ?';
+	values = [];
+	
+	if (typeof(enabled) != 'undefined') {
+		SQLUpdate += ' cloud = ?,';
+		if (enabled)
+			values.push(1);
+		else
+			values.push(0);
+	}
+	
+	if (typeof(vpnID) != 'undefined') {
+		SQLUpdate += ' vpnID = ?,';
+		values.push(vpnID);
+	}
+	
+	if (typeof(vpnKey) != 'undefined') {
+		SQLUpdate += ' vpnKey = ?,';
+		values.push(vpnKey);
+	}
+	
 
+	SQLUpdate = SQLUpdate.substring(0, SQLUpdate.length - 1);
+	
+	values.push(raspyID);
+	values.push(accountID);
+	//console.log('values: ' + values);
+	this.db.run(SQLUpdate + SQLWhere, values, function(error) {
+		if (error) {
+			debug.log(1, 'configdb', 'Error while updating Raspy with VPN details: ' + error.message);
+		} else {
+			debug.log(5, 'configdb', 'Updated Raspy with VPN details, accountid: ' + accountID + ', raspyid: ' + raspyID);
+		}
+	});
 }
 
 
@@ -249,6 +286,12 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 			for (var i = 0; i < rows.length; i++) {
 				var row = rows[i];
 				devices.raspys[row.raspyID] = {};
+				devices.raspys[row.raspyID].vpnKey = row.vpnKey;
+				devices.raspys[row.raspyID].vpnID = row.vpnID;
+				if (row.cloud == '1')
+					devices.raspys[row.raspyID].cloud = true;
+				else 
+					devices.raspys[row.raspyID].cloud = false;
 				devices.raspys[row.raspyID].arduinos = {};
 			}
 			db.all(SQLArduinos, [accountID], function(error, rows) {

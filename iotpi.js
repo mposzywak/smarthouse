@@ -49,7 +49,10 @@ mem.initialize(function(error) {
 	init.clearInit('main');
 	/* end of all initialization actions */
 
-	/* accept requests for all URLs, filter later */
+	/* handle VPN connection on startup */
+	if (!config.cloud.enabled) {
+		getVPNConnectedStatus();
+	}
 
 });
 
@@ -116,6 +119,7 @@ function onPostRequest(req, res) {
 					var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, userIndicaitonHeader);
 					mem.setDeviceStatus(config.cloud.id, BFPDeviceStatus);
 				} else {
+					
 					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);
 					res.writeHead(404, { 'Content-Type' : 'text/plain'});
 					res.end('Error: probably wrong URL');
@@ -158,6 +162,20 @@ function onPostRequest(req, res) {
 		res.writeHead(200, { 'Content-Type' : 'text/plain'});
         res.end('Data ack');
 	} else {
+		if (url == '/vpn/up') {
+			debug.log(2, 'arif', 'Received VPN UP indication from: ' + srcIP);
+			require('./mem.js').setVPNStateUP();
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+	        res.end('VPN Data ack');
+			return;
+		}
+		if (url == '/vpn/down') {
+			debug.log(2, 'arif', 'Received VPN UP indication from: ' + srcIP);
+			require('./mem.js').setVPNStateDOWN();
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+	        res.end('VPN Data ack');
+			return;
+		}
 		debug.log(2, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + srcIP);
 		res.writeHead(404, { 'Content-Type' : 'text/plain'});
         res.end('Error: probably wrong URL');
@@ -211,4 +229,46 @@ function getParams(url) {
        urlParams[decode(match[1])] = decode(match[2]);
 	
 	return urlParams
+}
+
+/** 
+ * Function to get 
+ */
+
+function getVPNConnectedStatus() {
+	let os = require('./os.js');
+	let config = require('./config.js');
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let accountID = config.cloud.id;
+	let devices = mem.getClientDevices(accountID);
+	let raspy = devices.raspys[raspyID];
+	
+	if (raspy.cloud) {
+		os.isVPNenabled(function(error, enabled) {
+			if (!error) {
+				if (enabled) {
+					os.getVPNStatus(function(statusError, status) {
+						if (!statusError) {
+							if (!status) { // VPN enabled, but not started
+								os.startVPN(function(startError, output) {
+									debug.log(1, 'init', 'Found VPN enabled, but not started. Starting.');
+								});
+							} else { // VPN enabled and started
+								raspy.VPNConnected = os.isVPNConnected();
+								debug.log(1, 'init', 'Found VPN enabled and started, Status: ' + raspy.VPNConnected);
+							}
+						}
+					});
+				} else {
+					os.enableVPN(function(enableError, enableOutput) {
+						if (!enableError) {
+							os.startVPN(function(startError, startOutput) {
+								debug.log(1, 'init', 'Found VPN not enabled and not started. Enabling and starting.');
+							});
+						}
+					});
+				}
+			}
+		});
+	}
 }

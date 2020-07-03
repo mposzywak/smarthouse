@@ -7,11 +7,16 @@ var RCPClient = function () {
 	this.isCloudAlive = false;
 	this.lastResponseCode = null;
 	
-	// Create HTTP client
-	///this.http = require('http');
-	//this.rcpserver = http.createClient(this.config.cloud.host, this.config.cloud.port);
+	let mem = require('./mem.js');
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	console.log(raspyID);
+	let devices = mem.getClientDevices('admin');
+	console.log(JSON.stringify(devices));
+	let raspy = devices.raspys[raspyID];
 
-	setInterval(sendHeartbeat, 3000);
+	setInterval(function() {
+		sendHeartbeat();
+	}, 3000);
 
 }
 
@@ -22,6 +27,16 @@ function sendHeartbeat() {
 	var payload = null;
 	var rcpclient = require('./rcpclient.js');
 	var debug = require('./debug.js');
+
+	let mem = require('./mem.js');
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let devices = mem.getClientDevices('admin');
+	let raspy = devices.raspys[raspyID];
+	
+	if (!raspy.cloud) {
+		if (!raspy.VPNConnected)
+			return;
+	}
 
 	debug.log(5, 'rcpclient', 'Sending hearbeat to cloud server.');
 	rcpclient.sendMessage(url, payload, function(error, res) {

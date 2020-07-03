@@ -1,7 +1,7 @@
 
 /* initialize the facilities, the entry is required here for debug.log() to work with that facility */
 var config = {};
-var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init', 'rcpclient', 'configdb', 'bfp', 'mqtt'];
+var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init', 'rcpclient', 'configdb', 'bfp', 'mqtt', 'os'];
 facilities.forEach(function(item) {
 	config[item] = {};
 });
@@ -43,7 +43,7 @@ config.mem.debug = 5;
 
 // config of the backend
 config.backend.debug = 5;
-config.backend.port = 10090;
+config.backend.port = 8087;
 config.backend.html = '/frontend';
 /*
 config.backend.fileSessionStoreOptions = {
@@ -93,14 +93,23 @@ config.rcpserver.port = 32401;
 config.rcpserver.debug = 5;
 
 // config of the SQLite DB for config store and device status
-config.configdb.dbfile = '/home/maciej/configdb/test.db';
+config.configdb.dbfile = '/srv/smarthouse/db/iot.db';
 config.configdb.debug = 5;
 
 // config of the MQTT client
 config.mqtt.enabled = true;
-config.mqtt.broker = 'mqtt://192.168.1.113';
+config.mqtt.broker = 'mqtt://127.0.0.1';
 config.mqtt.topicPrefix = 'velen-mqtt';
+config.mqtt.debug = 5;
+
+// config of the OS interfacing module
+config.os.vpnCredentialsFile = '/etc/openvpn/user-pass';
+config.os.vpnStatusFile = '/etc/openvpn/status';
+config.os.debug = 5;
 
 module.exports = config;
+
+
+
 
 

@@ -390,6 +390,9 @@ function onWSAuthorize(socket, next) {
 						socket.on('device_ignore', function (BFPPayload) {
 							onBFPGenericMessage('device_ignore', BFPPayload, socket);
 						});
+						socket.on('cloud_settings', function (BFPPayload) {
+							onBFPGenericMessage('cloud_settings', BFPPayload, socket);
+						});
 						next();
 					} else {
 						require('./debug.js').log(5, 'backend', 'WS cookie received, session present, but no accountID associatiated, hence closing from: ' + source);
@@ -434,12 +437,96 @@ function onBFPGenericMessage(msg, BFPPayload, socket) {
 			case 'device_ignore':
 				onBFPDeviceIgnore(BFPPayload, socket);
 				break;
+			case 'cloud_settings':
+				onBFPCloudSettings(BFPPayload, socket);
+				break;
 			default:
 				require('./debug.js').log(1, 'backend', 'received unimplemented BFP message: ' + msg);
 		}
 	} else {
 		require('./debug.js').log(4, 'backend', 'received BFP message: ' + msg + ' - sending down to raspy over RCP');
 	}
+}
+
+/**
+ * on cloud_settings message received from front-end
+ */
+
+function onBFPCloudSettings(msg, socket) {
+	let debug = require('./debug.js');
+	let accountID = socket.session.email;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let devices = mem.getClientDevices(accountID);
+	let raspy = devices.raspys[raspyID];
+	let os = require('./os.js');
+	
+	debug.log(5, 'backend', '[' + accountID + '] WS received event: cloud_settings with: ' + JSON.stringify(msg));
+	
+	let cloud;
+	let vpnID;
+	let vpnKey;
+	let isVpnID = false;
+	let isVpnKey = false;
+	
+	if (typeof(msg.body.cloud) != 'undefined') {
+		if (!(msg.body.cloud == true || msg.body.cloud == false)) {
+			debug.log(3, 'backend', 'Incorrect cloud value: ' + msg.body.cloud);
+			return;
+		} else {
+			raspy.cloud = msg.body.cloud;
+		}
+	} 
+	
+	
+	if (typeof(msg.body.vpnid) != 'undefined') {
+		if (msg.body.vpnid != '') {
+			if (/^([0-9]{8}\-[0-9]{3})$/.test(msg.body.vpnid) == false) {
+				debug.log(3, 'backend', 'Incorrect vpnID value: ' + msg.body.vpnid);
+				return;
+			} else {
+				raspy.vpnID = msg.body.vpnid;
+			}
+		} 
+	}
+	if (typeof(msg.body.vpnkey) != 'undefined') {
+		if (msg.body.vpnkey != '') {
+			if (/^([0-9a-fA-F]{16})$/.test(msg.body.vpnkey) == false) {
+				debug.log(3, 'backend', 'Incorrect vpnkey value: ' + msg.body.vpnkey);
+				return;
+			} else {
+				raspy.vpnKey = msg.body.vpnkey;
+			}
+		}
+	}
+	debug.log(5, 'backend', 'Cloud_settings values validated succesfully, sending to DB, cloud: ' + raspy.cloud + ', vpnID: ' + raspy.vpnID + ', vpnKey: *****');
+	
+	let configdb = require('./configdb.js');
+
+	configdb.setVpnID(accountID, raspyID, raspy.cloud, raspy.vpnID, raspy.vpnKey);
+	os.setVPNCredentials(raspy.vpnID, raspy.vpnKey);
+
+	os.getVPNStatus(function (error, vpnStatus) {
+		if (!error) {
+			debug.log(5, 'backend', 'VPN enabled in the OS: ' + vpnStatus);
+			if (raspy.cloud) {
+				if (vpnStatus) {
+					os.restartVPN();
+				} else {
+					os.enableVPN(function(error, output) {
+						if (!error)
+							os.startVPN();
+					});
+				}
+			} else {
+				os.stopVPN(function(error, output) {
+					if (!error)
+						os.disableVPN();
+				});
+			}
+			sendBFPCloudStatus(socket, accountID);
+		} else 
+		debug.log(1, 'backend', 'VPN status could not be obtained from the OS: ' + error);
+	});
 }
 
 /**
@@ -609,13 +696,19 @@ function sendBFPCloudStatus(socket, accountID) {
 	var port;
 	var vpnID;
 	var BFPCloudStatus;
+	
 
-	if (config.cloud.connection) {
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	var devices = mem.getClientDevices(accountID);
+	var raspy = devices.raspys[raspyID]
+
+	if (raspy.cloud) {
 		status = require('./rcpclient.js').isCloudAlive;
 		host = config.rcpclient.host;
 		port = config.rcpclient.port;
-		vpnID = config.rcpclient.vpnID;
-		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(true, status, host, port, vpnID, null);
+		vpnID = raspy.vpnID;
+		vpnStatus = raspy.VPNConnected;
+		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(true, status, vpnStatus, host, port, vpnID, null);
 	} else {
 		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(false);
 	}
