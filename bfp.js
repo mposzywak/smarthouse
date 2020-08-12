@@ -10,6 +10,7 @@ const BFP_DEVICE_STATUS = "BFP_DEVICE_STATUS";
 const BFP_CLOUD_STATUS = "BFP_CLOUD_STATUS";
 const BFP_DEVICE_COMMAND = 'BFP_DEVICE_COMMAND';
 const BFP_MQTT_STATUS = 'BFP_MQTT_STATUS';
+const BFP_VPNKEY_RESPONSE = 'BFP_VPNKEY_RESPONSE';
 
 /* BFP (Backend Frontend Protocol) commands */
 const BFP_HEARTBEAT = 'heartbeat';
@@ -93,7 +94,7 @@ BFP.prototype.BFPCreateDeviceStatusFromMem = function(device) {
 }
 
 /* Create a Cloud Status BFP message */
-BFP.prototype.BFPCreateCloudStatus = function(cloud, status, vpnStatus, host, port, vpnID, response) {
+BFP.prototype.BFPCreateCloudStatus = function(cloud, status, vpnStatus, host, port, vpnID, response, lastError) {
 	message = {};
 	message.header = {};
 	message.header.code = BFP_CLOUD_STATUS;
@@ -106,6 +107,7 @@ BFP.prototype.BFPCreateCloudStatus = function(cloud, status, vpnStatus, host, po
 		message.header.vpnID = vpnID;
 		message.header.vpnStatus = vpnStatus
 		message.header.response = response;
+		message.header.lastError = lastError;
 	} else {
 		message.header.cloud = false;
 	}
@@ -125,6 +127,23 @@ BFP.prototype.BFPCreateMQTTStatus = function(enabled, status, host) {
 		message.header.host = host;
 	} else {
 		message.header.enabled = false;
+	}
+	
+	return message;
+}
+/**
+ * 
+ */
+BFP.prototype.BFPVPNKeyResponse = function(vpnKey, status, error) {
+	message = {};
+	message.header = {};
+	message.header.code = BFP_VPNKEY_RESPONSE;
+	message.header.status = status;
+	
+	if (status) {
+		message.header.vpnkey = vpnKey;
+	} else {
+		message.header.error = error;
 	}
 	
 	return message;

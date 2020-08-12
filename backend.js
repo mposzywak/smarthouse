@@ -485,6 +485,7 @@ function onBFPCloudSettings(msg, socket) {
 				return;
 			} else {
 				raspy.vpnID = msg.body.vpnid;
+				raspy.newVPN = true;
 			}
 		} 
 	}
@@ -495,6 +496,7 @@ function onBFPCloudSettings(msg, socket) {
 				return;
 			} else {
 				raspy.vpnKey = msg.body.vpnkey;
+				raspy.newVPN = true;
 			}
 		}
 	}
@@ -502,30 +504,64 @@ function onBFPCloudSettings(msg, socket) {
 	
 	let configdb = require('./configdb.js');
 
-	configdb.setVpnID(accountID, raspyID, raspy.cloud, raspy.vpnID, raspy.vpnKey);
-	os.setVPNCredentials(raspy.vpnID, raspy.vpnKey);
-
-	os.getVPNStatus(function (error, vpnStatus) {
-		if (!error) {
-			debug.log(5, 'backend', 'VPN enabled in the OS: ' + vpnStatus);
-			if (raspy.cloud) {
+	/* this condition is hit when only the cloud switch is received */
+	if (typeof(msg.body.cloud) != 'undefined' && msg.body.vpnid == '' && msg.body.vpnkey == '') {
+		configdb.setVpnID(accountID, raspyID, raspy.cloud, undefined, undefined, undefined, undefined);
+		if (raspy.cloud) {
+			os.getVPNStatus(function (error, vpnStatus) {
 				if (vpnStatus) {
-					os.restartVPN();
+					/* Nothing to do VPN somehow already running */
 				} else {
 					os.enableVPN(function(error, output) {
-						if (!error)
-							os.startVPN();
+						os.startVPN(function(){
+							/* VPN started */
+						});
 					});
 				}
-			} else {
-				os.stopVPN(function(error, output) {
-					if (!error)
-						os.disableVPN();
+			});
+		} else {
+			/* disable the VPN */
+			os.stopVPN(function(error, output) {
+				os.disableVPN(function(error, output) {
+					debug.log(5, 'backend', 'VPN disabled in the OS on GUI request.');
 				});
-			}
-			sendBFPCloudStatus(socket, accountID);
-		} else 
-		debug.log(1, 'backend', 'VPN status could not be obtained from the OS: ' + error);
+			});
+		}
+		return;
+	}
+
+	// Set raspy initSetupFlag
+	raspy.initSetupFlag = true;
+	raspy.vpnKeyReceivedFlag = false;
+
+	configdb.setVpnID(accountID, raspyID, raspy.cloud, raspy.vpnID, undefined, raspy.vpnKey, true);
+	os.setVPNCredentials(raspy.vpnID, raspy.vpnKey, function(err){
+		os.getVPNStatus(function (error, vpnStatus) {
+			if (!error) {
+				debug.log(5, 'backend', 'VPN enabled in the OS: ' + vpnStatus);
+				if (raspy.cloud) {
+					if (vpnStatus) {
+						os.restartVPN(function(){
+							// handle routing for requesting new vpnID, key
+						});
+					} else {
+						os.enableVPN(function(error, output) {
+							if (!error)
+								os.startVPN(function(){
+									// handle routing for requesting new vpnID, key
+								});
+						});
+					}
+				} else {
+					os.stopVPN(function(error, output) {
+						if (!error)
+							os.disableVPN();
+					});
+				}
+				sendBFPCloudStatus(socket, accountID);
+			} else 
+			debug.log(1, 'backend', 'VPN status could not be obtained from the OS: ' + error);
+		});
 	});
 }
 
@@ -696,6 +732,7 @@ function sendBFPCloudStatus(socket, accountID) {
 	var port;
 	var vpnID;
 	var BFPCloudStatus;
+	let lastError;
 	
 
 	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
@@ -708,7 +745,8 @@ function sendBFPCloudStatus(socket, accountID) {
 		port = config.rcpclient.port;
 		vpnID = raspy.vpnID;
 		vpnStatus = raspy.VPNConnected;
-		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(true, status, vpnStatus, host, port, vpnID, null);
+		lastError = raspy.lastError;
+		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(true, status, vpnStatus, host, port, vpnID, null, lastError);
 	} else {
 		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(false);
 	}

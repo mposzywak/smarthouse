@@ -50,9 +50,9 @@ mem.initialize(function(error) {
 	/* end of all initialization actions */
 
 	/* handle VPN connection on startup */
-	if (!config.cloud.enabled) {
+	/*if (!config.cloud.enabled) {
 		getVPNConnectedStatus();
-	}
+	}*/
 
 });
 
@@ -163,17 +163,47 @@ function onPostRequest(req, res) {
         res.end('Data ack');
 	} else {
 		if (url == '/vpn/up') {
+			let mem = require('./mem.js');
 			debug.log(2, 'arif', 'Received VPN UP indication from: ' + srcIP);
-			require('./mem.js').setVPNStateUP();
+			
+			if (mem.getInitSetupFlag() && mem.getVpnKeyReceivedFlag() != true) {
+				/* initial connection with the initVPNKey */
+				require('./mem.js').requestVPNKey();
+			}
+			if (mem.getInitSetupFlag() && mem.getVpnKeyReceivedFlag()) {
+				/* first connection with the vpnKey just obtained from the cloud */
+				mem.setInitSetupFlag(false);
+				mem.setVPNStateUP();
+				mem.setVPNLastError('VPN_NOERROR');
+				mem.sendCloudStatus();
+			}
+			let isf = mem.getInitSetupFlag();
+			if (isf == false || typeof(isf) == 'undefined') {
+				/* all subsequent connections with the vpnKey */
+				mem.setVPNStateUP();
+				mem.setVPNLastError('VPN_NOERROR');
+				mem.sendCloudStatus();
+			}
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
-	        res.end('VPN Data ack');
+	        res.end();
 			return;
 		}
 		if (url == '/vpn/down') {
-			debug.log(2, 'arif', 'Received VPN UP indication from: ' + srcIP);
+			debug.log(2, 'arif', 'Received VPN DOWN indication from: ' + srcIP);
+			if (mem.getInitSetupFlag()) {
+				debug.log(5, 'os', 'VPN DOWN Event due to VPN initial setup in progress.');
+				res.writeHead(200, { 'Content-Type' : 'text/plain'});
+		        res.end();
+				return;
+			}
 			require('./mem.js').setVPNStateDOWN();
+			require('./os.js').getLastVPNError(function(error, code) {
+				debug.log(1, 'os', 'On VPN DOWN Event - Error found in the log: ' + code);
+				require('./mem.js').setVPNLastError(code);
+				require('./mem.js').sendCloudStatus();
+			});
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
-	        res.end('VPN Data ack');
+	        res.end();
 			return;
 		}
 		debug.log(2, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + srcIP);
@@ -229,46 +259,4 @@ function getParams(url) {
        urlParams[decode(match[1])] = decode(match[2]);
 	
 	return urlParams
-}
-
-/** 
- * Function to get 
- */
-
-function getVPNConnectedStatus() {
-	let os = require('./os.js');
-	let config = require('./config.js');
-	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
-	let accountID = config.cloud.id;
-	let devices = mem.getClientDevices(accountID);
-	let raspy = devices.raspys[raspyID];
-	
-	if (raspy.cloud) {
-		os.isVPNenabled(function(error, enabled) {
-			if (!error) {
-				if (enabled) {
-					os.getVPNStatus(function(statusError, status) {
-						if (!statusError) {
-							if (!status) { // VPN enabled, but not started
-								os.startVPN(function(startError, output) {
-									debug.log(1, 'init', 'Found VPN enabled, but not started. Starting.');
-								});
-							} else { // VPN enabled and started
-								raspy.VPNConnected = os.isVPNConnected();
-								debug.log(1, 'init', 'Found VPN enabled and started, Status: ' + raspy.VPNConnected);
-							}
-						}
-					});
-				} else {
-					os.enableVPN(function(enableError, enableOutput) {
-						if (!enableError) {
-							os.startVPN(function(startError, startOutput) {
-								debug.log(1, 'init', 'Found VPN not enabled and not started. Enabling and starting.');
-							});
-						}
-					});
-				}
-			}
-		});
-	}
 }

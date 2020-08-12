@@ -1,9 +1,33 @@
 
+/* VPN Connectivity Error Codes */
+const VPN_AUTH_FAILURE = 'VPN_AUTH_FAILURE';
+const VPN_INACTIVE_TIMEOUT = 'VPN_INACTIVE_TIMEOUT';
+const VPN_UNKNOWN_FAILURE = 'VPN_UNKNOWN_FAILURE';
+const VPN_NOERROR = 'VPN_NOERROR';
 
 let OS = function() {
 	this.config = require('./config.js');
 	this.debug = require('./debug.js');
 	this.fs = require('fs');
+	let mem = require('./mem.js');
+	let os = this;
+	
+	setInterval(function() {
+		if (mem.getVPNCloudEnabled()) {
+			//console.log('cloud enabled: ' + mem.getVPNCloudEnabled());
+			if (mem.getVPNStatus()) {
+				// VPN is up, nothing to do here
+			} else {
+				// VPN is down, so something is wrong, need to get the error
+				os.getLastVPNError(function(error, code) {
+					debug.log(1, 'os', 'VPN Could not connect. Error found in the log: ' + code);
+					mem.setVPNLastError(code);
+					mem.sendCloudStatus();
+				});
+				
+			}
+		}
+	}, this.config.os.vpnTimeout * 1000);
 }
 
 let os = new OS();
@@ -12,17 +36,17 @@ let os = new OS();
 /**
  * Restart OpenVPN instance through systemctl
  */
-OS.prototype.restartVPN = function() {
+OS.prototype.restartVPN = function(callback) {
 	let os = this;
 	
 	this.stopVPN(function(error, output) {
 		if (!error)
-			os.startVPN();
+			os.startVPN(callback);
 	});
 }
 
 /**
- * Check if 
+ * Check if the VPN is Active
  */
 OS.prototype.getVPNStatus = function(callback) {
 	let debug = require('./debug.js');
@@ -48,7 +72,7 @@ OS.prototype.getVPNStatus = function(callback) {
 /**
  * Set OpenVPN username and password
  */
-OS.prototype.setVPNCredentials = function(username, password) {
+OS.prototype.setVPNCredentials = function(username, password, callback) {
 	let content = username + '\n' + password
 	let options = { mode: 0o600}
 	let os = this.config.os;
@@ -57,9 +81,11 @@ OS.prototype.setVPNCredentials = function(username, password) {
 	this.fs.writeFile(os.vpnCredentialsFile, content, options, function(err) {
 	    if(err) {
 	        debug.log(1, 'os', 'Cannot write VPN credentails into file: ' + os.vpnCredentialsFile);
+			callback(err);
 			return;
 	    }
 	    debug.log(4, 'os', 'VPN credentials succesfully written into: ' + os.vpnCredentialsFile);
+		callback(err);
 	}); 
 }
 
@@ -157,18 +183,51 @@ OS.prototype.isVPNConnected = function() {
 	let os = this.config.os;
 	let debug = require('./debug.js');
 	let content;
+	let mem = require('./mem.js');
 
 	content = this.fs.readFileSync(os.vpnStatusFile, 'utf8');
 	
 	debug.log(3, 'os', 'read VPN status file: ' + content);
 	
 	if (content.indexOf('UP') > -1) {
+		mem.setVPNLastError(VPN_NOERROR);
+		mem.sendCloudStatus();
 		return true;
 	} else if (content.indexOf('DOWN') > -1) {
+		os.getLastVPNError(function(error, code) {
+			debug.log(1, 'os', 'VPN Could not connect. Error found in the log: ' + code);
+			mem.setVPNLastError(code);
+			mem.sendCloudStatus();
+		});
 		return false;
 	} else {
 		return false;
 	}
 }
+
+/**
+ *  Get latest Error from the openvpn log file
+ */
+OS.prototype.getLastVPNError = function(callback) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+
+	require('child_process').exec('tail -50 ' + config.os.vpnLog, function(err, stdout, stderr) {
+		if (err) {
+			debug.log(1, 'os', 'Returned error while reading log file: ' + config.os.vpnLog + ' Error: ' + stderr);
+			if (callback) callback(err, stderr);
+			return;
+		}
+		
+		if (stdout.match('AUTH_FAILED')) {
+			if (callback) callback(null, 'AUTH_FAILED');
+		} else if (stdout.match('UNDEF\] Inactivity timeout')) {
+			if (callback) callback(null, 'INACTIVE_TIMEOUT');
+		} else {
+			if (callback) callback(null, 'UNKNOWN_ERROR');
+		}
+	});
+}
+
 
 module.exports = os;

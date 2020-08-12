@@ -105,6 +105,8 @@ config.mqtt.debug = 5;
 // config of the OS interfacing module
 config.os.vpnCredentialsFile = '/etc/openvpn/user-pass';
 config.os.vpnStatusFile = '/etc/openvpn/status';
+config.os.vpnLog = '/var/log/openvpn.log';
+config.os.vpnTimeout = 5;
 config.os.debug = 5;
 
 module.exports = config;

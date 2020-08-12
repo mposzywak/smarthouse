@@ -42,9 +42,13 @@ Mem.prototype.initialize = function(callback) {
 			if (error) {
 				require('./debug.js').log(1, 'configdb', 'Failed to access configDB: ' + error.message);
 			} else {
-				devices[accountID] = raspys;
+				devices[accountID].raspys = raspys;
 				devices[accountID].raspys[raspyID].pending = {};
 				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully [Raspy mode]');
+				if (devices[accountID].raspys[raspyID].cloud) {
+					// start VPN here:
+					connectVPN();
+				}
 				callback(null);
 			}
 		});
@@ -117,6 +121,7 @@ Mem.prototype.isArdIDRegistered = function(accountID, ardID) {
 	else
 		return false;
 }
+
 
 /* returns Arduinos IP address */
 Mem.prototype.getArduinoIP = function(accountID, ardID) {
@@ -498,6 +503,97 @@ Mem.prototype.getClientDevices = function (accountID) {
 	return this.devices[accountID];
 }
 
+/* 
+ * Request for a VPNKey during initial VPN setup. 
+ */
+Mem.prototype.requestVPNKey = function() {
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	
+	if (raspy.initSetupFlag) {
+		let debug = require('./debug.js');
+		let rcpclient = require('./rcpclient.js');
+		debug.log(4, 'mem', 'Initil VPN Connection set up succesfully. Requesting VPNKey');
+		rcpclient.requestVPNKey(function (error, vpnKey) {
+			if (error) {
+				debug.log(1, 'mem', 'Error while requesting VPNKey on initial setup: ' + error);
+				return;
+			}
+			
+			debug.log(5, 'mem', 'Received answer for VPNKey request: ' + vpnKey);
+			require('./mem.js').setVPNKey(accountID, raspyID, vpnKey);
+		});
+	}
+}
+
+/**
+ * Set VPNKey 
+ */
+
+Mem.prototype.setVPNKey = function(accountID, raspyID, vpnkey) {
+	let db = require('./configdb.js');
+	let os = require('./os.js');
+	
+	db.setVpnID(accountID, raspyID, undefined, undefined, vpnkey);
+	this.devices[accountID].raspys[raspyID].vpnkey = vpnkey
+	os.setVPNCredentials(this.devices[accountID].raspys[raspyID].vpnID, vpnkey, function(err) {
+		if (!err) {
+			os.restartVPN(function(error, output) {
+				
+			});
+		}
+	});
+}
+
+/**
+ * return vpnKey value for a given account/raspy
+ */
+Mem.prototype.getVPNKey = function (accountID, raspyID) {
+	if (typeof(this.devices[accountID]) == 'undefined') {
+		return null;
+	}
+	if (typeof(this.devices[accountID].raspys[raspyID]) == 'undefined') {
+		return null;
+	}
+	
+	if (typeof(this.devices[accountID].raspys[raspyID].vpnKey) == 'undefined') {
+		return null;
+	} else {
+		return this.devices[accountID].raspys[raspyID].vpnKey;
+	}
+}
+
+/**
+ * Load the latest vpnKey from the DB
+ * return vpnKey for a given accountID/raspyID.
+ */
+Mem.prototype.getLatestVPNKey = function (accountID, raspyID, callback) {
+	let raspy = this.devices[accountID].raspys[raspyID];
+	
+	if (typeof(this.devices[accountID]) == 'undefined') {
+		callback(true, null, null);
+		return;
+	}
+	if (typeof(this.devices[accountID].raspys[raspyID]) == 'undefined') {
+		callback(true, null, null);
+		return;
+	}
+	
+	let db = require('./configdb.js');
+	db.getVpnID(accountID, raspyID, function(error, vpnID, vpnKey, initVpnKey, cloud) {
+		if (!error) {
+			raspy.vpnKey = vpnKey;
+			raspy.initVpnKey = initVpnKey;
+			callback(false, vpnKey, initVpnKey);
+		} else {
+			callback(true, null, null);
+		}
+	});
+	
+}
+
+
 /* increment Arduino dead counter (only raspy) */
 Mem.prototype.increaseArduinoDeadCounter = function(accountID, raspyID, ardID) {
 	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
@@ -553,6 +649,12 @@ Mem.prototype.clearArduinoDeadCounter = function(accountID, raspyID, ardID) {
 
 /* clear the Raspy dead counter (only cloud) */
 Mem.prototype.clearRaspyDeadCounter = function(accountID, raspyID) {
+	let debug = require('./debug.js');
+	
+	if (typeof(this.devices[accountID]) == 'undefined') {
+		debug.log(1, 'mem', '[' + accountID + '] accountID not found in DB - this should not happen!');
+		return;
+	}
 	this.devices[accountID].raspys[raspyID].counter = 0
 	this.setRaspyAlive(accountID, raspyID);
 }
@@ -667,8 +769,8 @@ Mem.prototype.sendRCPAllDeviceStatus = function(rcpclient) {
 /* set pending arduino information. Could be used for the first time arduino is seen or
    every other time */
 Mem.prototype.updatePendingArduino = function(ardIP) {
-	var pending = this.devices[this.accountID].raspys[this.raspyID].pending;
-	var date = new Date();
+	let pending = this.devices[this.accountID].raspys[this.raspyID].pending;
+	let date = new Date();
 	if (typeof(pending[ardIP]) == 'undefined') {
 		pending[ardIP] = {};
 		pending[ardIP].allowed = false;
@@ -684,7 +786,7 @@ Mem.prototype.updatePendingArduino = function(ardIP) {
  * Checkinf if pending Arduino is allowed to register (raspy only function)
  */
 Mem.prototype.isPendingArduinoAllowed = function(ardIP) {
-	var pending = this.devices[this.accountID].raspys[this.raspyID].pending;
+	let pending = this.devices[this.accountID].raspys[this.raspyID].pending;
 	if (typeof(pending[ardIP]) == 'undefined')
 		return false;
 	
@@ -695,7 +797,7 @@ Mem.prototype.isPendingArduinoAllowed = function(ardIP) {
  *	Set this pending arduino to be allowed to register (both raspy and cloud function)
  */ 
 Mem.prototype.allowPendingArduino = function(accountID, raspyID, ardIP) {
-	var pending = this.devices[accountID].raspys[raspyID].pending;
+	let pending = this.devices[accountID].raspys[raspyID].pending;
 	pending[ardIP].allowed = true;
 }
 
@@ -703,7 +805,7 @@ Mem.prototype.allowPendingArduino = function(accountID, raspyID, ardIP) {
  * Remove pending arduino information from the mem structure (both raspy and cloud function)
  */
 Mem.prototype.removePendingArduino = function(accountID, raspyID, ardIP) {
-	var pending = this.devices[accountID].raspys[raspyID].pending;
+	let pending = this.devices[accountID].raspys[raspyID].pending;
 	delete pending[ardIP];
 }
 
@@ -712,7 +814,7 @@ Mem.prototype.removePendingArduino = function(accountID, raspyID, ardIP) {
  * trigger also DB entry update.
  */
 Mem.prototype.updateArduino = function(accountID, raspyID, ardID, name) {
-	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
+	let arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
 	
 	arduino.name = name;
 }
@@ -722,7 +824,7 @@ Mem.prototype.updateArduino = function(accountID, raspyID, ardID, name) {
  *
  */
 Mem.prototype.clearDeviceDiscovered = function(accountID, raspyID, ardID, devID) {
-	var device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
 
 	device.discovered = false;
 }
@@ -733,9 +835,9 @@ Mem.prototype.clearDeviceDiscovered = function(accountID, raspyID, ardID, devID)
  */
 
 Mem.prototype.setVPNStateUP = function() {
-	var accountID = this.config.cloud.id;
-	var raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
-	var raspy = this.devices[accountID].raspys[raspyID];
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
 	raspy.VPNConnected = true;
 }
 
@@ -745,10 +847,169 @@ Mem.prototype.setVPNStateUP = function() {
  */
 
 Mem.prototype.setVPNStateDOWN = function() {
-	var accountID = this.config.cloud.id;
-	var raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
-	var raspy = this.devices[accountID].raspys[raspyID];
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
 	raspy.VPNConnected = false;
 }
+
+/**
+ *  Function to check the state of the VPN connection
+ */
+Mem.prototype.getVPNStatus = function() {
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	return raspy.VPNConnected;
+}
+
+/**
+ * function to check if VPN is enabled
+ */
+Mem.prototype.getVPNCloudEnabled = function() {
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	return raspy.cloud;
+}
+
+/**
+ * Function to set the last Error of the VPN connection
+ */
+Mem.prototype.setVPNLastError = function(lastError) {
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	raspy.lastError = lastError;
+}
+
+/**
+ * Function to get the last Error of the VPN connection
+ */
+Mem.prototype.getVPNLastError = function() {
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	return raspy.lastError;
+}
+
+/**
+ * Function to return the initSetupFlag related to VPN.
+ */
+Mem.prototype.getInitSetupFlag = function() {
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	return raspy.initSetupFlag;
+}
+
+/**
+ * Function to setup the initServiceFlag related to VPN
+ */
+Mem.prototype.setInitSetupFlag = function(value) {
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	raspy.initSetupFlag = value;
+	let db = require('./configdb.js');
+	db.setVpnID(accountID, raspyID, undefined, undefined, undefined, undefined, value);
+}
+
+/**
+ * Function to return the vpnKeyReceived flag related to VPN.
+ */
+Mem.prototype.getVpnKeyReceivedFlag = function() {
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	return raspy.vpnKeyReceivedFlag;
+}
+
+/**
+ * Function to set the vpnKeyReceived flag related to VPN.
+ */
+Mem.prototype.setVpnKeyReceivedFlag = function(value) {
+	let accountID = this.config.cloud.id;
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	raspy.vpnKeyReceivedFlag = value;
+}
+
+/**
+ * Function to send the cloud VPN connection status 
+ */ 
+Mem.prototype.sendCloudStatus = function() {
+	let accountID = this.config.cloud.id;
+	let config = this.config;
+	let raspyID = config.rcpclient.vpnID.split('-')[1];
+	let raspy = this.devices[accountID].raspys[raspyID];
+	
+	let io = this.components.getFacility('backend').io;
+	let debug = require('./debug.js');
+	
+	let host;
+	let port;
+	let vpnID;
+	let BFPCloudStatus;
+	let vpnStatus;
+	let lastError;
+	
+	if (raspy.cloud) {
+		status = require('./rcpclient.js').isCloudAlive;
+		host = config.rcpclient.host;
+		port = config.rcpclient.port;
+		vpnID = raspy.vpnID;
+		vpnStatus = raspy.VPNConnected;
+		lastError = raspy.lastError;
+		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(true, status, vpnStatus, host, port, vpnID, null, lastError);
+	} else {
+		BFPCloudStatus = require('./bfp.js').BFPCreateCloudStatus(false);
+	}
+	
+	debug.log(5, 'mem', '[' + accountID + '] Emitting cloud_status: ' + JSON.stringify(BFPCloudStatus));
+	
+	io.of('/iot').to(accountID).emit('cloud_status', BFPCloudStatus);
+	
+}
+
+function connectVPN() {
+	let os = require('./os.js');
+	let config = require('./config.js');
+	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
+	let accountID = config.cloud.id;
+	let devices = require('./mem.js').getClientDevices(accountID);
+	let raspy = devices.raspys[raspyID];
+	
+	os.isVPNenabled(function(error, enabled) {
+		if (!error) {
+			if (enabled) {
+				os.getVPNStatus(function(statusError, status) {
+					if (!statusError) {
+						if (!status) { // VPN enabled, but not started
+							os.startVPN(function(startError, output) {
+								debug.log(1, 'init', 'Found VPN enabled, but not started. Starting.');
+							});
+						} else { // VPN enabled and started
+							raspy.VPNConnected = os.isVPNConnected();
+							debug.log(1, 'init', 'Found VPN enabled and started, Status: ' + raspy.VPNConnected);
+						}
+					}
+				});
+			} else {
+				os.enableVPN(function(enableError, enableOutput) {
+					if (!enableError) {
+						os.startVPN(function(startError, startOutput) {
+							debug.log(1, 'init', 'Found VPN not enabled and not started. Enabling and starting.');
+						});
+					}
+				});
+			}
+		}
+	});
+
+		
+
+}
+
 
 module.exports = memory;
