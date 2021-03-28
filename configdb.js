@@ -17,34 +17,18 @@ var ConfigDB = function() {
 }
 
 /**
- * (only cloud) function to add new account
- */
-
-ConfigDB.prototype.insertAccount = function(accountID, name, email, password, salt) {
-	
-}
-
-/**
- * (only cloud) function to add new raspy
- */
-
-ConfigDB.prototype.insertRaspy = function(accountID, raspyID, vpnID, vpnKey, remote, backup) {
-	
-}
-
-/**
  * (only Raspy) function returns vpnID value for the raspy, if it is not configured, returns null
  */
-ConfigDB.prototype.getVpnID = function(accountID, raspyID, callback) {
-	var sql = 'SELECT vpnID, vpnKey, initVpnKey, cloudService FROM raspys WHERE accountID = ? AND raspyID = ?';
+ConfigDB.prototype.getVpnID = function(accountID, callback) {
+	var sql = 'SELECT vpnID, vpnKey FROM raspys WHERE accountID = ?';
 
-	this.db.all(sql, [accountID, raspyID], function(error, rows) {
+	this.db.all(sql, [accountID], function(error, rows) {
 		if (error) {
 			callback(error, null);
 		} else {
 			for (var i = 0; i < rows.length; i++) {
 				var row = rows[i];
-				callback(null, row.vpnID, row.vpnKey, row.initVpnKey, row.cloud);
+				callback(null, row.vpnID, row.vpnKey);
 			}
 		}
 	});
@@ -53,58 +37,8 @@ ConfigDB.prototype.getVpnID = function(accountID, raspyID, callback) {
 /**
  * (only Raspy) function sets the new vpnID and vpnKey (also changes raspyID in all devices and arduinos)
  */
-ConfigDB.prototype.setVpnID = function(accountID, raspyID, enabled, vpnID, vpnKey, initVpnKey, initSetupFlag) {
-	var debug = this.debug;
-	sql = 'UPDATE raspys SET vpnID = ?, vpnKey = ?, cloudService = ? \
-			WHERE accountID = ? AND raspyID ?'
-	SQLUpdate = 'UPDATE raspys SET ';
-	SQLWhere = ' WHERE raspyID = ? AND accountID = ?';
-	values = [];
-	
-	if (typeof(enabled) != 'undefined') {
-		SQLUpdate += ' cloudService = ?,';
-		if (enabled)
-			values.push(1);
-		else
-			values.push(0);
-	}
-	
-	if (typeof(vpnID) != 'undefined') {
-		SQLUpdate += ' vpnID = ?,';
-		values.push(vpnID);
-	}
-	
-	if (typeof(vpnKey) != 'undefined') {
-		SQLUpdate += ' vpnKey = ?,';
-		values.push(vpnKey);
-	}
-	
-	if (typeof(initVpnKey) != 'undefined') {
-		SQLUpdate += ' initVpnKey = ?,';
-		values.push(initVpnKey);
-	}
-	
-	if (typeof(initSetupFlag) != 'undefined') {
-		SQLUpdate += ' initSetupFlag = ?,';
-		if (initSetupFlag)
-			values.push(1);
-		else
-			values.push(0);
-	}
-	
+ConfigDB.prototype.setVpnID = function(accountID, vpnID, vpnKey) {
 
-	SQLUpdate = SQLUpdate.substring(0, SQLUpdate.length - 1);
-	
-	values.push(raspyID);
-	values.push(accountID);
-
-	this.db.run(SQLUpdate + SQLWhere, values, function(error) {
-		if (error) {
-			debug.log(1, 'configdb', 'Error while updating Raspy with VPN details: ' + error.message);
-		} else {
-			debug.log(5, 'configdb', 'Updated Raspy with VPN details, accountid: ' + accountID + ', raspyid: ' + raspyID);
-		}
-	});
 }
 
 
@@ -306,21 +240,16 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 	var SQLArduinos = 'SELECT * FROM arduinos WHERE accountID = ?';
 	var SQLRaspys = 'SELECT * FROM raspys WHERE accountID = ?';
 	var db = this.db;
-	var raspys = {};
+	var devices = {};
+	devices.raspys = {};
 	db.all(SQLRaspys, [accountID], function(error, rows) {
 		if (error) {
 			callback(error, null);
 		} else {
 			for (var i = 0; i < rows.length; i++) {
 				var row = rows[i];
-				raspys[row.raspyID] = {};
-				raspys[row.raspyID].vpnKey = row.vpnKey;
-				raspys[row.raspyID].vpnID = row.vpnID;
-				if (row.cloudService == '1')
-					raspys[row.raspyID].cloud = true;
-				else 
-					raspys[row.raspyID].cloud = false;
-				raspys[row.raspyID].arduinos = {};
+				devices.raspys[row.raspyID] = {};
+				devices.raspys[row.raspyID].arduinos = {};
 			}
 			db.all(SQLArduinos, [accountID], function(error, rows) {
 				if (error) {
@@ -331,15 +260,16 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 						var raspyID = row.raspyID;
 						var ardID = row.ardID;
 						
-						if (typeof(raspys[raspyID]) == 'undefined') {
-							raspys[raspyID] = {};
-							raspys[raspyID].arduinos = {};
+						if (typeof(devices.raspys[raspyID]) == 'undefined') {
+							devices.raspys[raspyID] = {};
+							devices.raspys[raspyID].arduinos = {};
 						}
 						
-						raspys[raspyID].arduinos[ardID] = {}
-						raspys[raspyID].arduinos[ardID].devices = {}
-						raspys[raspyID].arduinos[ardID].IP = row.IP;
-						raspys[raspyID].arduinos[ardID].raspyID = raspyID;
+						devices.raspys[raspyID].arduinos[ardID] = {}
+						devices.raspys[raspyID].arduinos[ardID].devices = {}
+						devices.raspys[raspyID].arduinos[ardID].IP = row.IP;
+						devices.raspys[raspyID].arduinos[ardID].raspyID = raspyID;
+				
 					}	
 			
 					db.all(SQLDevices, [accountID], function(error, rows) {
@@ -351,30 +281,30 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 								var raspyID = row.raspyID;
 								var ardID = row.ardID;
 								var devID = row.devID;
-								if (typeof(raspys[raspyID]) == 'undefined') {
-									raspys[raspyID] = {};
-									raspys[raspyID].arduinos = {};
+								if (typeof(devices.raspys[raspyID]) == 'undefined') {
+									devices.raspys[raspyID] = {};
+									devices.raspys[raspyID].arduinos = {};
 								}
-								if (typeof(raspys[raspyID].arduinos[ardID]) == 'undefined') {
-									raspys[raspyID].arduinos[ardID] = {};
-									raspys[raspyID].arduinos[ardID].devices = {};
-									raspys[raspyID].arduinos[ardID].alive = false;
+								if (typeof(devices.raspys[raspyID].arduinos[ardID]) == 'undefined') {
+									devices.raspys[raspyID].arduinos[ardID] = {};
+									devices.raspys[raspyID].arduinos[ardID].devices = {};
+									devices.raspys[raspyID].arduinos[ardID].alive = false;
 								}
-								raspys[raspyID].arduinos[ardID].devices[devID] = {};
-								raspys[raspyID].arduinos[ardID].devices[devID].activated = row.activated ? true : false;
-								raspys[raspyID].arduinos[ardID].devices[devID].ardID = row.ardID;
-								raspys[raspyID].arduinos[ardID].devices[devID].dataType = row.dataType;
-								raspys[raspyID].arduinos[ardID].devices[devID].date = JSON.parse(row.date);
-								raspys[raspyID].arduinos[ardID].devices[devID].desc = row.desc;
-								raspys[raspyID].arduinos[ardID].devices[devID].devType = row.devType;
-								raspys[raspyID].arduinos[ardID].devices[devID].devID = row.devID;
-								raspys[raspyID].arduinos[ardID].devices[devID].IP = row.IP;
-								raspys[raspyID].arduinos[ardID].devices[devID].raspyID = row.raspyID;
-								raspys[raspyID].arduinos[ardID].devices[devID].value = row.value;
-								raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID] = {};
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].activated = row.activated ? true : false;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].ardID = row.ardID;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].dataType = row.dataType;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].date = JSON.parse(row.date);
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].desc = row.desc;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].devType = row.devType;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].devID = row.devID;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].IP = row.IP;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].raspyID = row.raspyID;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].value = row.value;
+								devices.raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
 							}
 							//console.log(JSON.stringify(devices));
-							callback(error, raspys);
+							callback(error, devices);
 						}
 					});
 				}
@@ -395,7 +325,7 @@ ConfigDB.prototype.getEverything = function(callback) {
 		} else {
 			for (var i = 0; i < rows.length; i++) {
 				var row = rows[i];
-				let accountID = row.accountID;
+				var accountID = row.accountID;
 				var name = row.name;
 				var email = row.email;
 				var password = row.password;
@@ -409,7 +339,7 @@ ConfigDB.prototype.getEverything = function(callback) {
 					if (error) {
 						callback(error);
 					} else {
-						accounts[accountID].raspys = raspys;
+						accounts[accountID] = raspys;
 					}
 				});
 			}
