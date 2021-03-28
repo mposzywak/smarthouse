@@ -23,7 +23,6 @@ const MSG_ARDUINO_DEAD = 0;
 const MSG_ARDUINO_ALIVE = 1;
  
 const BFP_DEVICE_COMMAND = 'BFP_DEVICE_COMMAND';
-const BFP_CLOUD_SETTINGS = 'BFP_CLOUD_SETTINGS';
 
 var devices = {};
 
@@ -336,18 +335,6 @@ function BFPCreateDeviceCommandShade(device, value, cmd) {
 		message.body.direction = 'up';
 	if (cmd == BFP_SHADEDOWN)
 		message.body.direction = 'down';
-	
-	return message;
-}
-
-function BFPCreateCloudSettings(vpnid, vpnkey, cloud) {
-	var message = {};
-	message.header = {};
-	message.header.code = BFP_CLOUD_SETTINGS;
-	message.body = {};
-	message.body.cloud = cloud;
-	message.body.vpnid = vpnid;
-	message.body.vpnkey = vpnkey;
 	
 	return message;
 }

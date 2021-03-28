@@ -7,16 +7,11 @@ var RCPClient = function () {
 	this.isCloudAlive = false;
 	this.lastResponseCode = null;
 	
-	let mem = require('./mem.js');
-	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
-	console.log(raspyID);
-	let devices = mem.getClientDevices('admin');
-	console.log(JSON.stringify(devices));
-	let raspy = devices.raspys[raspyID];
+	// Create HTTP client
+	///this.http = require('http');
+	//this.rcpserver = http.createClient(this.config.cloud.host, this.config.cloud.port);
 
-	setInterval(function() {
-		sendHeartbeat();
-	}, 3000);
+	setInterval(sendHeartbeat, 3000);
 
 }
 
@@ -28,16 +23,6 @@ function sendHeartbeat() {
 	var rcpclient = require('./rcpclient.js');
 	var debug = require('./debug.js');
 
-	let mem = require('./mem.js');
-	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
-	let devices = mem.getClientDevices('admin');
-	let raspy = devices.raspys[raspyID];
-	
-	if (!raspy.cloud) {
-		if (raspy.VPNConnected != true)
-			return;
-	}
-
 	debug.log(5, 'rcpclient', 'Sending hearbeat to cloud server.');
 	rcpclient.sendMessage(url, payload, function(error, res) {
 		if (res) {
@@ -48,9 +33,7 @@ function sendHeartbeat() {
 				// Send status of all alive devices to the Cloud
 				require('./mem.js').sendRCPAllDeviceStatus(require('./rcpclient.js'));
 			} else if (res.statusCode != 200) {
-				debug.log(1, 'rcpclient', 'Incorrect StatusCode to heartbeat on RCP from Cloud Server:' + res.statusCode);
-			} else {
-				debug.log(1, 'rcpclient', 'Received StatusCode to heartbeat on RCP from Cloud Server:' + res.statusCode)
+				debug.log(1, 'rcpclient', 'Incorrect StatusCode received on RCP from Cloud Server!');
 			}
 		} else {
 			debug.log(1, 'rcpclient', 'Could not send heartbeat message: ' + error.message);
@@ -110,45 +93,6 @@ RCPClient.prototype.sendArduinoDead = function(ardID) {
 	});
 }
 
-/**
- * Send the request for new VPNkey
- */ 
-RCPClient.prototype.requestVPNKey = function(callback) {
-	let debug = require('./debug.js');
-	let mem = require('./mem.js');
-
-	/*if (this.isCloudAlive == false) {
-		debug.log(1, 'rcpclient', 'Cloud connection dead, not sending ');
-		return;
-	}*/
-	
-	let url = '/request-vpnkey';
-
-	this.sendMessage(url, null, function(error, res) {
-		if (res) {
-			res.on('data', function(body) {
-				let bfp = JSON.parse(body);
-				let bfp2 = JSON.parse(bfp);
-				if (bfp2.header.status) {
-					debug.log(4, 'rcpclient', 'Received VPNKey Response: ' + res.statusCode);
-					mem.setVpnKeyReceivedFlag(true);
-					callback(null, bfp2.header.vpnkey);
-				} else {
-					debug.log(4, 'rcpclient', 'Received Error Response for VPNKey request: ' + bfp2.header.error);
-					callback(bfp2.header.error, null);
-				}
-			});
-			
-			// here we need to add some handling of the incoming VPNKey.
-			
-		}
-		if (error) {
-			debug.log(1, 'rcpclient', 'Failed to send request-vpnkey: ' + error.message);
-			//require('./rcpclient.js').isCloudAlive = false;
-			callback(error, null);
-		}
-	});
-}
 
 /** Send generic message on RCP 
  * put URL, payload has to be a JSON argument, if set to NULL or '' body will be sent empty
@@ -158,42 +102,29 @@ RCPClient.prototype.sendMessage = function(url, payload, callback) {
 	var http = require('http');
 	var debug = require('./debug.js');
 	var config = this.config;
-	let accountID = this.config.cloud.id;
-	let raspyID = config.rcpclient.vpnID.split('-')[1];
-	let initSetupFlag = require('./mem.js').devices[accountID].raspys[raspyID].initSetupFlag;
 	
 	var db = require('./configdb.js');
-	db.getVpnID(accountID, raspyID, function(error, vpnID, vpnKey, initVpnKey) {
+	db.getVpnID('admin', function(error, vpnID, vpnKey) {
 		if (error) {
 			debug.log(1, 'rcpclient', 'Failed to obtain vpnID and vpnKey from DB: ' + error.message)
 		} else {
 			//console.log('vpnID: ' + vpnID + ' vpnKey: ' + vpnKey);
 	
-			let options = {
+			var options = {
 				hostname: config.rcpclient.host,
 				port: config.rcpclient.port,
 				path: url,
 				method: 'POST',
-				agent: false
-			};
-			
-			if (initSetupFlag) {
-				options.headers = {
-					'iot-raspyid' : vpnID, 
-					'iot-vpnkey' : initVpnKey,
-					'Content-Type' : 'application/json'
-				};
-				options.json = true;
-			} else {
-				options.headers = {
+				agent: false,
+				headers: {
 					'iot-raspyid' : vpnID, 
 					'iot-vpnkey' : vpnKey,
 					'Content-Type' : 'application/json'
-				};
-			}
+				}
+			};
 
 			var req = http.request(options, function (res){
-				callback(null, res);
+			callback(null, res);
 			}).on('error', function(error) {
 				callback(error, null);
 			});
@@ -217,11 +148,11 @@ RCPClient.prototype.sendUplinkMessage = function(payload) {
 	var debug = require('./debug.js');
 
 	if (this.isCloudAlive == false) {
-		debug.log(1, 'rcpclient', 'Cloud connection dead. Not sending Uplink messages');
+		debug.log(1, 'rcpclient', 'Setting Cloud connection dead. Not sending Uplink messages');
 		return;
 	}
 
-	debug.log(5, 'rcpclient', 'Sending Uplink message to cloud server.');
+	debug.log(5, 'rcpclient', 'Sending hearbeat to cloud server.');
 	this.sendMessage(url, payload, function(error, res) {
 		if (res) {
 			if (res.statusCode == 200) {
