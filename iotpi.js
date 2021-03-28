@@ -49,7 +49,10 @@ mem.initialize(function(error) {
 	init.clearInit('main');
 	/* end of all initialization actions */
 
-	/* accept requests for all URLs, filter later */
+	/* handle VPN connection on startup */
+	/*if (!config.cloud.enabled) {
+		getVPNConnectedStatus();
+	}*/
 
 });
 
@@ -116,6 +119,7 @@ function onPostRequest(req, res) {
 					var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, userIndicaitonHeader);
 					mem.setDeviceStatus(config.cloud.id, BFPDeviceStatus);
 				} else {
+					
 					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);
 					res.writeHead(404, { 'Content-Type' : 'text/plain'});
 					res.end('Error: probably wrong URL');
@@ -158,6 +162,50 @@ function onPostRequest(req, res) {
 		res.writeHead(200, { 'Content-Type' : 'text/plain'});
         res.end('Data ack');
 	} else {
+		if (url == '/vpn/up') {
+			let mem = require('./mem.js');
+			debug.log(2, 'arif', 'Received VPN UP indication from: ' + srcIP);
+			
+			if (mem.getInitSetupFlag() && mem.getVpnKeyReceivedFlag() != true) {
+				/* initial connection with the initVPNKey */
+				require('./mem.js').requestVPNKey();
+			}
+			if (mem.getInitSetupFlag() && mem.getVpnKeyReceivedFlag()) {
+				/* first connection with the vpnKey just obtained from the cloud */
+				mem.setInitSetupFlag(false);
+				mem.setVPNStateUP();
+				mem.setVPNLastError('VPN_NOERROR');
+				mem.sendCloudStatus();
+			}
+			let isf = mem.getInitSetupFlag();
+			if (isf == false || typeof(isf) == 'undefined') {
+				/* all subsequent connections with the vpnKey */
+				mem.setVPNStateUP();
+				mem.setVPNLastError('VPN_NOERROR');
+				mem.sendCloudStatus();
+			}
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+	        res.end();
+			return;
+		}
+		if (url == '/vpn/down') {
+			debug.log(2, 'arif', 'Received VPN DOWN indication from: ' + srcIP);
+			if (mem.getInitSetupFlag()) {
+				debug.log(5, 'os', 'VPN DOWN Event due to VPN initial setup in progress.');
+				res.writeHead(200, { 'Content-Type' : 'text/plain'});
+		        res.end();
+				return;
+			}
+			require('./mem.js').setVPNStateDOWN();
+			require('./os.js').getLastVPNError(function(error, code) {
+				debug.log(1, 'os', 'On VPN DOWN Event - Error found in the log: ' + code);
+				require('./mem.js').setVPNLastError(code);
+				require('./mem.js').sendCloudStatus();
+			});
+			res.writeHead(200, { 'Content-Type' : 'text/plain'});
+	        res.end();
+			return;
+		}
 		debug.log(2, 'arif', 'Sending 404, improper URL received: ' + url + ' from: ' + srcIP);
 		res.writeHead(404, { 'Content-Type' : 'text/plain'});
         res.end('Error: probably wrong URL');
