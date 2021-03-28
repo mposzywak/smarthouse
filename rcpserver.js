@@ -21,6 +21,7 @@ var RCPServer = function () {
 		this.app.post('/arduino-alive', onArduinoAlive);
 		this.app.post('/uplink', onUplink);
 		this.app.post('/request-vpnkey', onRequestVPNKey);
+		this.app.post('/send-pubkey', onSendPubKey)
 		
 		setInterval(monitorRaspys, 3000);
 	} else {
@@ -209,6 +210,38 @@ function onArduinoAlive(req, res) {
 			require('./mem.js').setArduinoAlive(accountID, raspyID, ardID);
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
 			res.end('ok');
+		}
+	});
+}
+
+function onSendPubKey(req, res) {
+	authRCP(req, res, function(error){
+		if (error == null) {
+			let vpnid = req.get('iot-raspyid');
+			let accountID = vpnid.split('-')[0];
+			let raspyID = vpnid.split('-')[1];
+			let BFPMessage = req.body;
+			let debug = require('./debug.js');
+			let os = require('./os.js');
+			debug.log(4, 'rcpserver', 'Received send-pubkey message with json body: ' + JSON.stringify(BFPMessage));
+			if (typeof(BFPMessage.body) != 'undefined') {
+				os.appendKeyToFile('/home/' + require('./config.js').os.serviceUser + '/.ssh/known_hosts', BFPMessage.body + '\n');
+			} else {
+				debug.log(1, 'rcpserver', 'send-pubkey message does not contain valid key.');
+			}
+			
+			
+			let serverSSHKey = os.getServerSSHPublicKey();
+			if (typeof(serverSSHKey) != 'undefined') {
+				let BFPResponse = require('./bfp.js').BFPCreateSendPublicKey(serverSSHKey);
+				res.json(BFPResponse);
+				console.log(JSON.stringify(BFPResponse))
+				debug.log(4, 'rcpserver', 'Succesfully obtained SSH Public Key from file for: ' + vpnid);
+			} else {
+				debug.log(1, 'rcpserver', 'Could not obtain SSH Public Key from file for: ' + vpnid);
+				res.writeHead(500, { 'Content-Type' : 'text/plain'});
+				res.end('Cannot obtain Server SSH Key');
+			}
 		}
 	});
 }

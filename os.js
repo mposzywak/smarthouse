@@ -12,22 +12,25 @@ let OS = function() {
 	let mem = require('./mem.js');
 	let os = this;
 	
-	setInterval(function() {
-		if (mem.getVPNCloudEnabled()) {
-			//console.log('cloud enabled: ' + mem.getVPNCloudEnabled());
-			if (mem.getVPNStatus()) {
-				// VPN is up, nothing to do here
-			} else {
-				// VPN is down, so something is wrong, need to get the error
-				os.getLastVPNError(function(error, code) {
-					debug.log(1, 'os', 'VPN Could not connect. Error found in the log: ' + code);
-					mem.setVPNLastError(code);
-					mem.sendCloudStatus();
-				});
+	/* only for raspy setup */
+	if (!this.config.cloud.enabled) {
+		setInterval(function() {
+			if (mem.getVPNCloudEnabled()) {
+				//console.log('cloud enabled: ' + mem.getVPNCloudEnabled());
+				if (mem.getVPNStatus()) {
+					// VPN is up, nothing to do here
+				} else {
+					// VPN is down, so something is wrong, need to get the error
+					os.getLastVPNError(function(error, code) {
+						debug.log(1, 'os', 'VPN Could not connect. Error found in the log: ' + code);
+						mem.setVPNLastError(code);
+						mem.sendCloudStatus();
+					});
 				
+				}
 			}
-		}
-	}, this.config.os.vpnTimeout * 1000);
+		}, this.config.os.vpnTimeout * 1000);
+	}
 }
 
 let os = new OS();
@@ -194,7 +197,7 @@ OS.prototype.isVPNConnected = function() {
 		mem.sendCloudStatus();
 		return true;
 	} else if (content.indexOf('DOWN') > -1) {
-		os.getLastVPNError(function(error, code) {
+		require('./os.js').getLastVPNError(function(error, code) {
 			debug.log(1, 'os', 'VPN Could not connect. Error found in the log: ' + code);
 			mem.setVPNLastError(code);
 			mem.sendCloudStatus();
@@ -223,9 +226,141 @@ OS.prototype.getLastVPNError = function(callback) {
 			if (callback) callback(null, 'AUTH_FAILED');
 		} else if (stdout.match('UNDEF\] Inactivity timeout')) {
 			if (callback) callback(null, 'INACTIVE_TIMEOUT');
+		} else if (stdout.match('Cannot resolve host address')) {
+			if (callback) callback(null, 'DNS_RESOLVE_FAILURE');
 		} else {
 			if (callback) callback(null, 'UNKNOWN_ERROR');
 		}
+	});
+}
+
+/**
+ * Create an OS user with VPNID name
+ * Where callback function is defined as callback(error, vpnid)
+ */
+OS.prototype.createOSUser = function(vpnid, callback) {
+	let debug = require('./debug.js');
+	
+	let userCheck = require('child_process').exec('id -u ' + vpnid + ' > /dev/null 2>&1', function(err, stdout, stderr) {
+		
+	});
+	
+	userCheck.on('exit', function(code){
+		if (code == 1) {
+			debug.log(4, 'os', 'No user with: ' + vpnid + ' found.');
+			let userCreate = require('child_process').exec('adduser --force-badname --disabled-password --gecos ",,," ' + vpnid + ' > /dev/null', function(err, stdout, stderr) {
+				debug.log(4, 'os', 'User with name: ' + vpnid + ' created.');
+				
+			});
+			userCreate.on('exit', function(code) {
+				if (code == 0) {
+					debug.log(4, 'os', 'User with name: ' + vpnid + ' created successfuly.');
+					/*SSHCreateHostKey(function(success) {
+						
+					}); */
+					if (typeof(callback) != 'undefined') callback(false, vpnid);
+				} else {
+					debug.log(4, 'os', 'User with name: ' + vpnid + ' could not be created. Returned code: ' + code);
+					if (typeof(callback) != 'undefined') callback(true, null);
+				}
+			});
+		} else if (code == 0) {
+			debug.log(4, 'os', 'User with: ' + vpnid + ' found. No need to create.');
+			/*SSHCreateHostKey(function(success) {
+				
+			}); */
+			if (typeof(callback) != 'undefined') callback(false, vpnid);
+		}
+	});
+}
+
+/**
+ * Function to create new keys for the host.
+ */
+function SSHCreateHostKey(callback) {
+	let debug = require('./debug.js');
+	
+	let sshCreate1 = require('child_process').exec('ssh-keygen -q -f /etc/ssh/ssh_host_key -N "" -t rsa > /dev/null', function(err, stdout, stderr) {
+		
+	});
+	
+	sshCreate1.on('exit', function(code) {
+		if (code == 0) {
+			debug.log(4, 'os', 'RSA Key created succesfully.');
+			let sshCreate2 = require('child_process').exec('ssh-keygen -f /etc/ssh/ssh_host_dsa_key -N "" -t dsa > /dev/null', function(err, stdout, stderr) {
+		
+			});
+			sshCreate2.on('exit', function(code) {
+				if (code == 0) {
+					debug.log(4, 'os', 'DSA Key created succesfully.');
+					callback(true);
+				} else {
+					debug.log(1, 'os', 'Issue Generating DSA Key. Exit code: ' + code);
+					callback(false);
+				}
+			});
+		} else {
+			debug.log(1, 'os', 'Issue Generating RSA Key. Exit code: ' + code);
+			callback(false);
+		}
+	});
+}
+
+/**
+ * Function to send SSH Public key to the cloud, receive it and write it under:
+ * /home/<vpnid>/.ssh/authorized_keys.
+ */
+OS.prototype.sendPublicKey = function(callback) {
+	let debug = require('./debug.js');
+	let rcpclient = require('./rcpclient.js')
+	let hostKey = this.fs.readFileSync('/etc/ssh/ssh_host_rsa_key.pub', 'utf8');
+	let config = require('./config.js');
+	let accountID = config.cloud.id;
+	let raspyID = config.rcpclient.vpnID.split('-')[1];
+	let os = require('./os.js');
+	
+	rcpclient.sendPublicKey(hostKey, function(cloudKey) {
+		//place hostkey into /home/
+		debug.log(4, 'os', 'Received Server SSH Public key: ' + cloudKey);
+		
+		var db = require('./configdb.js');
+		db.getVpnID(accountID, raspyID, function(error, vpnID, vpnKey, initVpnKey) {
+			if (error) {
+				debug.log(1, 'os', 'Failed to obtain vpnID from DB: ' + error.message)
+			} else {
+				os.createOSUser(vpnID, function(error) {
+					if (!error) {
+						os.appendKeyToFile('/home/' + vpnID + '/.ssh/authorized_keys', cloudKey + '\n');
+					}
+				});
+			}
+		});
+	});
+}
+
+/**
+ * Function to obtain cloud server SSH key from the file.
+ * (only for cloud)
+ */
+
+OS.prototype.getServerSSHPublicKey = function() {
+	let hostKey = this.fs.readFileSync('/home/velen-service/.ssh/id_rsa.pub', 'utf8');
+	return hostKey;
+}
+
+/**
+ *
+ */
+OS.prototype.appendKeyToFile = function(file, key) {
+	let debug = require('./debug.js');
+	const fs = require('fs');
+	
+	fs.appendFile(file, key, function (err) {
+		if (err) {
+			debug.log(1, 'os', 'could not append Key to file: ' + file);
+			return;
+		}
+		debug.log(1, 'os', 'succesfully appended Key to file: ' + file);
 	});
 }
 

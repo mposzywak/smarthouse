@@ -24,6 +24,7 @@ const MSG_ARDUINO_ALIVE = 1;
  
 const BFP_DEVICE_COMMAND = 'BFP_DEVICE_COMMAND';
 const BFP_CLOUD_SETTINGS = 'BFP_CLOUD_SETTINGS';
+const BFP_SYNC_HA = 'BFP_SYNC_HA';
 
 var devices = {};
 
@@ -348,6 +349,15 @@ function BFPCreateCloudSettings(vpnid, vpnkey, cloud) {
 	message.body.cloud = cloud;
 	message.body.vpnid = vpnid;
 	message.body.vpnkey = vpnkey;
+	
+	return message;
+}
+
+function BFPCreateSyncHA() {
+	let message = {};
+	message.header = {};
+	message.header.code = BFP_SYNC_HA;
+	message.body = {};
 	
 	return message;
 }

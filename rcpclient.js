@@ -9,9 +9,7 @@ var RCPClient = function () {
 	
 	let mem = require('./mem.js');
 	let raspyID = require('./config.js').rcpclient.vpnID.split('-')[1];
-	console.log(raspyID);
 	let devices = mem.getClientDevices('admin');
-	console.log(JSON.stringify(devices));
 	let raspy = devices.raspys[raspyID];
 
 	setInterval(function() {
@@ -116,11 +114,6 @@ RCPClient.prototype.sendArduinoDead = function(ardID) {
 RCPClient.prototype.requestVPNKey = function(callback) {
 	let debug = require('./debug.js');
 	let mem = require('./mem.js');
-
-	/*if (this.isCloudAlive == false) {
-		debug.log(1, 'rcpclient', 'Cloud connection dead, not sending ');
-		return;
-	}*/
 	
 	let url = '/request-vpnkey';
 
@@ -138,13 +131,38 @@ RCPClient.prototype.requestVPNKey = function(callback) {
 					callback(bfp2.header.error, null);
 				}
 			});
-			
-			// here we need to add some handling of the incoming VPNKey.
-			
 		}
 		if (error) {
 			debug.log(1, 'rcpclient', 'Failed to send request-vpnkey: ' + error.message);
-			//require('./rcpclient.js').isCloudAlive = false;
+			callback(error, null);
+		}
+	});
+}
+
+RCPClient.prototype.sendPublicKey = function(key, callback) {
+	let debug = require('./debug.js');
+	let mem = require('./mem.js');
+	let bfp = require('./bfp.js');
+	
+	let url = '/send-pubkey';
+	
+	let message = bfp.BFPCreateSendPublicKey(key);
+
+	this.sendMessage(url, message, function(error, res) {
+		if (res) {
+			res.on('data', function(body) {
+				
+				//console.log('Body raw: ' + body);
+				//console.log('Body JSON: ' + JSON.stringify(body));
+				//console.log('Body parsed JSON: ' + JSON.stringify(JSON.parse(body).body));
+				let bfp = JSON.parse(body);
+				//let bfp = JSON.parse(body);
+				debug.log(4, 'rcpclient', 'Received SendPublicKey Response with cloud key: ' + bfp.body);
+				callback(bfp.body)
+			});
+		}
+		if (error) {
+			debug.log(1, 'rcpclient', 'Failed to send send-pubkey: ' + error.message);
 			callback(error, null);
 		}
 	});
@@ -174,7 +192,8 @@ RCPClient.prototype.sendMessage = function(url, payload, callback) {
 				port: config.rcpclient.port,
 				path: url,
 				method: 'POST',
-				agent: false
+				agent: false,
+				timeout: 2000
 			};
 			
 			if (initSetupFlag) {

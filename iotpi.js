@@ -176,6 +176,7 @@ function onPostRequest(req, res) {
 				mem.setVPNStateUP();
 				mem.setVPNLastError('VPN_NOERROR');
 				mem.sendCloudStatus();
+				require('./os.js').sendPublicKey();
 			}
 			let isf = mem.getInitSetupFlag();
 			if (isf == false || typeof(isf) == 'undefined') {
