@@ -1,4 +1,3 @@
-
 const sqlite3 = require('sqlite3').verbose();
 
 var ConfigDB = function() {
@@ -12,7 +11,7 @@ var ConfigDB = function() {
 		} else {
 			debug.log(1, 'configdb', 'ConfigDB file opened succesfully');
 		}
-	//console.log('Connected to the configDB database.');
+		//console.log('Connected to the configDB database.');
 	});
 }
 
@@ -21,7 +20,7 @@ var ConfigDB = function() {
  */
 
 ConfigDB.prototype.insertAccount = function(accountID, name, email, password, salt) {
-	
+
 }
 
 /**
@@ -29,7 +28,7 @@ ConfigDB.prototype.insertAccount = function(accountID, name, email, password, sa
  */
 
 ConfigDB.prototype.insertRaspy = function(accountID, raspyID, vpnID, vpnKey, remote, backup) {
-	
+
 }
 
 /**
@@ -60,7 +59,7 @@ ConfigDB.prototype.setVpnID = function(accountID, raspyID, enabled, vpnID, vpnKe
 	SQLUpdate = 'UPDATE raspys SET ';
 	SQLWhere = ' WHERE raspyID = ? AND accountID = ?';
 	values = [];
-	
+
 	if (typeof(enabled) != 'undefined') {
 		SQLUpdate += ' cloudService = ?,';
 		if (enabled)
@@ -68,22 +67,22 @@ ConfigDB.prototype.setVpnID = function(accountID, raspyID, enabled, vpnID, vpnKe
 		else
 			values.push(0);
 	}
-	
+
 	if (typeof(vpnID) != 'undefined') {
 		SQLUpdate += ' vpnID = ?,';
 		values.push(vpnID);
 	}
-	
+
 	if (typeof(vpnKey) != 'undefined') {
 		SQLUpdate += ' vpnKey = ?,';
 		values.push(vpnKey);
 	}
-	
+
 	if (typeof(initVpnKey) != 'undefined') {
 		SQLUpdate += ' initVpnKey = ?,';
 		values.push(initVpnKey);
 	}
-	
+
 	if (typeof(initSetupFlag) != 'undefined') {
 		SQLUpdate += ' initSetupFlag = ?,';
 		if (initSetupFlag)
@@ -91,10 +90,10 @@ ConfigDB.prototype.setVpnID = function(accountID, raspyID, enabled, vpnID, vpnKe
 		else
 			values.push(0);
 	}
-	
+
 
 	SQLUpdate = SQLUpdate.substring(0, SQLUpdate.length - 1);
-	
+
 	values.push(raspyID);
 	values.push(accountID);
 
@@ -115,13 +114,13 @@ ConfigDB.prototype.setVpnID = function(accountID, raspyID, enabled, vpnID, vpnKe
 ConfigDB.prototype.insertArduino = function(accountID, raspyID, IP, ardID) {
 	var debug = this.debug;
 	var sql = 'INSERT INTO arduinos (ardID, raspyID, accountID, IP) VALUES (?, ?, ?, ?)';
-	
-	this.db.run(sql, [ardID, raspyID, accountID, IP], function (error) {
+
+	this.db.run(sql, [ardID, raspyID, accountID, IP], function(error) {
 		if (error) {
 			debug.log(1, 'configdb', 'Error while inserting new Arduino: ' + error.message);
 		} else {
-			debug.log(5, 'configdb', 'Inserted Arduino, accountid: ' + accountID + ', raspyid: ' + 
-					raspyID + ', IP: ' + IP + ', ardID: ' + ardID);
+			debug.log(5, 'configdb', 'Inserted Arduino, accountid: ' + accountID + ', raspyid: ' +
+				raspyID + ', IP: ' + IP + ', ardID: ' + ardID);
 		}
 	});
 }
@@ -133,17 +132,54 @@ ConfigDB.prototype.insertDevice = function(accountID, device) {
 	var debug = this.debug;
 	var sql = 'INSERT INTO devices (devID, ardID, raspyID, accountID, devType, dataType, value, date, desc, activated, IP) \
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-	//console.log('-------------------------' + JSON.stringify(device));
-	this.db.run(sql, [device.devID, device.ardID, device.raspyID, accountID, 
-			device.devType, device.dataType, device.value, JSON.stringify(device.date), 
-			device.desc, device.activated ? 1 : 0, device.IP], function (error) {
-		if (error) {
-			debug.log(1, 'configdb', 'Error while inserting new Device: ' + error.message);
-		} else {
-			debug.log(5, 'configdb', 'Inserted Device, accountid: ' + accountID + ', raspyid: ' + 
+	var sqlShades = 'INSERT INTO shades (devID, ardID, raspyID, accountID, devType, position, tilt, sync, date, desc, activated, IP) \
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+	debug.log(5, 'configdb', 'Inserting the following device into the DB: ' + JSON.stringify(device));
+
+	if (device.devType == 'digitOUT') {
+		this.db.run(sql, [device.devID, device.ardID, device.raspyID, accountID,
+			device.devType, device.dataType, device.value, JSON.stringify(device.date),
+			device.desc, device.activated ? 1 : 0, device.IP
+		], function(error) {
+			if (error) {
+				debug.log(1, 'configdb', 'Error while inserting new Device: ' + error.message);
+			} else {
+				debug.log(5, 'configdb', 'Inserted digitOUT Device, accountid: ' + accountID + ', raspyid: ' +
 					device.raspyID + ', devID: ' + device.devID + ', ardID: ' + device.ardID);
-		}
-	});
+			}
+		});
+	} else if (device.devType == 'shade') {
+		let tilt;
+		let sync;
+		let position;
+
+		if (typeof(device.tilt) == 'undefined')
+			tilt = 0;
+		else
+			tilt = device.tilt;
+		if (typeof(device.sync) == 'undefined')
+			sync = 0;
+		else
+			sync = device.sync;
+		if (typeof(device.position) == 'undefined')
+			position = 0;
+		else
+			position = device.position;
+
+		this.db.run(sqlShades, [device.devID, device.ardID, device.raspyID, accountID,
+			device.devType, device.position, device.tilt, sync, JSON.stringify(device.date),
+			device.desc, device.activated ? 1 : 0, device.IP
+		], function(error) {
+			if (error) {
+				debug.log(1, 'configdb', 'Error while inserting new Shade Device: ' + error.message);
+			} else {
+				debug.log(5, 'configdb', 'Inserted shade Device, accountid: ' + accountID + ', raspyid: ' +
+					device.raspyID + ', devID: ' + device.devID + ', ardID: ' + device.ardID);
+			}
+		});
+	} else {
+		debug.log(1, 'configdb', 'Error while inserting new Device, unrecognized devType: ' + device.devType);
+	}
 }
 
 /**
@@ -151,9 +187,14 @@ ConfigDB.prototype.insertDevice = function(accountID, device) {
  */
 ConfigDB.prototype.updateDevice = function(accountID, device) {
 	var debug = this.debug;
-	sql = 'UPDATE devices SET value = ?, date = ?, desc = ?, ip = ?, activated = ? \
-			WHERE devID = ? AND ardID = ? AND raspyID = ? AND accountID = ?'
-	SQLUpdate = 'UPDATE devices SET ';
+	let SQLUpdate;
+	sql = 'UPDATE devices SET value = ?, date = ?, desc = ?, ip = ?, activated = ? WHERE devID = ? AND ardID = ? AND raspyID = ? AND accountID = ?';
+
+	if (device.devType == 'shade') {
+		SQLUpdate = 'UPDATE shades SET ';
+	} else {
+		SQLUpdate = 'UPDATE devices SET ';
+	}
 	SQLWhere = ' WHERE devID = ? AND ardID = ? AND raspyID = ? AND accountID = ?';
 	values = [];
 	for (key in device) {
@@ -186,6 +227,25 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 				SQLUpdate += ' dataType = ?,';
 				values.push(device.dataType);
 				break;
+			case 'sync':
+				SQLUpdate += ' sync = ?,';
+				if (device.sync == true)
+					values.push(true);
+				else
+					values.push(false);
+				break;
+			case 'tilt':
+				SQLUpdate += ' tilt = ?,';
+				values.push(device.tilt);
+				break;
+			case 'position':
+				SQLUpdate += ' position = ?,';
+				values.push(device.position);
+				break;
+			case 'direction':
+				SQLUpdate += ' direction = ?,';
+				values.push(device.direction);
+				break;
 			case 'ardID':
 			case 'devID':
 			case 'raspyID':
@@ -194,12 +254,14 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 				break;
 			default:
 				debug.log(1, 'configdb', 'Error while parsing device fields, implementation issue: ' + key);
-				
+
 		}
 	}
+
+
 	SQLUpdate = SQLUpdate.substring(0, SQLUpdate.length - 1);
 	//console.log('query: ' + SQLUpdate + SQLWhere);
-	
+
 	values.push(device.devID);
 	values.push(device.ardID);
 	values.push(device.raspyID);
@@ -209,8 +271,8 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 		if (error) {
 			debug.log(1, 'configdb', 'Error while updating Device: ' + error.message);
 		} else {
-			debug.log(5, 'configdb', 'Updated Device, accountid: ' + accountID + ', raspyid: ' + 
-					device.raspyID + ', devID: ' + device.devID + ', ardID: ' + device.ardID);
+			debug.log(5, 'configdb', 'Updated Device, accountid: ' + accountID + ', raspyid: ' +
+				device.raspyID + ', devID: ' + device.devID + ', ardID: ' + device.ardID);
 		}
 	});
 }
@@ -246,12 +308,12 @@ ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 				break;
 			default:
 				debug.log(1, 'configdb', 'Error while parsing arduino fields, implementation issue: ' + key);
-				
+
 		}
 	}
 	SQLUpdate = SQLUpdate.substring(0, SQLUpdate.length - 1);
 	//console.log('query: ' + SQLUpdate + SQLWhere);
-	
+
 	values.push(arduino.ardID);
 	values.push(arduino.raspyID);
 	values.push(accountID);
@@ -260,8 +322,8 @@ ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 		if (error) {
 			debug.log(1, 'configdb', 'Error while updating Arduino: ' + error.message);
 		} else {
-			debug.log(5, 'configdb', 'Updated Arduino, accountid: ' + accountID + ', raspyid: ' + 
-					arduino.raspyID + ', ardID: ' + arduino.ardID);
+			debug.log(5, 'configdb', 'Updated Arduino, accountid: ' + accountID + ', raspyid: ' +
+				arduino.raspyID + ', ardID: ' + arduino.ardID);
 		}
 	});
 }
@@ -272,24 +334,24 @@ ConfigDB.prototype.deleteArduino = function(accountID, arduino) {
 	var SQLDevicesDelete = 'DELETE FROM devices WHERE ardID = ? AND raspyID = ? AND accountID = ?';
 	var values = [];
 	var db = this.db;
-	
+
 	values.push(arduino.ardID);
 	values.push(arduino.raspyID);
 	values.push(accountID);
-	
+
 	//console.log('values: ' + values);
 	db.run(SQLDevicesDelete, values, function(error) {
 		if (error) {
 			debug.log(1, 'configdb', 'Error while deleting Arduino\'s devices: ' + error.message);
 		} else {
-			debug.log(5, 'configdb', 'Deleted Arduino\'s devices, accountid: ' + accountID + ', raspyid: ' + 
-					arduino.raspyID + ', ardID: ' + arduino.ardID);
+			debug.log(5, 'configdb', 'Deleted Arduino\'s devices, accountid: ' + accountID + ', raspyid: ' +
+				arduino.raspyID + ', ardID: ' + arduino.ardID);
 			db.run(SQLArduinoDelete, values, function(error) {
 				if (error) {
 					debug.log(1, 'configdb', 'Error while deleting Arduino: ' + error.message);
 				} else {
-					debug.log(5, 'configdb', 'Deleted Arduino, accountid: ' + accountID + ', raspyid: ' + 
-					arduino.raspyID + ', ardID: ' + arduino.ardID);
+					debug.log(5, 'configdb', 'Deleted Arduino, accountid: ' + accountID + ', raspyid: ' +
+						arduino.raspyID + ', ardID: ' + arduino.ardID);
 				}
 			});
 		}
@@ -302,9 +364,11 @@ ConfigDB.prototype.deleteArduino = function(accountID, arduino) {
  * b) first data arrives over RCP and there is no mem structure for that accountID
  */
 ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
+	let SQLShades = 'SELECT * FROM shades WHERE accountID = ?';
 	var SQLDevices = 'SELECT * FROM devices WHERE accountID = ?';
 	var SQLArduinos = 'SELECT * FROM arduinos WHERE accountID = ?';
 	var SQLRaspys = 'SELECT * FROM raspys WHERE accountID = ?';
+
 	var db = this.db;
 	var raspys = {};
 	db.all(SQLRaspys, [accountID], function(error, rows) {
@@ -318,7 +382,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 				raspys[row.raspyID].vpnID = row.vpnID;
 				if (row.cloudService == '1')
 					raspys[row.raspyID].cloud = true;
-				else 
+				else
 					raspys[row.raspyID].cloud = false;
 				raspys[row.raspyID].arduinos = {};
 			}
@@ -330,23 +394,23 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 						var row = rows[i];
 						var raspyID = row.raspyID;
 						var ardID = row.ardID;
-						
+
 						if (typeof(raspys[raspyID]) == 'undefined') {
 							raspys[raspyID] = {};
 							raspys[raspyID].arduinos = {};
 						}
-						
+
 						raspys[raspyID].arduinos[ardID] = {}
 						raspys[raspyID].arduinos[ardID].devices = {}
 						raspys[raspyID].arduinos[ardID].IP = row.IP;
 						raspys[raspyID].arduinos[ardID].raspyID = raspyID;
-					}	
-			
+					}
+
 					db.all(SQLDevices, [accountID], function(error, rows) {
 						if (error) {
 							callback(error, null);
-						} else {					
-							for (var i = 0; i < rows.length; i++) {					
+						} else {
+							for (var i = 0; i < rows.length; i++) {
 								var row = rows[i];
 								var raspyID = row.raspyID;
 								var ardID = row.ardID;
@@ -374,9 +438,48 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 								raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
 							}
 							//console.log(JSON.stringify(devices));
-							callback(error, raspys);
+							//callback(error, raspys);
 						}
+
+						db.all(SQLShades, [accountID], function(error, rows) {
+							if (error) {
+								callback(error, null);
+							} else {
+								for (var i = 0; i < rows.length; i++) {
+									var row = rows[i];
+									var raspyID = row.raspyID;
+									var ardID = row.ardID;
+									var devID = row.devID;
+									if (typeof(raspys[raspyID]) == 'undefined') {
+										raspys[raspyID] = {};
+										raspys[raspyID].arduinos = {};
+									}
+									if (typeof(raspys[raspyID].arduinos[ardID]) == 'undefined') {
+										raspys[raspyID].arduinos[ardID] = {};
+										raspys[raspyID].arduinos[ardID].devices = {};
+										raspys[raspyID].arduinos[ardID].alive = false;
+									}
+									raspys[raspyID].arduinos[ardID].devices[devID] = {};
+									raspys[raspyID].arduinos[ardID].devices[devID].activated = row.activated ? true : false;
+									raspys[raspyID].arduinos[ardID].devices[devID].ardID = row.ardID;
+									raspys[raspyID].arduinos[ardID].devices[devID].dataType = row.dataType;
+									raspys[raspyID].arduinos[ardID].devices[devID].date = JSON.parse(row.date);
+									raspys[raspyID].arduinos[ardID].devices[devID].desc = row.desc;
+									raspys[raspyID].arduinos[ardID].devices[devID].devType = row.devType;
+									raspys[raspyID].arduinos[ardID].devices[devID].devID = row.devID;
+									raspys[raspyID].arduinos[ardID].devices[devID].IP = row.IP;
+									raspys[raspyID].arduinos[ardID].devices[devID].raspyID = row.raspyID;
+									raspys[raspyID].arduinos[ardID].devices[devID].tilt = row.tilt;
+									raspys[raspyID].arduinos[ardID].devices[devID].position = row.position;
+									raspys[raspyID].arduinos[ardID].devices[devID].sync = row.sync ? true : false;
+									raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
+								}
+								//console.log(JSON.stringify(devices));
+								callback(error, raspys);
+							}
+						});
 					});
+					/**/
 				}
 			});
 		}
@@ -388,7 +491,7 @@ ConfigDB.prototype.getEverything = function(callback) {
 	var SQLAccounts = 'SELECT * FROM accounts';
 	var db = this.db;
 	var accounts = {};
-	
+
 	db.all(SQLAccounts, [], function(error, rows) {
 		if (error) {
 			callback(error, null);
@@ -399,7 +502,7 @@ ConfigDB.prototype.getEverything = function(callback) {
 				var name = row.name;
 				var email = row.email;
 				var password = row.password;
-				
+
 				accounts[accountID] = {};
 				accounts[accountID].raspys = {};
 				accounts[accountID].name = name;

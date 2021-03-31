@@ -393,6 +393,9 @@ function onWSAuthorize(socket, next) {
 						socket.on('cloud_settings', function (BFPPayload) {
 							onBFPGenericMessage('cloud_settings', BFPPayload, socket);
 						});
+						socket.on('sync_ha', function (BFPPayload) {
+							onBFPGenericMessage('sync_ha', BFPPayload, socket);
+						});
 						next();
 					} else {
 						require('./debug.js').log(5, 'backend', 'WS cookie received, session present, but no accountID associatiated, hence closing from: ' + source);
@@ -440,12 +443,28 @@ function onBFPGenericMessage(msg, BFPPayload, socket) {
 			case 'cloud_settings':
 				onBFPCloudSettings(BFPPayload, socket);
 				break;
+			case 'sync_ha':
+				onBFPSyncHA(BFPPayload, socket);
+				break;
 			default:
 				require('./debug.js').log(1, 'backend', 'received unimplemented BFP message: ' + msg);
 		}
 	} else {
 		require('./debug.js').log(4, 'backend', 'received BFP message: ' + msg + ' - sending down to raspy over RCP');
 	}
+}
+
+/**
+ * on sync_ha message received from front-end
+ */
+
+function onBFPSyncHA(msg, socket) {
+	let debug = require('./debug.js');
+	let accountID = socket.session.email;
+	let ha = require('./ha.js');
+	
+	debug.log(5, 'backend', '[' + accountID + '] WS received event: sync_ha with: ' + JSON.stringify(msg));
+	ha.syncHA();
 }
 
 /**

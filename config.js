@@ -1,7 +1,7 @@
 
 /* initialize the facilities, the entry is required here for debug.log() to work with that facility */
 var config = {};
-var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init', 'rcpclient', 'configdb', 'bfp', 'mqtt', 'os'];
+var facilities = ['cloud', 'db', 'rcpserver', 'arif', 'mem', 'debug', 'backend', 'security', 'init', 'rcpclient', 'configdb', 'bfp', 'mqtt', 'os', 'ha'];
 facilities.forEach(function(item) {
 	config[item] = {};
 });
@@ -108,6 +108,9 @@ config.os.vpnStatusFile = '/etc/openvpn/status';
 config.os.vpnLog = '/var/log/openvpn.log';
 config.os.vpnTimeout = 5;
 config.os.debug = 5;
+
+// config of the HA interfacing module
+//config.ha.debug = 5;
 
 module.exports = config;
 

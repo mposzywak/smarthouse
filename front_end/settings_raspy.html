@@ -152,78 +152,86 @@
 	<br><h1>Settings and Connection Status</h1>
 	<p> </p>
 	<div class="row">
-        <div class="col-md-4 order-md-2 mb-4">
-          <h4 class="d-flex justify-content-between align-items-center mb-3">
-            <span class="text-muted">Arduino Connection Status</span>
-            <span class="badge badge-secondary badge-pill">2</span>
-          </h4>
-          <ul class="list-group mb-3" id="arduinos">
+    	<div class="col-md-4 order-md-2 mb-4">
+        	<h4 class="d-flex justify-content-between align-items-center mb-3">
+				<span class="text-muted">Arduino Connection Status</span>
+				<span class="badge badge-secondary badge-pill">2</span>
+			</h4>
+			<ul class="list-group mb-3" id="arduinos">
 
-          </ul>
+			</ul>
 
-          <h4 class="d-flex justify-content-between align-items-center mb-3">
-            <span class="text-muted">Cloud Connection Status</span>
-            <span class="badge badge-secondary badge-pill">1</span>
-          </h4>
-          <ul class="list-group mb-3" id="clouds">
+			<h4 class="d-flex justify-content-between align-items-center mb-3">
+				<span class="text-muted">Cloud Connection Status</span>
+				<span class="badge badge-secondary badge-pill">1</span>
+			</h4>
+			<ul class="list-group mb-3" id="clouds">
           	
-          </ul>
+			</ul>
 		  
-          <h4 class="d-flex justify-content-between align-items-center mb-3">
-            <span class="text-muted">MQTT Connection Status</span>
-            <span class="badge badge-secondary badge-pill">1</span>
-          </h4>
-          <ul class="list-group mb-3" id="mqtts">
+			<h4 class="d-flex justify-content-between align-items-center mb-3">
+				<span class="text-muted">MQTT Connection Status</span>
+				<span class="badge badge-secondary badge-pill">1</span>
+			</h4>
+			<ul class="list-group mb-3" id="mqtts">
           	
-          </ul>
+			</ul>
           
-        </div>
-        <div class="col-md-8 order-md-1">
-          <h4 class="mb-3">Cloud Settings</h4>
+		</div>
+		<div class="col-md-8 order-md-1">
+			<h4 class="mb-3">Cloud Settings</h4>
 
-          <!--<form class="needs-validation" novalidate> -->
-            <div class="form-row">
-              <div class="col-md-6 mb-3">
-                <label for="validationVPNID">Raspy VPNID Number</label>
-                <input type="text" class="form-control" id="validationVPNID" placeholder="XXXXXXXX-XXX" value="" required>
-                <div class="invalid-feedback">
-                  Valid VPNID number in form XXXXXXXX-XXX is required.
-                </div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label for="validationSecrectKey">Raspy Secrect Key</label>
-                <input type="text" class="form-control" id="validationSecrectKey" placeholder="<secret key>" value="" required>
-                <div class="invalid-feedback">
-                  Valid Secret Key association with VPNID is required.
-                </div>
-              </div>
-            </div>
-<div class="custom-control custom-switch">
-  <input type="checkbox" class="custom-control-input" id="cloudEnableSwitch">
-  <label class="custom-control-label" for="cloudEnableSwitch">Cloud Connection</label>
-</div>
-
-
-            <hr class="mb-4">
+			<!--<form class="needs-validation" novalidate> -->
+			<div class="form-row">
+				<div class="col-md-6 mb-3">
+					<label for="validationVPNID">Raspy VPNID Number</label>
+					<input type="text" class="form-control" id="validationVPNID" placeholder="XXXXXXXX-XXX" value="" required>
+					<div class="invalid-feedback">
+						Valid VPNID number in form XXXXXXXX-XXX is required.
+					</div>
+				</div>
+			<div class="col-md-6 mb-3">
+				<label for="validationSecrectKey">Raspy Secrect Key</label>
+				<input type="text" class="form-control" id="validationSecrectKey" placeholder="<secret key>" value="" required>
+				<div class="invalid-feedback">
+					Valid Secret Key association with VPNID is required.
+				</div>
+			</div>
+		</div>
+		<div class="custom-control custom-switch">
+			<input type="checkbox" class="custom-control-input" id="cloudEnableSwitch">
+			<label class="custom-control-label" for="cloudEnableSwitch">Cloud Connection</label>
+		</div>
 
 
-            <button class="btn btn-primary btn-lg btn-block" type="submit" id="cloudSubmitButton">Submit Cloud Settings</button>
-         <!-- </form> -->
+		<hr class="mb-4">
+
+
+		<button class="btn btn-primary btn-lg btn-block" type="submit" id="cloudSubmitButton">Submit Cloud Settings</button>
+		<!-- </form> -->
 		 
-          <p> </p>
-          <h4 class="mb-3">User Interface Settings</h4>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label>Language</label>
-              <select class="custom-select d-block w-100" id="language" required="">
-                  <option value="">English</option>
-                  <option>Polski</option>
-                  <option>Český</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
+		<p> </p>
+		<h4 class="mb-3">User Interface Settings</h4>
+		<div class="row">
+			<div class="col-md-6 mb-3">
+				<label>Language</label>
+				<select class="custom-select d-block w-100" id="language" required="">
+					<option value="">English</option>
+					<option>Polski</option>
+					<option>Český</option>
+				</select>
+			</div>
+		</div>
+		<h4 class="mb-3">Home Assistant Synchronization</h4>
+		<div class="col-md-8 order-md-1">
+			
+		</div>
+		<hr class="mb-4">
+		<button class="btn btn-primary btn-lg btn-block" type="submit" id="syncHAButton">
+			Sync HA config
+		</button>
+		
+	</div>
 </div>
 
 <div class="container" id="devices">
@@ -249,8 +257,16 @@
 	socket.on('arduino', onArduino);
 	socket.on('cloud_status', onCloudStatus);
 	socket.on('mqtt_status', onMQTTStatus);
+	socket.on('sync_ha_status', onSyncHAStatus);
 
 	let submitCloudButton = document.getElementById('cloudSubmitButton');
+	let syncHAButton = document.getElementById('syncHAButton');
+	
+	syncHAButton.onclick = function() {
+		let BFPSyncHA = BFPCreateSyncHA();
+		console.log('Committing cloud settings: ' + JSON.stringify(BFPSyncHA));
+		socket.emit('sync_ha', BFPSyncHA);
+	}
 	
 	submitCloudButton.onclick = function() {
 		let vpnid = $('#validationVPNID').val();
@@ -424,6 +440,18 @@
         } else {
         	removeElementFromList('mqtts', itemID);
         	$("#mqtts").append(row);
+		}
+	}
+	
+	function onSyncHAStatus(BFPSyncHAStatus) {
+		console.log('Sync HA Status received');
+		if (BFPSyncHAStatus.header.syncing) { // HA Syncing is ongoing
+			syncHAButton.html = 'Sync HA config \
+								<div class="spinner-border spinner-border-sm" role="status"> \
+									<span class="sr-only">Loading...</span> \
+								</div>';
+		} else { // HA Syncing is idle
+			syncHAButton.html = 'Sync HA config';
 		}
 	}
 
