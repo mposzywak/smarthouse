@@ -265,6 +265,11 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		} else {
 			debug.log(5, 'mem', identityLog + 'Shade device unknown dataType received: ' + BFPDeviceStatus.body.dataType);
 		}
+		if (isDeviceNew) {
+			this.db.insertDevice(accountID, device);
+		} else {
+			this.db.updateDevice(accountID, device);
+		}
 	} else { /* unknown device handling */
 		debug.log(2, 'mem', identityLog + 'Unknown device type received: ' + BFPDeviceStatus.body.devType);
 		return;

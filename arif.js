@@ -223,8 +223,8 @@ ARiF.prototype.validateDeviceStatusData = function(devID, ardID, raspyID, devTyp
 		return;
 	}
 	
-	if (!(srcIP == ardIP || '::ffff:' + srcIP == ardID || srcIP == '::ffff:' + ardIP)) {
-		debug.log(1, 'arif', 'ARiF message from incorrect IP: ' + srcIP + ' URL: ' + url);
+	if (!(srcIP == ardIP || '::ffff:' + srcIP == ardIP || srcIP == '::ffff:' + ardIP)) {
+		debug.log(1, 'arif', 'ARiF message from incorrect IP: ' + srcIP + ' expected IP: ' + ardIP);
 		return;
 	}	
 	if (!devType || !dataType || !value) {
