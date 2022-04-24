@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>Bootstrap Example</title>
+	<title>Configuration</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
@@ -26,11 +26,12 @@
 	</div>
 	<br><h1>Configuration</h1>
 	<p> </p>
+
 </div>
 
 <div class="container">
 	<div class="row justify-content-md-center top-buffer" id="arduinos">
-
+		
 	</div>
 </div>
 
@@ -89,20 +90,27 @@
 		if (typeof(device.name) != 'undefined')
 			name = device.name;
 		
-		var row = '<div class="col-sm text-white arduino-col" id="arduino-' + device.ardID + '"> \
-						<div class="row justify-content-md-center top-buffer"> \
-							<div class="col-sm text-white row-settings" id="ardID-' + device.ardID + '"> \
-								ardID: ' + device.ardID + '<br> \
-								name: ' + name + '</strong> \
+		var row = '<div class="card" style="width: 100%; margin: 2%" id=12_ard-card>  <!-- arduino start here  --> \
+					<div class="card-header" id="heading-' + device.ardID + '"> \
+						<h5 class="mb-0"> \
+							<div class="col-sm text-black" id="row-settings-' + device.ardID + '"> \
+  								ardID: ' + device.ardID + '<br> \
+  								Name: ' + name + '<br> \
 							</div> \
-							<div class="col-sm text-white row-settings"> \
-								<button type="button" class="btn text-white conf-button" onclick="location.href=\'device-configuration-arduino' + deviceIDArg + '\';"> \
-									<span class="fa fa-cog" aria-hidden="true"></span> \
-									Configure \
-								</button> \
-							</div> \
+  							<button type="button" class="btn text-white conf-button" onclick="location.href=\'device-configuration-arduino' + deviceIDArg + '\';"> \
+  								<span class="fa fa-cog" aria-hidden="true"></span> \
+  								Configure \
+  							</button> \
+  	        				<button class="btn btn-link" data-toggle="collapse" data-target="#collapse-' + device.ardID + '" aria-expanded="false" aria-controls="collapse-' + device.ardID + '" style="float: right" onclick="expandCollapse(this)" id="expand-' + device.ardID + '"> \
+								Expand \
+							</button> \
+						</h5>  \
+					</div> <!-- arduino header stops here  --> \
+					<div id="collapse-' + device.ardID + '" class="collapse" aria-labelledby="heading-' + device.ardID + '" data-parent="#accordion"> \
+						<div class="card-body" id="arduino-' + device.ardID + '"> \
 						</div> \
-					</div>';
+  	    			</div> \
+				  </div>';
 		
 		$("#arduinos").append(row);
 	}
@@ -130,6 +138,7 @@
 		var row =  '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row"> \
 						<div class="col-sm text-white row-settings" id="' + FID + '_row-settings"> \
 							device type: ' + device.devType + ' ' + enabled + '<br> \
+							devID: ' + device.devID + '<br>\
 							name: <strong>' + desc + '</strong> \
 						</div> \
 						<div class="col-sm text-white row-settings"> \
@@ -147,6 +156,13 @@
 	
 	}
 	
+	function expandCollapse(e) {
+		if (e.innerText == 'Collapse') {
+			e.innerText = 'Expand';
+		} else if (e.innerText == 'Expand') {
+			e.innerText = 'Collapse';
+		}
+	}
 
 
 	/* display success message when the device was succesfully configuring and redirection 

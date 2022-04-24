@@ -92,7 +92,11 @@ Mem.prototype.registerArduino = function(accountID, IP) {
 				', Arduino from: ' + IP + ' registered already as: ' + ardIDRegistered);
 			return ardIDRegistered;
 		} else { /* new Arduino device (new IP) */
-			ardID = '2';
+			if (typeof(this.config.mem.minArdID) == 'undefined') {
+				ardID = '2';
+			} else {
+				ardID = this.config.mem.minArdID;
+			}
 			while (true) {
 				if (typeof(this.devices[accountID].raspys[this.raspyID].arduinos[ardID]) == 'undefined') {
 					this.devices[accountID].raspys[this.raspyID].arduinos[ardID] = {};
@@ -211,15 +215,12 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		newDevice.alive = true;
 		isDeviceNew = true;
 		debug.log(4, 'mem', identityLog + 'New Device registered.');
-
-
+		
 		this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
 		device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
 		
-		/* new device so time to subscribe to MQTT topics */
-		if (newDevice.devType == 'shade') {
-			mqtt.subscribeShade(newDevice.raspyID, newDevice.ardID, newDevice.devID);
-		} else if (newDevice.devType == 'digitOUT') {
+		
+		if (newDevice.devType == 'digitOUT') {
 			newDevice.value = BFPDeviceStatus.body.value;
 		}
 	}
@@ -232,12 +233,13 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	/* section with specific settings for different type of devices, currently: shades, digitOUT
 	   This sections should contain handling for new and existing devices */
 	if (BFPDeviceStatus.body.devType == 'digitOUT') { /* digitOUT (mostly lights) specific handling */
+		mqtt.subscribeLight(BFPDeviceStatus.body.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
 		debug.log(5, 'mem', identityLog + 'DigitOUT device type received at mem.');
 		device.dataType = BFPDeviceStatus.body.dataType;
 		if (isDeviceNew) {
 			this.db.insertDevice(accountID, device);
 		} else {
-			var oldValue = device.value
+			var oldValue = device.value;
 			device.value = BFPDeviceStatus.body.value;
 			device.date = BFPDeviceStatus.body.date;
 			if (oldValue != device.value) {
@@ -245,6 +247,7 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 			}
 		}
 	} else if (BFPDeviceStatus.body.devType == 'shade') { /* shades specific handling */
+		mqtt.subscribeShade(BFPDeviceStatus.body.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
 		debug.log(5, 'mem', identityLog + 'Shade device type received at mem.');
 		if (BFPDeviceStatus.body.dataType == 'direction') {
 			device.direction = BFPDeviceStatus.body.value;
@@ -270,6 +273,12 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		} else {
 			this.db.updateDevice(accountID, device);
 		}
+	} else if (BFPDeviceStatus.body.devType == 'temp') { /* temp sensor specific handling */
+		mqtt.subscribeTemp(BFPDeviceStatus.body.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
+		debug.log(5, 'mem', identityLog + 'Temperature sensor device type received at mem.');
+		if (BFPDeviceStatus.body.dataType == 'float') {
+			device.temperature = BFPDeviceStatus.body.value;
+		}
 	} else { /* unknown device handling */
 		debug.log(2, 'mem', identityLog + 'Unknown device type received: ' + BFPDeviceStatus.body.devType);
 		return;
@@ -282,14 +291,25 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	onValueChange(accountID, newBFPDeviceStatus);
 
 	/* also send to MQTT */
-	mqtt.publishShadeOnline(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
+	mqtt.publishDeviceOnline(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
 	if (BFPDeviceStatus.body.dataType == 'position')
 		mqtt.publishShadePosition(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.position);
 	if (BFPDeviceStatus.body.dataType == 'tilt')
 		mqtt.publishShadeTilt(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.tilt);
-
+	if (BFPDeviceStatus.body.devType == 'digitOUT') {
+		mqtt.publishLightStatus(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.value);
+	}
+	if (BFPDeviceStatus.body.devType == 'temp') {
+		mqtt.publishTempStatus(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.temperature);
+	}
+	
 	if (!this.config.cloud.enabled)
 		this.rcpclient.sendUplinkMessage(newBFPDeviceStatus);
+
+	if (typeof(device.IP) == 'undefined' || device.IP == null) {	
+		device.IP = this.getArduinoIP(accountID, BFPDeviceStatus.body.ardID);
+		debug.log(3, 'mem', identityLog + 'Problem with obtaining IP of the device from lower layers. Obtaining IP from Arduino record: ' + device.IP);
+	}
 
 	debug.log(5, 'mem', 
 		'For accountID id: ' + accountID + ', Arduino: "' + device.ardID + '", Device: "' + device.devID +
@@ -332,6 +352,34 @@ Mem.prototype.setDevice = function(accountID, devID, ardID, devType, date, IP, c
 		this.components.getFacility('debug').log(4, 'mem', 'accountID id: ' + accountID + ', Arduino: ' + 
 				ardID + ' existing devID mapping came: ' + devID);
 		return;
+	}
+}
+
+Mem.prototype.setLightType = function(accountID, BFPLightType) {
+	let raspyID = BFPLightType.body.raspyID;
+	let ardID = BFPLightType.body.ardID;
+	let devID = BFPLightType.body.devID;
+	let debug = require('./debug.js');
+	
+	if (typeof(this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID]) == 'undefined') {
+		debug.log(1, 'mem', 'for unknown accountID: ' + accountID + ' devID: ' + devID + ', ardID: ' + ardID + ', raspyID: ' + raspyID + ' received lightType command!');
+	} else {
+		this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].lightType = BFPLightType.body.lightType;
+		debug.log(1, 'mem', 'got lightType: ' + BFPLightType.body.lightType + ' devID: ' + devID + ', ardID: ' + ardID + ', raspyID: ' + raspyID + ' received lightType command!');
+	}
+}
+
+Mem.prototype.setLightInputType = function(accountID, BFPLightInputType) {
+	let raspyID = BFPLightInputType.body.raspyID;
+	let ardID = BFPLightInputType.body.ardID;
+	let devID = BFPLightInputType.body.devID;
+	let debug = require('./debug.js');
+	
+	if (typeof(this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID]) == 'undefined') {
+		debug.log(1, 'mem', 'for unknown accountID: ' + accountID + ' devID: ' + devID + ', ardID: ' + ardID + ', raspyID: ' + raspyID + ' received lightInputType command!');
+	} else {
+		this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].lightInputType = BFPLightInputType.body.lightInputType;
+		debug.log(1, 'mem', 'got lightInputType: ' + BFPLightInputType.body.lightInputType + ' devID: ' + devID + ', ardID: ' + ardID + ', raspyID: ' + raspyID + ' received lightInputType command!');
 	}
 }
 
@@ -421,8 +469,13 @@ function onArduinoChange(accountID, raspyID, ardID) {
 	arduinoToSend.IP = arduino.IP;
 	arduinoToSend.alive = arduino.alive;
 	arduinoToSend.raspyID = raspyID;
+	arduinoToSend.ctrlON = arduino.ctrlON;
+	arduinoToSend.version = arduino.version;
+	arduinoToSend.mode = arduino.mode;
 	require('./debug.js').log(5, 'mem', '[' + accountID + '] Emitting Arduino data of raspyID: ' + arduino.raspyID +
-									' ardID: ' + arduino.ardID);
+									' ardID: ' + ardID);
+	
+	console.log(JSON.stringify(arduinoToSend));
 	io.of('/iot').to(accountID).emit('arduino', arduinoToSend);
 }
 
@@ -680,7 +733,7 @@ Mem.prototype.setArduinoDead = function(accountID, raspyID, ardID) {
 				onValueChange(accountID, BFPDeviceStatus);
 				/* also send to MQTT */
 				let mqtt = require('./mqtt.js');
-				mqtt.publishShadeOffline(raspyID, ardID, devID);
+				mqtt.publishDeviceOffline(raspyID, ardID, devID);
 				
 				this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] ArdID and its devIDs declared dead: ' + 
 						ardID + ' on raspyID: ' + raspyID + ' devID: ' + devID);
@@ -706,7 +759,7 @@ Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
 				
 				/* also send to MQTT */
 				let mqtt = require('./mqtt.js');
-				mqtt.publishShadeOnline(raspyID, ardID, devID);
+				mqtt.publishDeviceOnline(raspyID, ardID, devID);
 			}
 		}
 	}
@@ -832,6 +885,33 @@ Mem.prototype.clearDeviceDiscovered = function(accountID, raspyID, ardID, devID)
 	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
 
 	device.discovered = false;
+}
+
+/**
+ * Function to set the Arduino CtrlON functionality
+ */
+Mem.prototype.setCtrlON = function(accountID, BFPCtrl) {
+	let arduino = this.devices[accountID].raspys[BFPCtrl.body.raspyID].arduinos[BFPCtrl.body.ardID];
+	
+	arduino.ctrlON = BFPCtrl.header.enabled;
+	require('./debug.js').log(4, 'mem', '[' + accountID + '] setting CtrlON of ardID: ' + BFPCtrl.body.ardID + ' to: ' + arduino.ctrlON);
+	
+	onArduinoChange(accountID, BFPCtrl.body.raspyID, BFPCtrl.body.ardID);
+}
+
+/**
+ * Function to set the Arduino settings - arduino specific settings and parameters
+ */
+Mem.prototype.setSettings = function(accountID, BFPSettings) {
+	let arduino = this.devices[accountID].raspys[BFPSettings.body.raspyID].arduinos[BFPSettings.body.ardID];
+	console.log(BFPSettings.body.ardID);
+	arduino.ctrlON = BFPSettings.body.ctrlON;
+	arduino.mode = BFPSettings.body.mode;
+	arduino.version = BFPSettings.body.version;
+	
+	require('./debug.js').log(4, 'mem', '[' + accountID + '] setting on ardID: ' + BFPSettings.body.ardID + ' ctrlON: ' + arduino.ctrlON + ' version: ' + arduino.version + ' mode: ' + arduino.mode);
+	
+	onArduinoChange(accountID, BFPSettings.body.raspyID, BFPSettings.body.ardID);
 }
 
 /**

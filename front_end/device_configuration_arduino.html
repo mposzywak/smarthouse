@@ -139,12 +139,42 @@
 			<div class="conf-data-panel-text" id="devID-field"></div> 
 		</div>
 	</div>
+	<div class="row justify-content-md-center top-buffer" id="version">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>Version: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text" id="version-field"></div> 
+		</div>
+	</div>
 	<div class="row justify-content-md-center top-buffer">
 		<div class="col-sm text-white conf-data-panel">
 			<div class="conf-data-panel-text"><strong>Name: </strong></div>
 		</div>
 		<div class="col-sm text-white conf-data-panel">
 			<input type="text" class="form-control" id="name-input" aria-describedby="emailHelp" placeholder="Enter name">
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>Device Mode: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<select class="custom-select d-block w-100" id="arduino-mode" required="">
+				<option value="">Digital I/O (Lights)</option>
+				<option>Shades</option>
+			</select>
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>Central ON: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<select class="custom-select d-block w-100" id="centralON" required="">
+				<option value="">Enable</option>
+				<option>Disable</option>
+			</select>
 		</div>
 	</div>
 	<div class="row justify-content-md-center top-buffer">
@@ -179,13 +209,33 @@
 	
 	
 	function receiveArduino(msg) {
-		//console.log('msg: ' + JSON.stringify(msg));
+		console.log('msg: ' + JSON.stringify(msg));
 		//updateDevice(msg);
 		//var FID = msg.raspyID + '-' + msg.devID + '-' + msg.ardID;
 		if (msg.raspyID == urlParams['raspyID'] && msg.ardID == urlParams['ardID']) {
 			//$("#enabled").attr("checked", msg.activated);
 			if (msg.name != '')
 				$("#name-input").attr("placeholder", msg.name);
+			if (typeof(msg.ctrlON) != 'undefined') {
+				if (msg.ctrlON == 1) {
+					document.getElementById('centralON').value = 'Enable';
+				} else {
+					document.getElementById('centralON').value = 'Disable';
+				}
+			}
+			if (typeof(msg.version) != 'undefined') {
+				$("#version-field").append(msg.version);
+				console.log(msg.version);
+			} else {
+				$("#version-field").append('N/A');
+			}
+			if (typeof(msg.mode) != 'undefined') {
+				if (msg.ctrlON == 1) {
+					document.getElementById('arduino-mode').value = 'Digital I/O (Lights)';
+				} else {
+					document.getElementById('arduino-mode').value = 'Shades';
+				}
+			}
 		}
 	}
 	

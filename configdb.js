@@ -332,6 +332,7 @@ ConfigDB.prototype.deleteArduino = function(accountID, arduino) {
 	var debug = this.debug;
 	var SQLArduinoDelete = 'DELETE FROM arduinos WHERE ardID = ? AND raspyID = ? AND accountID = ?';
 	var SQLDevicesDelete = 'DELETE FROM devices WHERE ardID = ? AND raspyID = ? AND accountID = ?';
+	let SQLShadesDelete = 'DELETE FROM shades WHERE ardID = ? AND raspyID = ? AND accountID = ?';
 	var values = [];
 	var db = this.db;
 
@@ -346,12 +347,20 @@ ConfigDB.prototype.deleteArduino = function(accountID, arduino) {
 		} else {
 			debug.log(5, 'configdb', 'Deleted Arduino\'s devices, accountid: ' + accountID + ', raspyid: ' +
 				arduino.raspyID + ', ardID: ' + arduino.ardID);
-			db.run(SQLArduinoDelete, values, function(error) {
+			db.run(SQLShadesDelete, values, function(error) {
 				if (error) {
-					debug.log(1, 'configdb', 'Error while deleting Arduino: ' + error.message);
+					debug.log(1, 'configdb', 'Error while deleting Arduino\'s shades: ' + error.message);
 				} else {
-					debug.log(5, 'configdb', 'Deleted Arduino, accountid: ' + accountID + ', raspyid: ' +
+					debug.log(5, 'configdb', 'Deleted Arduino\'s shades, accountid: ' + accountID + ', raspyid: ' +
 						arduino.raspyID + ', ardID: ' + arduino.ardID);
+					db.run(SQLArduinoDelete, values, function(error) {
+						if (error) {
+							debug.log(1, 'configdb', 'Error while deleting Arduino: ' + error.message);
+						} else {
+							debug.log(5, 'configdb', 'Deleted Arduino, accountid: ' + accountID + ', raspyid: ' +
+								arduino.raspyID + ', ardID: ' + arduino.ardID);
+						}
+					});
 				}
 			});
 		}
@@ -364,6 +373,8 @@ ConfigDB.prototype.deleteArduino = function(accountID, arduino) {
  * b) first data arrives over RCP and there is no mem structure for that accountID
  */
 ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
+	var debug = this.debug;
+	
 	let SQLShades = 'SELECT * FROM shades WHERE accountID = ?';
 	var SQLDevices = 'SELECT * FROM devices WHERE accountID = ?';
 	var SQLArduinos = 'SELECT * FROM arduinos WHERE accountID = ?';
@@ -436,6 +447,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 								raspys[raspyID].arduinos[ardID].devices[devID].raspyID = row.raspyID;
 								raspys[raspyID].arduinos[ardID].devices[devID].value = row.value;
 								raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
+								debug.log(5, 'configdb', 'Reading device from DB: ' + JSON.stringify(raspys[raspyID].arduinos[ardID].devices[devID]));
 							}
 							//console.log(JSON.stringify(devices));
 							//callback(error, raspys);
@@ -473,6 +485,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 									raspys[raspyID].arduinos[ardID].devices[devID].position = row.position;
 									raspys[raspyID].arduinos[ardID].devices[devID].sync = row.sync ? true : false;
 									raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
+									debug.log(5, 'configdb', 'Reading shade from DB: ' + JSON.stringify(raspys[raspyID].arduinos[ardID].devices[devID]));
 								}
 								//console.log(JSON.stringify(devices));
 								callback(error, raspys);

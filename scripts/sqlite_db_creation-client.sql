@@ -88,6 +88,7 @@ CREATE TABLE shades (
     accountID VARCHAR(8) NOT NULL,
     date TEXT,
     devType VARCHAR(2),
+    dataType VARCHAR(2),
     direction TEXT,
     tilt TEXT,
     position TEXT,

@@ -121,7 +121,8 @@ function sendHeartbeat(ardID, IP) {
 		//path: '/0/' + ardID + '/' + raspyID + '/' + ARIF_HEARTBEAT,
 		path: '/?devID=0&ardID=' + ardID + '&raspyID=' + raspyID + '&cmd=heartbeat',
 		method: 'POST',
-		agent: false
+		agent: false,
+		timeout: 3000
 	};
 	
 	var req = http.request(options, function (res){
@@ -130,7 +131,11 @@ function sendHeartbeat(ardID, IP) {
 	}).on('error', function(error) {
 		debug.log(1, 'arif', 'Error in Heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
 		mem.increaseArduinoDeadCounter(accountID, raspyID, ardID);
+	}).on('timeout', function(error) {
+		debug.log(1, 'arif', 'Timeout in Heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
+		mem.increaseArduinoDeadCounter(accountID, raspyID, ardID);
 	});
+	req.setTimeout(3000);
 	
 	req.write('');
 	req.end();
@@ -165,6 +170,18 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 	if (command == 'shadeTILT') {
 		options.path += 'value=' + device.tilt;
 	}
+	
+	if (command == 'lightType') {
+		options.path = '/?devID=' + device.devID + '&ardID=' + device.ardID + 
+			'&raspyID=' + this.config.rcpclient.vpnID.split('-')[1] + '&cmd=' + command + '&value=' + device.lightType;
+	}
+	
+	if (command == 'inputHold' || command == 'inputRelease' || command == 'inputOverrideOn' || command == 'inputOverrideOff') {
+		options.path = '/?devID=' + device.devID + '&ardID=' + device.ardID + 
+			'&raspyID=' + this.config.rcpclient.vpnID.split('-')[1] + '&cmd=' + command;
+	}
+	
+	console.log('======== path: ' + options.path);
 	
 	var req = http.request(options, function (res){
 		debug.log(1, 'arif', 'Received ARiF command resp from: ' + device.devID + ' ardID: ' + 
@@ -217,16 +234,19 @@ ARiF.prototype.validateDeviceStatusData = function(devID, ardID, raspyID, devTyp
 
 	var ardIP = require('./mem.js').getArduinoIP(this.config.cloud.id, ardID);
 
-	/* ardID reported received on ARiF isn't registered within the app */
+	
 	if (!ardIP) {
 		debug.log(1, 'arif', 'Arduino with ardID: ' + ardID + ' coming from IP: ' + srcIP + ', is not registered');
 		return;
 	}
 	
-	if (!(srcIP == ardIP || '::ffff:' + srcIP == ardIP || srcIP == '::ffff:' + ardIP)) {
+	/* commented out due to issue of not reporting req.connection.remoteAddress correctly */
+	if (typeof(srcIP) == 'undefined') {
+		debug.log(1, 'arif', 'ARiF message from undefined IP, devID: ' + devID + ', ardID: ' + ardID);
+	} else if (!(srcIP == ardIP || '::ffff:' + srcIP == ardIP || srcIP == '::ffff:' + ardIP)) {
 		debug.log(1, 'arif', 'ARiF message from incorrect IP: ' + srcIP + ' expected IP: ' + ardIP);
 		return;
-	}	
+	}
 	if (!devType || !dataType || !value) {
 		debug.log(1, 'arif', 'ARiF message is incorrect: devID: ' + devID + ', ardID: ' + ardID + ', raspyID: ' + raspyID + ', devType: ' + devType + ', value: ' + value + ', srcIP: ' + srcIP);
 		return;

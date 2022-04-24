@@ -36,38 +36,18 @@ config.db.file = '/home/maciej/configdb/test.db';
 config.arif.port = 32302;
 config.arif.debug = 5;
 config.arif.beaconAddress = '224.1.1.1';
-config.arif.beaconPort = 5007
+config.arif.beaconPort = 5007;
+
 
 // config of the mem cache component
 config.mem.debug = 5;
+config.mem.minArdID = 20;
 
 // config of the backend
 config.backend.debug = 5;
 config.backend.port = 8087;
 config.backend.html = '/frontend';
-/*
-config.backend.fileSessionStoreOptions = {
-		secret: require('./helpers.js').generate(40)
-	};
-config.backend.sessionStoreOptions = {
-  connectOptions: {
-    servers: [
-      { host: '127.0.0.1', port: 28016 },
-      { host: '127.0.0.1', port: 28015 }
-    ],
-    db: 'IOT',
-    discovery: false,
-    pool: true,
-    buffer: 50,
-    max: 20,
-    timeout: 20,
-    timeoutError: 1000
-  },
-  table: 'Sessions',
-  sessionTimeout: 86400000,
-  flushInterval: 60000,
-  debug: false
-};*/
+config.backend.login = true;
 
 config.backend.cookieOptions = {
 	secret: 'fdsifoa4efioehfrafoeffjisaofew',
@@ -108,6 +88,10 @@ config.os.vpnStatusFile = '/etc/openvpn/status';
 config.os.vpnLog = '/var/log/openvpn.log';
 config.os.vpnTimeout = 5;
 config.os.debug = 5;
+
+// config of the Home Assistant control module
+config.ha.configFile
+config.ha.debug = 5;
 
 // config of the HA interfacing module
 //config.ha.debug = 5;

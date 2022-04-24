@@ -67,13 +67,20 @@ function setTiltSlider(device) {
 	if (typeof(device.tilt) != 'undefined') {
 		//sliderID.value = device.tilt;
 		enableTilt(device);
+		let i = 1;
 		while (slider.value > device.tilt) {
 			slider.stepDown();
 			if (slider.value = device.tilt) break;
+			console.log('slider value: ' + slider.value + ' device tilt: ' + device.tilt);
+			i++;
+			if (i == 10) break;
 		} 
 		while (slider.value < device.tilt) {
 			slider.stepUp();
 			if (slider.value = device.tilt) break;
+			console.log('slider value: ' + slider.value + ' device tilt: ' + device.tilt);
+			i++;
+			if (i == 10) break;
 		}
 	}
 }

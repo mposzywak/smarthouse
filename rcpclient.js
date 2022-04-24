@@ -152,9 +152,9 @@ RCPClient.prototype.sendPublicKey = function(key, callback) {
 		if (res) {
 			res.on('data', function(body) {
 				
-				//console.log('Body raw: ' + body);
-				//console.log('Body JSON: ' + JSON.stringify(body));
-				//console.log('Body parsed JSON: ' + JSON.stringify(JSON.parse(body).body));
+				console.log('Body raw: ' + body);
+				console.log('Body JSON: ' + JSON.stringify(body));
+				console.log('Body parsed JSON: ' + JSON.stringify(JSON.parse(body).body));
 				let bfp = JSON.parse(body);
 				//let bfp = JSON.parse(body);
 				debug.log(4, 'rcpclient', 'Received SendPublicKey Response with cloud key: ' + bfp.body);

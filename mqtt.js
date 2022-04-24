@@ -8,6 +8,7 @@ let MQTT = function() {
 	this.connected = false;
 	let conn = this.connected;
 	debug = require('./debug.js');
+	this.components = require('./components').setFacility(this, 'mqtt');
 	let firstConnect = true;
 	if (config.mqtt.enabled) {
 		let options = {
@@ -27,7 +28,7 @@ let MQTT = function() {
 			let statusTopic = config.mqtt.topicPrefix + '/status';
 			debug.log(4, 'mqtt', 'Connected succesfully to MQTT broker: ' + config.mqtt.broker);
 			mqtt.connected = true;
-			c.subscribe(statusTopic, {"rap": true}, function(error){
+			c.f(statusTopic, {"rap": true}, function(error){
 				if (error)
 					debug.log(2, 'mqtt', 'Problem with subscribing to topic: ' + statusTopic + ' error: ' + error.toString());
 				else
@@ -42,7 +43,7 @@ let MQTT = function() {
 				}, 15000);
 				setTimeout(function() {
 					publishAllDevicesState();
-				}, 20000);				
+				}, 20000);
 			}
 			firstConnect = false;
 		});
@@ -66,6 +67,8 @@ let MQTT = function() {
 				positionCommand(topic, payload);
 			} else if (cmd == 'tilt-cmd') {
 				tiltCommand(topic, payload);
+			} else if (cmd == 'switch-cmd') {
+				switchCommand(topic, payload);
 			} else {
 				debug.log(1, 'mqtt', 'Unknown CMD received: ' + cmd);
 			}
@@ -203,6 +206,41 @@ function tiltCommand(topic, payload) {
 	});
 }
 
+function switchCommand(topic, payload) {
+	let bfp = require('./bfp.js');
+	let arif = require('./arif.js');
+	let mem = require('./mem.js');
+	let config = require('./config.js');
+	let debug = require('./debug.js');
+	let accountID = config.cloud.id;
+	let raspyID = topic.split('/')[1];
+	let ardID = topic.split('/')[2];
+	let devID = topic.split('/')[3];
+	let device = mem.getDeviceStatus(accountID, raspyID, ardID, devID);
+	if (typeof(device) == 'undefined') {
+		/* this situation normally shouldn't happen. It means that we were subscribed to a topic based on mem device, but this device disappeared later */
+		debug.log(1, 'mqtt', 'Received MQTT command for unknown device! Doing nothing.');
+		return;
+	}
+	if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
+		debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
+		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish = false;
+		return;
+	}
+	
+	if (payload == 'ON') {
+		arif.sendCommand(device, 'lightON', function(message) {
+			debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
+		});
+	} else if (payload == 'OFF') {
+		arif.sendCommand(device, 'lightOFF', function(message) {
+			debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
+		});
+	} else {
+		debug.log(5, 'mqtt', 'Unrecognized payload received: ' + payload + ' on topic: ' + topic);
+	}
+}
+
 function publishAllDevices() {
 	let config = require('./config.js');
 	let mem = require('./mem.js');
@@ -217,14 +255,21 @@ function publishAllDevices() {
 				if (ardID > 0 && ardID < 256) {
 					for (var devID in devices.raspys[raspyID].arduinos[ardID].devices) {
 						if (devID > 0 && devID < 256) {
+							//debug.log(5, 'mqtt', 'Publishing over MQTT device data of raspyID: ' + raspyID + ' ardID: ' + ardID + ' devID: ' + devID);
 							if (devices.raspys[raspyID].arduinos[ardID].devices[devID].devType == 'shade') {
-								debug.log(5, 'mqtt', 'Publishing over MQTT device data of raspyID: ' + raspyID + ' ardID: ' + ardID + ' devID: ' + devID);
 								if (devices.raspys[raspyID].arduinos[ardID].devices[devID].alive == true) {
 									let position = devices.raspys[raspyID].arduinos[ardID].devices[devID].position;
 									let tilt = devices.raspys[raspyID].arduinos[ardID].devices[devID].tilt;
-									mqtt.publishShadeOnline(raspyID, ardID, devID);
+									mqtt.publishDeviceOnline(raspyID, ardID, devID);
 									mqtt.publishShadePosition(raspyID, ardID, devID, position);
 									mqtt.publishShadeTilt(raspyID, ardID, devID, tilt);
+								} else {
+									mqtt.publishShadeOffline(raspyID, ardID, devID);
+								}
+							} else if (devices.raspys[raspyID].arduinos[ardID].devices[devID].devType == 'digitOUT') {
+								if (devices.raspys[raspyID].arduinos[ardID].devices[devID].alive == true) {
+									let status = devices.raspys[raspyID].arduinos[ardID].devices[devID].value;
+									mqtt.publishLightStatus(raspyID, ardID, devID, status);
 								} else {
 									mqtt.publishShadeOffline(raspyID, ardID, devID);
 								}
@@ -252,12 +297,10 @@ function publishAllDevicesState() {
 				if (ardID > 0 && ardID < 256) {
 					for (var devID in devices.raspys[raspyID].arduinos[ardID].devices) {
 						if (devID > 0 && devID < 256) {
-							if (devices.raspys[raspyID].arduinos[ardID].devices[devID].devType == 'shade') {
-								if (devices.raspys[raspyID].arduinos[ardID].devices[devID].alive == true) {
-									mqtt.publishShadeOnline(raspyID, ardID, devID);
-								} else {
-									mqtt.publishShadeOffline(raspyID, ardID, devID);
-								}
+							if (devices.raspys[raspyID].arduinos[ardID].devices[devID].alive == true) {
+								mqtt.publishDeviceOnline(raspyID, ardID, devID);
+							} else {
+								mqtt.publishShadeOffline(raspyID, ardID, devID);
 							}
 						}
 					}
@@ -282,9 +325,7 @@ function publishAllDevicesStateOffline() {
 				if (ardID > 0 && ardID < 256) {
 					for (var devID in devices.raspys[raspyID].arduinos[ardID].devices) {
 						if (devID > 0 && devID < 256) {
-							if (devices.raspys[raspyID].arduinos[ardID].devices[devID].devType == 'shade') {
-									mqtt.publishShadeOffline(raspyID, ardID, devID);
-							}
+							mqtt.publishDeviceOffline(raspyID, ardID, devID);
 						}
 					}
 				}
@@ -307,12 +348,17 @@ function setAllDevicesToIgnore() {
 		for (var ardID in mqtt.MQTTDevices.raspys[raspyID].arduinos) {
 			for (var devID in mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices) {
 				topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID + '/' + devID;
-				commandTopic = topicPrefix + '/direction-cmd';
-				setPositionTopic = topicPrefix + '/position-cmd';
-				tiltCommandTopic = topicPrefix + '/tilt-cmd';
-				mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignorePublish = true;
-				mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic].ignorePublish = true;
-				mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic].ignorePublish = true;
+				if (mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType == 'shade') {
+					commandTopic = topicPrefix + '/direction-cmd';
+					setPositionTopic = topicPrefix + '/position-cmd';
+					tiltCommandTopic = topicPrefix + '/tilt-cmd';
+					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignorePublish = true;
+					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic].ignorePublish = true;
+					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic].ignorePublish = true;
+				} else if (mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType == 'digitOUT') {
+					statusTopic = topicPrefix + '/switch-cmd';
+					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[statusTopic].ignorePublish = true;
+				}
 				debug.log(5, 'mqtt', 'Setting raspyID: ' + raspyID + ' ardID: ' + ardID + ' devID: ' + devID + ' to ignore first incoming MQTT message.')
 			}
 		}
@@ -320,8 +366,51 @@ function setAllDevicesToIgnore() {
 }
 
 /*
+ * Function to subscribe to all topics necessary for Lights to run.
+ */
+
+MQTT.prototype.subscribeLight = function(raspyID, ardID, devID) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID + '/' + devID;
+	let commandTopic = topicPrefix + '/switch-cmd';
+	
+	if (!config.mqtt.enabled) {
+		debug.log(5, 'mqtt', 'Not subscribing to any topic due to disabled MQTT by configuration.');
+		return;
+	}
+	
+	if (typeof(this.MQTTDevices.raspys[raspyID]) == 'undefined') {
+		this.MQTTDevices.raspys[raspyID] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos = {};
+	}
+	if (typeof(this.MQTTDevices.raspys[raspyID].arduinos[ardID]) == 'undefined') {
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices = {};
+	}
+	if (typeof(this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID]) == 'undefined') {
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType = 'digitOUT';
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignorePublish = true;
+	} else {
+		debug.log(5, 'mqtt', 'Device: ' + devID + ', ardID: ' + ardID + ', topic: ' + commandTopic);
+		return;
+	}
+	
+	this.client.subscribe(commandTopic, {"rap": true}, function(error){
+		if (error)
+			debug.log(2, 'mqtt', 'Problem with subscribing to topic: ' + commandTopic + ' error: ' + error.toString());
+		else
+			debug.log(4, 'mqtt', 'Succesfully subscribed to topic: ' + commandTopic);
+	});
+}
+
+/*
  * Function to subscribe to all topics necessary for Shades to run.
  */
+
 MQTT.prototype.subscribeShade = function(raspyID, ardID, devID) {
 	let debug = require('./debug.js');
 	let config = require('./config.js');
@@ -377,7 +466,48 @@ MQTT.prototype.subscribeShade = function(raspyID, ardID, devID) {
 }
 
 
-MQTT.prototype.publishShadeOnline = function(raspyID, ardID, devID) {
+
+/*
+ * Function to subscribe to all topics necessary for Shades to run.
+ */
+MQTT.prototype.subscribeTemp = function(raspyID, ardID, devID) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID + '/' + devID;
+	let statusTopic = topicPrefix + '/temp-status';
+	
+	if (!config.mqtt.enabled) {
+		debug.log(5, 'mqtt', 'Not subscribing to any topic due to disabled MQTT by configuration.');
+		return;
+	}
+	
+	if (typeof(this.MQTTDevices.raspys[raspyID]) == 'undefined') {
+		this.MQTTDevices.raspys[raspyID] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos = {};
+	}
+	if (typeof(this.MQTTDevices.raspys[raspyID].arduinos[ardID]) == 'undefined') {
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices = {};
+	}
+	if (typeof(this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID]) == 'undefined') {
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType = 'temp';
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[statusTopic] = {};
+	}
+
+
+	
+	this.client.subscribe(statusTopic, {"rap": true}, function(error){
+		if (error)
+			debug.log(2, 'mqtt', 'Problem with subscribing to topic: ' + statusTopic + ' error: ' + error.toString());
+		else
+			debug.log(4, 'mqtt', 'Succesfully subscribed to topic: ' + statusTopic);
+	});
+}
+
+
+MQTT.prototype.publishDeviceOnline = function(raspyID, ardID, devID) {
 	let debug = require('./debug.js');
 	let config = require('./config.js');
 	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID + '/' + devID;
@@ -396,7 +526,7 @@ MQTT.prototype.publishShadeOnline = function(raspyID, ardID, devID) {
 	this.client.publish(availabilityTopic, 'online', options);
 }
 
-MQTT.prototype.publishShadeOffline = function(raspyID, ardID, devID) {
+MQTT.prototype.publishDeviceOffline = function(raspyID, ardID, devID) {
 	let debug = require('./debug.js');
 	let config = require('./config.js');
 	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID + '/' + devID;
@@ -474,12 +604,58 @@ MQTT.prototype.publishShadeTilt = function(raspyID, ardID, devID, tilt) {
 	}
 	
 	if (!config.mqtt.enabled) {
-		debug.log(4, 'mqtt', 'Not subscribing to any topic due to disabled MQTT by configuration.');
+		debug.log(4, 'mqtt', 'Not publishing due to disabled MQTT by configuration.');
 		return;
 	}
 	
 	debug.log(4, 'mqtt', 'Publishing payload: ' + newTilt + ' to tiltStatusTopic: ' + tiltStatusTopic);
 	this.client.publish(tiltStatusTopic, newTilt, options);
+}
+
+MQTT.prototype.publishLightStatus = function(raspyID, ardID, devID, status) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID + '/' + devID;
+	let statusTopic = topicPrefix + '/status';
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	
+	if (!config.mqtt.enabled) {
+		debug.log(4, 'mqtt', 'Not publishing due to disabled MQTT by configuration.');
+		return;
+	}
+	
+	if (status == 0) {
+		debug.log(4, 'mqtt', 'Publishing payload: OFF to light status topic: ' + statusTopic);
+		this.client.publish(statusTopic, 'OFF', options);
+	} else if (status == 1) {
+		debug.log(4, 'mqtt', 'Publishing payload: ON to light status topic: ' + statusTopic);
+		this.client.publish(statusTopic, 'ON', options);
+	} else {
+		debug.log(1, 'mqtt', 'Incorrect status value on: ' + statusTopic + ', status: ' + status);
+	}
+}
+
+MQTT.prototype.publishTempStatus = function(raspyID, ardID, devID, status) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID + '/' + devID;
+	let statusTopic = topicPrefix + '/temp-status';
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	
+	if (!config.mqtt.enabled) {
+		debug.log(4, 'mqtt', 'Not publishing due to disabled MQTT by configuration.');
+		return;
+	}
+		
+	debug.log(4, 'mqtt', 'Publishing payload: ' + status + ' to temp status topic: ' + statusTopic);
+	this.client.publish(statusTopic, status, options);
+
 }
 
 MQTT.prototype.isMQTTConnected = function() {

@@ -130,6 +130,28 @@
 	</div>
 	<div class="row justify-content-md-center top-buffer">
 		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>Device Type: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<select class="custom-select my-1 mr-sm-2" id="device-type-select">
+				<option selected value="0">Classic Light</option>
+				<option value="1">Timer Light</option>
+				<option value="2">Simple Heat</option>
+			</select>
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>Device Input Type: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<select class="custom-select my-1 mr-sm-2" id="device-input-select">
+
+			</select>
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
 			<div class="conf-data-panel-checkbox">
 				<input type="checkbox" id="enabled" class="form-check-input">Enabled
 			</div>
@@ -169,8 +191,34 @@
 		var FID = BFPDeviceStatus.body.raspyID + '-' + BFPDeviceStatus.body.devID + '-' + BFPDeviceStatus.body.ardID;
 		if (BFPDeviceStatus.body.raspyID == urlParams['raspyID'] && BFPDeviceStatus.body.ardID == urlParams['ardID'] && BFPDeviceStatus.body.devID == urlParams['devID']) {
 			$("#enabled").attr("checked", BFPDeviceStatus.body.activated);
-			if (BFPDeviceStatus.body.desc != '')
+			if (BFPDeviceStatus.body.desc != '') {
 				$("#name-input").attr("placeholder", BFPDeviceStatus.body.desc);
+			}
+			if (typeof(BFPDeviceStatus.body.lightType) != 'undefined') {
+				console.log('lightType available');
+				const $select = document.querySelector('#device-type-select');
+				$select.value = BFPDeviceStatus.body.lightType;
+				if (typeof(BFPDeviceStatus.body.lightInputType) != 'undefined') {
+					if (BFPDeviceStatus.body.lightType == 0) { /* the classic on/off light */
+						let options =  '<option selected value="0">Switch based light</option> \
+										<option selected value="1">Button based light</option>'
+						$("#device-input-select").append(options);
+						
+					} else if (BFPDeviceStatus.body.lightType == 1) { /* timer based light */
+						let options =  '<option selected value="0">Switch based light</option> \
+										<option selected value="1">Button based light</option>'
+						$("#device-input-select").append(options);
+					} else if (BFPDeviceStatus.body.lightType == 2) { /* simple heat */
+						let options =  '<option selected value="2">Raspy Control</option> \
+										<option selected value="3">Physical Pin Control</option>'
+						$("#device-input-select").append(options);
+					} else {
+						
+					}
+					const $select2 = document.querySelector('#device-input-select');
+					$select2.value = BFPDeviceStatus.body.lightInputType;
+				}
+			}
 		}
 	}
 	
@@ -188,11 +236,15 @@
 		var enabled = false;
 		if ($('#enabled').val() == "on")
 			enabled = true;
+		const $lightType = document.querySelector('#device-type-select');
+		const $lightInputType = document.querySelector('#device-input-select');
 		device.raspyID = urlParams['raspyID'];
 		device.ardID = urlParams['ardID'];
 		device.devID = urlParams['devID'];
 		device.desc = $('#name-input').val();
 		device.activated = $('#enabled').is(':checked');
+		device.lightType = $lightType.value;
+		device.lightInputType = $lightInputType.value;
 		socket.emit('device_settings', device);
 	});
 
@@ -210,5 +262,23 @@
 		//console.log(JSON.stringify(msg));
 	}
 	//function update
+	
+	document.getElementById('device-type-select').onchange = function() {
+		console.log("option change");
+		let select = document.getElementById('device-input-select');
+		select.remove(1);
+		select.remove(0);
+		const $select = document.querySelector('#device-type-select');
+		console.log($select.value);
+		if ($select.value == 0 || $select.value == 1) {
+			let options =  '<option selected value="0">Switch based light</option> \
+							<option selected value="1">Button based light</option>'
+			$("#device-input-select").append(options);
+		} else if ($select.value == 2) {
+			let options =  '<option selected value="2">Raspy Control</option> \
+							<option selected value="3">Physical Pin Control</option>'
+			$("#device-input-select").append(options);
+		}
+	};
 </script>
 </html>

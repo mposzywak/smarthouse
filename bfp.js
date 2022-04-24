@@ -12,6 +12,9 @@ const BFP_DEVICE_COMMAND = 'BFP_DEVICE_COMMAND';
 const BFP_MQTT_STATUS = 'BFP_MQTT_STATUS';
 const BFP_VPNKEY_RESPONSE = 'BFP_VPNKEY_RESPONSE';
 const BFP_PUBLIC_KEY = 'BFP_PUBLIC_KEY';
+const BFP_CTRL_STATUS = 'BFP_CTRL_STATUS';
+const BFP_LIGHT_TYPE = 'BFP_LIGHT_TYPE';
+const BFP_LIGHT_INPUT_TYPE = 'BFP_LIGHT_INPUT_TYPE';
 
 /* BFP (Backend Frontend Protocol) commands */
 const BFP_HEARTBEAT = 'heartbeat';
@@ -70,26 +73,79 @@ BFP.prototype.BFPCreateDeviceStatus = function(devID, ardID, raspyID, devType, d
 	return message;
 }
 
+BFP.prototype.BFPCreateLightType = function(devID, ardID, raspyID, lightType) {
+	var message = {};
+	message.header = {};
+	message.header.code = BFP_LIGHT_TYPE;
+	message.body = {};
+	message.body.raspyID = raspyID;
+	message.body.ardID = ardID;
+	message.body.devID = devID;
+	message.body.lightType = lightType;
+	
+	return message;
+}
+
+BFP.prototype.BFPCreateLightInputType = function(devID, ardID, raspyID, lightInputType) {
+	var message = {};
+	message.header = {};
+	message.header.code = BFP_LIGHT_INPUT_TYPE;
+	message.body = {};
+	message.body.raspyID = raspyID;
+	message.body.ardID = ardID;
+	message.body.devID = devID;
+	message.body.lightInputType = lightInputType;
+	
+	return message;
+}
+
 BFP.prototype.BFPCreateDeviceStatusFromMem = function(device) {
 	message = {};
 	message.header = {};
 	message.header.code = BFP_DEVICE_STATUS;
 	message.body = {};
-	/*message.body.raspyID = device.raspyID;
-	message.body.ardID = device.ardID;
-	message.body.devID = device.devID;
-	message.body.devType = device.devType;
-	message.body.dataType = device.dataType;
-	message.body.value = device.value;
-	message.body.date = device.reqDate;
-	message.body.IP = device.IP;
-	message.body.activated = device.activated;
-	message.body.alive = device.alive;
-	message.body.desc = device.desc;
-	if (device.discovered) {
-		message.body.discovered = device.discovered;
-	}*/
 	message.body = device;
+
+	return message;
+}
+
+/* Create a Settings BFP message */
+BFP.prototype.BFPCreateSettings = function(ardID, raspyID, version, mode, ctrlON) {
+	message = {};
+	message.header = {};
+	message.header.code = BFP_CTRL_STATUS;
+	message.body = {};
+	message.body.ardID = ardID;
+	message.body.raspyID = raspyID;
+	message.body.version = version;
+	message.body.mode = mode;
+	message.body.ctrlON = ctrlON;
+	
+	return message;
+}
+
+/* Create a Central Control setting BFP message with enable ON */
+BFP.prototype.BFPCreateCtrlONEnabled = function(ardID, raspyID) {
+	message = {};
+	message.header = {};
+	message.header.code = BFP_CTRL_STATUS;
+	message.header.enabled = true;
+	message.body = {};
+	message.body.ardID = ardID;
+	message.body.raspyID = raspyID;
+
+	return message;
+}
+
+/* Create a Central Control setting BFP message with enable OFF */
+BFP.prototype.BFPCreateCtrlONDisabled = function(ardID, raspyID) {
+	message = {};
+	message.header = {};
+	message.header.code = BFP_CTRL_STATUS;
+	message.header.enabled = false;
+	message.body = {};
+	message.body.ardID = ardID;
+	message.body.raspyID = raspyID;
 
 	return message;
 }
