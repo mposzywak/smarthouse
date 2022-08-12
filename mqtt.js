@@ -28,7 +28,7 @@ let MQTT = function() {
 			let statusTopic = config.mqtt.topicPrefix + '/status';
 			debug.log(4, 'mqtt', 'Connected succesfully to MQTT broker: ' + config.mqtt.broker);
 			mqtt.connected = true;
-			c.f(statusTopic, {"rap": true}, function(error){
+			c.subscribe(statusTopic, {"rap": true}, function(error){
 				if (error)
 					debug.log(2, 'mqtt', 'Problem with subscribing to topic: ' + statusTopic + ' error: ' + error.toString());
 				else
@@ -52,6 +52,7 @@ let MQTT = function() {
 		});
 		this.client.on('message', function(topic, payload){
 			debug.log(4, 'mqtt', 'Message received: ' + payload + ' from topic: ' + topic);
+			console.log(" -- MQTT -- BFPDevice command payload: " + payload)
 			if (!verifyTopic(topic)) {
 				debug.log(4, 'mqtt', 'Topic in incorrect format, cannot be processed');
 				return;
@@ -129,15 +130,16 @@ function directionCommand(topic, payload) {
 		debug.log(1, 'mqtt', 'Received MQTT command for unknown device! Doing nothing.');
 		return;
 	}
-	if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
+	/* commenting it out as it looks like it is not necessary feature */
+	/*if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
 		debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
 		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish = false;
 		return;
-	}
+	}*/
 	let BFPDeviceCommand = bfp.BFPCreateDeviceCommandShade(device, null, payload);
 	BFPDeviceCommand.body.IP = device.IP;
 	arif.sendCommand(BFPDeviceCommand.body, BFPDeviceCommand.header.command, function(message) {
-		debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
+		//debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
 	});
 }
 
@@ -157,15 +159,17 @@ function positionCommand(topic, payload) {
 		debug.log(1, 'mqtt', 'Received MQTT command for unknown device! Doing nothing.');
 		return;
 	}
-	if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
+	/* commenting it out as it looks like it is not necessary feature */
+	/*if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
 		debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
 		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish = false;
 		return;
-	}
+	}*/
 	let BFPDeviceCommand = bfp.BFPCreateDeviceCommandShade(device, payload, 'shadePOS');
+	
 	BFPDeviceCommand.body.IP = device.IP;
 	arif.sendCommand(BFPDeviceCommand.body, BFPDeviceCommand.header.command, function(message) {
-		debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
+		//debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
 	});
 }
 
@@ -185,11 +189,12 @@ function tiltCommand(topic, payload) {
 		debug.log(1, 'mqtt', 'Received MQTT command for unknown device! Doing nothing.');
 		return;
 	}
-	if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
+	/* commenting it out as it looks like it is not necessary feature */
+	/*if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
 		debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
 		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish = false;
 		return;
-	}
+	}*/
 	let newValue;
 	if (payload <= 30)
 		newValue = 90;
@@ -202,7 +207,7 @@ function tiltCommand(topic, payload) {
 	
 	BFPDeviceCommand.body.IP = device.IP;
 	arif.sendCommand(BFPDeviceCommand.body, BFPDeviceCommand.header.command, function(message) {
-		debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
+		//debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
 	});
 }
 
@@ -222,19 +227,20 @@ function switchCommand(topic, payload) {
 		debug.log(1, 'mqtt', 'Received MQTT command for unknown device! Doing nothing.');
 		return;
 	}
-	if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
+	/* commenting it out as it looks like it is not necessary feature */
+	/*if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
 		debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
 		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish = false;
 		return;
-	}
+	}*/
 	
 	if (payload == 'ON') {
 		arif.sendCommand(device, 'lightON', function(message) {
-			debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
+			//debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
 		});
 	} else if (payload == 'OFF') {
 		arif.sendCommand(device, 'lightOFF', function(message) {
-			debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
+			//debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
 		});
 	} else {
 		debug.log(5, 'mqtt', 'Unrecognized payload received: ' + payload + ' on topic: ' + topic);
@@ -395,7 +401,7 @@ MQTT.prototype.subscribeLight = function(raspyID, ardID, devID) {
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic] = {};
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignorePublish = true;
 	} else {
-		debug.log(5, 'mqtt', 'Device: ' + devID + ', ardID: ' + ardID + ', topic: ' + commandTopic);
+		debug.log(5, 'mqtt', 'Device: ' + devID + ', ardID: ' + ardID + ', topic: ' + commandTopic + ' already subscribed. Doing nothing.');
 		return;
 	}
 	
@@ -506,12 +512,190 @@ MQTT.prototype.subscribeTemp = function(raspyID, ardID, devID) {
 	});
 }
 
-
-MQTT.prototype.publishDeviceOnline = function(raspyID, ardID, devID) {
+/**
+ * Publish the arduino binary_sensor configuration to HA 
+ */
+MQTT.prototype.configureArduino = function(raspyID, ardID, name) {
 	let debug = require('./debug.js');
 	let config = require('./config.js');
-	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID + '/' + devID;
-	let availabilityTopic = topicPrefix + '/availability';
+	let topicPrefix = config.mqtt.topicPrefix;
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	let configString = '{"name": "' + name + '", "unique_id": "binary_sensor.arduino-' + ardID + '", \
+						"state_topic": "velen-mqtt/001/' + ardID + '/arduino-status", "payload_on": "ON", \
+						"payload_off": "OFF", "availability_topic": "velen-mqtt/001/' + ardID + '/arduino-availability", \
+						"payload_available": "online", "payload_not_available": "offline", "qos": 0, "device_class": "connectivity"}';
+	
+	let discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '/config';
+	
+	debug.log(4, 'mqtt', 'Publishing Arduino binary_sensor configuration, ardID: '+ ardID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
+	this.client.publish(discoveryTopic, configString, options);
+}
+
+/**
+ * Publish empty string to remove the configure arduino binary_sensor to HA
+ */
+MQTT.prototype.removeArduino = function(raspyID, ardID) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix;
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	let discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '/config';
+	let configString = ''
+	debug.log(4, 'mqtt', 'Removing arduino binary_sensor configuration of ardID: ' + ardID);
+	this.client.publish(discoveryTopic, configString, options);
+}
+
+/**
+ * Rename the binary_sensor arduino from the HA config
+ */
+MQTT.prototype.renameArduino = function(raspyID, ardID, name) {
+	this.removeArduino(raspyID, ardID);
+	this.configureArduino(raspyID, ardID, name);
+}
+
+/**
+ * Send MQTT based light configuration to HA
+ */
+MQTT.prototype.configureLight = function(raspyID, ardID, devID, name, extType) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix;
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	let configString;
+	let discoveryString;
+	
+	if (extType == 0) {
+		configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/status", \
+	 					"command_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/switch-cmd", \
+						"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
+						"qos": 0, "payload_on": "ON", "payload_off": "OFF", "state_on": "ON", "state_off": "OFF", \
+						"optimistic": "false", "unique_id": "light.velen-' + ardID + '-' + devID + '"}';
+		discoveryTopic = 'velen-discovery/light/arduino-' + ardID + '-light-' + devID + '/config';
+	
+		debug.log(4, 'mqtt', 'Publishing Light configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
+		this.client.publish(discoveryTopic, configString, options);
+	} else if (extType == 1) {
+		configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/status", \
+				"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
+				"qos": 0, "payload_on": "ON", "payload_off": "OFF", "state_on": "ON", "state_off": "OFF", \
+				"optimistic": "false", "unique_id": "binary_sensor.sensor-' + ardID + '-' + devID + '"}';
+		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
+		
+		debug.log(4, 'mqtt', 'Publishing Binary Sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
+		this.client.publish(discoveryTopic, configString, options);
+	} else {
+		debug.log(1, 'mqtt', 'Something went wrong when publishing MQTT configuration, wrong extType: ' + extType);
+	}
+}
+
+MQTT.prototype.removeLight = function(raspyID, ardID, devID, extType) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix;
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	let discoveryTopic;
+	let configString = ''
+	
+	if (extType == 0) {
+		discoveryTopic = 'velen-discovery/light/arduino-' + ardID + '-light-' + devID + '/config';
+		debug.log(4, 'mqtt', 'Removing Light configuration of ardID: ' + ardID + ', devID: ' + devID);
+		this.client.publish(discoveryTopic, configString, options);
+	} else if (extType == 1) {
+		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
+		debug.log(4, 'mqtt', 'Removing Binary Sensor configuration of ardID: ' + ardID + ', devID: ' + devID);
+		this.client.publish(discoveryTopic, configString, options);
+	} else {
+		debug.log(1, 'mqtt', 'Something went wrong when removing MQTT configuration, wrong extType: ' + extType);
+	}
+	
+}
+
+MQTT.prototype.renameLight = function(raspyID, ardID, devID, name) {
+	this.removeLight(raspyID, ardID, devID);
+	this.configureLight(raspyID, ardID, devID, name);
+}
+
+/**
+ * Send MQTT based shade configuration to HA
+ */
+MQTT.prototype.configureShade = function(raspyID, ardID, devID, name) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix;
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	
+	let configString = '{"name": "' + name + '", \
+	"unique_id": "cover.velen-' + ardID + '-' + devID + '", \
+	"command_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/direction-cmd", \
+	"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
+	"set_position_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/position-cmd", \
+	"position_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/position-status",  \
+	"tilt_command_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/tilt-cmd",  \
+	"tilt_status_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/tilt-status", \
+	"qos": 0, \
+	"payload_open": "OPEN", \
+	"payload_close": "CLOSE", \
+	"payload_stop": "STOP", \
+	"position_open": 100, \
+	"position_closed": 0, \
+	"optimistic": false, \
+	"retain": true, \
+	"payload_available": "online", \
+	"payload_not_available": "offline", \
+	"set_position_template": "{% if position < 10 %} 100 {% elif position > 10 and position <= 35 %} 75 {% elif position > 35 and position <= 65 %} 50 {% elif position > 65 and position <= 90 %} 25 {% else %} 0 {% endif %}", \
+	"tilt_min": 0, \
+	"tilt_max": 100, \
+	"tilt_closed_value": 0, \
+	"tilt_opened_value": 100}';
+	
+	let discoveryTopic = 'velen-discovery/cover/arduino-' + ardID + '-cover-' + devID + '/config';
+	
+	debug.log(4, 'mqtt', 'Publishing Shade configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
+	this.client.publish(discoveryTopic, configString, options);
+	
+}
+
+MQTT.prototype.removeShade = function(raspyID, ardID, devID) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix;
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	let discoveryTopic = 'velen-discovery/cover/arduino-' + ardID + '-cover-' + devID + '/config';
+	let configString = ''
+
+	debug.log(4, 'mqtt', 'Removing Shade configuration of ardID: ' + ardID + ', devID: ' + devID);
+	this.client.publish(discoveryTopic, configString, options);
+}
+
+MQTT.prototype.changeNameShade = function(raspyID, ardID, devID, name) {
+	this.removeShade(raspyID, ardID, devID);
+	this.configureShade(raspyID, ardID, devID, name);
+}
+
+MQTT.prototype.publishArduinoOnline = function(raspyID, ardID) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID;
+	let statusTopic = topicPrefix + '/arduino-status';
+	let availabilityTopic = topicPrefix + '/arduino-availability';
 	let options = { 
 		qos: 2, 
 		retain: true 
@@ -522,7 +706,50 @@ MQTT.prototype.publishDeviceOnline = function(raspyID, ardID, devID) {
 		return;
 	}
 	
-	debug.log(4, 'mqtt', 'Publishing payload: online to availabilityTopic: ' + availabilityTopic);
+	debug.log(4, 'mqtt', 'Publishing payload: Arduino ON to status topic: ' + availabilityTopic);
+	this.client.publish(availabilityTopic, 'online', options);
+	this.client.publish(statusTopic, 'ON', options);
+}
+
+MQTT.prototype.publishArduinoOffline = function(raspyID, ardID) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID;
+	let statusTopic = topicPrefix + '/arduino-status';
+	let availabilityTopic = topicPrefix + '/arduino-availability';
+	
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	
+	if (!config.mqtt.enabled) {
+		debug.log(5, 'mqtt', 'Not subscribing to any topic due to disabled MQTT by configuration.');
+		return;
+	}
+	
+	debug.log(4, 'mqtt', 'Publishing payload: Arduino OFF to status topic: ' + availabilityTopic);
+	this.client.publish(availabilityTopic, 'online', options);
+	this.client.publish(statusTopic, 'OFF', options);
+}
+
+MQTT.prototype.publishDeviceOnline = function(raspyID, ardID, devID) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix + '/' + raspyID + '/' + ardID + '/' + devID;
+	let availabilityTopic = topicPrefix + '/availability';
+	
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	
+	if (!config.mqtt.enabled) {
+		debug.log(5, 'mqtt', 'Not subscribing to any topic due to disabled MQTT by configuration.');
+		return;
+	}
+	
+	debug.log(4, 'mqtt', 'Publishing payload: Device online to availabilityTopic: ' + availabilityTopic);
 	this.client.publish(availabilityTopic, 'online', options);
 }
 
@@ -541,7 +768,7 @@ MQTT.prototype.publishDeviceOffline = function(raspyID, ardID, devID) {
 		return;
 	}
 	
-	debug.log(4, 'mqtt', 'Publishing payload: offline to availabilityTopic: ' + availabilityTopic);
+	debug.log(4, 'mqtt', 'Publishing payload: Device offline to availabilityTopic: ' + availabilityTopic);
 	this.client.publish(availabilityTopic, 'offline', options);
 }
 
@@ -628,10 +855,10 @@ MQTT.prototype.publishLightStatus = function(raspyID, ardID, devID, status) {
 	}
 	
 	if (status == 0) {
-		debug.log(4, 'mqtt', 'Publishing payload: OFF to light status topic: ' + statusTopic);
+		debug.log(4, 'mqtt', 'Publishing payload: OFF to light/sensor status topic: ' + statusTopic);
 		this.client.publish(statusTopic, 'OFF', options);
 	} else if (status == 1) {
-		debug.log(4, 'mqtt', 'Publishing payload: ON to light status topic: ' + statusTopic);
+		debug.log(4, 'mqtt', 'Publishing payload: ON to light/sensor status topic: ' + statusTopic);
 		this.client.publish(statusTopic, 'ON', options);
 	} else {
 		debug.log(1, 'mqtt', 'Incorrect status value on: ' + statusTopic + ', status: ' + status);

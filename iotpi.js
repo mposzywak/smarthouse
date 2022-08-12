@@ -74,6 +74,7 @@ const ARIF_ARD_CTRL_OFF = 'ctrlOFF';
 const ARIF_ARD_SETTINGS = 'settings';
 const ARIF_DEV_LIGHT_INPUT_TYPE = 'lightInputType';
 const ARIF_DEV_LIGHT_TYPE = 'lightType';
+const ARIF_DEV_LIGHT_SETTINGS = 'lightSettings';
 
 //app.use(express.static('smarthouse'))
 
@@ -81,10 +82,10 @@ const ARIF_DEV_LIGHT_TYPE = 'lightType';
 function onPostRequest(req, res) {
 	var reqDate = new Date().getTime();
 	let srcIP = req.connection.remoteAddress;
-	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcIP + ', connection destroyed: ' + req.connection.destroyed);
-	console.log(req.connection.remoteAddress);
-	console.log(req.socket.remoteAddress);
-	console.log(req.ip);
+	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcIP);
+	//console.log(req.connection.remoteAddress);
+	//console.log(req.socket.remoteAddress);
+	//console.log(req.ip);
 
 	if (!config.cloud.id) {
 		debug.log(1, 'arif', 'Sending 502: ARIF interface not enabled, system configured for cloud');
@@ -122,7 +123,7 @@ function onPostRequest(req, res) {
 					break;
 				case ARIF_ARD_SETTINGS:
 					debug.log(5, 'arif', 'settings received from: ' + srcIP + ', data: ' + JSON.stringify(req.body));				
-					var BFPSettings = bfp.BFPCreateSettings(ardID, raspyID, req.body.version, req.body.mode, req.body.ctrlON);
+					var BFPSettings = bfp.BFPCreateSettings(ardID, raspyID, req.body.version, req.body.mode, req.body.ctrlON, req.body.uptime, req.body.restore);
 					mem.setSettings(config.cloud.id, BFPSettings);
 					break;
 				default:
@@ -139,8 +140,9 @@ function onPostRequest(req, res) {
 					var dataType = params.dataType; //url.split('/')[6];
 					var value = params.value; //url.split('/')[7];
 					var userIndicaitonHeader = false;
-					if (req.get('iot-user') == 'true')
+					if (req.get('iot-user') == 'true') {
 						userIndicaitonHeader = true;
+					}
 				
 					if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP)) {
 						var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, userIndicaitonHeader);
@@ -187,6 +189,16 @@ function onPostRequest(req, res) {
 					var value = params.value;
 					var BFPLightType = bfp.BFPCreateLightType(devID, ardID, raspyID, value);
 					mem.setLightType(config.cloud.id, BFPLightType);
+					break;
+				case ARIF_DEV_LIGHT_SETTINGS:
+					debug.log(5, 'arif', 'Light settings received from: ' + srcIP + ' of: ' + devID + ', data: ' + JSON.stringify(req.body));
+					//var BFPLightInputType = bfp.BFPCreateLightInputType(devID, ardID, raspyID, req.body.lightInputType);
+					//var BFPLightType = bfp.BFPCreateLightType(devID, ardID, raspyID, req.body.lightType);
+					//var BFPLightCtrlON = bfp.BFPCreateLightCtrlON(devID, ardID, raspyID, req.body.ctrlON);
+					var BFPLightSettings = bfp.BFPCreateLightSettings(devID, ardID, raspyID, req.body.lightType, req.body.lightInputType, req.body.ctrlON, req.body.timer);
+					mem.setLightSettings(config.cloud.id, BFPLightSettings);
+					//mem.setLightType(config.cloud.id, BFPLightType);
+					//mem.setLightCtrlON(config.cloud.id, BFPLightCtrlON);
 					break;
 				case ARIF_DEV_STATUS_POS:
 					break;
