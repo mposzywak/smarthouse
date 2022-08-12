@@ -111,16 +111,16 @@ ConfigDB.prototype.setVpnID = function(accountID, raspyID, enabled, vpnID, vpnKe
  * inserts an Arduino in the DB. This would typically happen on registering new Arduino on the raspy,
  * or during receiving of device data on the cloud when there is no arduino defined in mem structure.
  */
-ConfigDB.prototype.insertArduino = function(accountID, raspyID, IP, ardID) {
+ConfigDB.prototype.insertArduino = function(accountID, raspyID, IP, ardID, desc) {
 	var debug = this.debug;
-	var sql = 'INSERT INTO arduinos (ardID, raspyID, accountID, IP) VALUES (?, ?, ?, ?)';
+	var sql = 'INSERT INTO arduinos (ardID, raspyID, accountID, IP, desc) VALUES (?, ?, ?, ?, ?)';
 
-	this.db.run(sql, [ardID, raspyID, accountID, IP], function(error) {
+	this.db.run(sql, [ardID, raspyID, accountID, IP, desc], function(error) {
 		if (error) {
 			debug.log(1, 'configdb', 'Error while inserting new Arduino: ' + error.message);
 		} else {
 			debug.log(5, 'configdb', 'Inserted Arduino, accountid: ' + accountID + ', raspyid: ' +
-				raspyID + ', IP: ' + IP + ', ardID: ' + ardID);
+				raspyID + ', IP: ' + IP + ', ardID: ' + ardID + ', desc: ' + desc);
 		}
 	});
 }
@@ -130,8 +130,8 @@ ConfigDB.prototype.insertArduino = function(accountID, raspyID, IP, ardID) {
  */
 ConfigDB.prototype.insertDevice = function(accountID, device) {
 	var debug = this.debug;
-	var sql = 'INSERT INTO devices (devID, ardID, raspyID, accountID, devType, dataType, value, date, desc, activated, IP) \
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+	var sql = 'INSERT INTO devices (devID, ardID, raspyID, accountID, devType, dataType, value, date, desc, activated, IP, extType) \
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 	var sqlShades = 'INSERT INTO shades (devID, ardID, raspyID, accountID, devType, position, tilt, sync, date, desc, activated, IP) \
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 	debug.log(5, 'configdb', 'Inserting the following device into the DB: ' + JSON.stringify(device));
@@ -139,7 +139,7 @@ ConfigDB.prototype.insertDevice = function(accountID, device) {
 	if (device.devType == 'digitOUT') {
 		this.db.run(sql, [device.devID, device.ardID, device.raspyID, accountID,
 			device.devType, device.dataType, device.value, JSON.stringify(device.date),
-			device.desc, device.activated ? 1 : 0, device.IP
+			device.desc, device.activated ? 1 : 0, device.IP, device.extType
 		], function(error) {
 			if (error) {
 				debug.log(1, 'configdb', 'Error while inserting new Device: ' + error.message);
@@ -184,6 +184,37 @@ ConfigDB.prototype.insertDevice = function(accountID, device) {
 
 /**
  * This should be executed when new data arrives for device that is already in present in mem, on both raspy or cloud.
+ * Requires the following fields for digitIO and shades:
+ *		device.ardID
+ *		device.raspyID
+ *		accountID
+ *
+ * Optional values for digitIO:
+ *		device.activated
+ *		device.IP
+ *		device.desc
+ *		device.date
+ *		device.value
+ *		device.devType
+ *		device.dataType
+ *		device.lightType
+ *		device.lightInputType
+ *		device.timer
+ *		device.ctrlON
+ *		device.extType
+ *
+ * Optional values for shades:
+ *		device.activated
+ *		device.IP
+ *		device.desc
+ *		device.date
+ *		device.value
+ *		device.devType
+ *		device.dataType
+ *		device.sync
+ *		device.tilt
+ *		device.position
+ *		device.direction
  */
 ConfigDB.prototype.updateDevice = function(accountID, device) {
 	var debug = this.debug;
@@ -227,6 +258,10 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 				SQLUpdate += ' dataType = ?,';
 				values.push(device.dataType);
 				break;
+			case 'extType':
+				SQLUpdate += ' extType = ?,';
+				values.push(device.extType);
+				break;
 			case 'sync':
 				SQLUpdate += ' sync = ?,';
 				if (device.sync == true)
@@ -246,6 +281,22 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 				SQLUpdate += ' direction = ?,';
 				values.push(device.direction);
 				break;
+			case 'lightType':
+				SQLUpdate += ' lightType = ?,';
+				values.push(device.lightType);
+				break;
+			case 'lightInputType':
+				SQLUpdate += ' lightInputType = ?,';
+				values.push(device.lightInputType);
+				break;
+			case 'ctrlON':
+				SQLUpdate += ' ctrlON = ?,';
+				values.push(device.ctrlON);
+				break;
+			case 'timer':
+				SQLUpdate += ' timer = ?,';
+				values.push(device.timer);
+				break;
 			case 'ardID':
 			case 'devID':
 			case 'raspyID':
@@ -254,7 +305,6 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 				break;
 			default:
 				debug.log(1, 'configdb', 'Error while parsing device fields, implementation issue: ' + key);
-
 		}
 	}
 
@@ -278,7 +328,19 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 }
 
 /**
- * This function updates the Arduino information in the DB
+ * This function updates the Arduino information in the DB.
+ * Requires the following fields:
+ *		arduino.ardID
+ *		arduino.raspyID
+ *		accountID
+ *
+ * Optional values:
+ *		arduino.IP
+ *		arduino.desc
+ *		arduino.date
+ *		arduino.mac
+ *		arduino.ctrlON
+ *		arduino.mode
  */
 ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 	var debug = this.debug;
@@ -301,6 +363,22 @@ ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 				SQLUpdate += ' date = ?,';
 				values.push(JSON.stringify(arduino.date));
 				break;
+			case 'mac':
+				SQLUpdate += ' mac = ?,';
+				values.push(arduino.mac);
+				break;
+			case 'ctrlON':
+				SQLUpdate += ' ctrlON = ?,';
+				values.push(arduino.ctrlON);
+				break;
+			case 'mode':
+				SQLUpdate += ' mode = ?,';
+				values.push(arduino.mode);
+				break;
+			case 'version':
+				SQLUpdate += ' version = ?,';
+				values.push(arduino.version);
+				break;
 			case 'ardID':
 			case 'raspyID':
 			case 'counter':
@@ -317,7 +395,6 @@ ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 	values.push(arduino.ardID);
 	values.push(arduino.raspyID);
 	values.push(accountID);
-	//console.log('values: ' + values);
 	this.db.run(SQLUpdate + SQLWhere, values, function(error) {
 		if (error) {
 			debug.log(1, 'configdb', 'Error while updating Arduino: ' + error.message);
@@ -326,6 +403,49 @@ ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 				arduino.raspyID + ', ardID: ' + arduino.ardID);
 		}
 	});
+}
+
+/**
+* This function delete the device information in the DB.
+* Requires the following fields:
+*		device.ardID
+*		device.raspyID
+*		device.devID
+*		device.devType (either set to 'digitOUT' or 'shade')
+*		accountID
+*/
+ConfigDB.prototype.deleteDevice = function(accountID, device) {
+	var debug = this.debug;
+	var SQLDeviceDelete = 'DELETE FROM devices WHERE devID = ? AND ardID = ? AND raspyID = ? AND accountID = ?';
+	let SQLShadeDelete = 'DELETE FROM shades WHERE devID = ? AND ardID = ? AND raspyID = ? AND accountID = ?';
+	var values = [];
+	var db = this.db;
+	
+	values.push(device.devID)
+	values.push(device.ardID);
+	values.push(device.raspyID);
+	values.push(accountID);
+	
+	if (device.devType == 'digitOUT') {
+		db.run(SQLDeviceDelete, values, function(error) {
+			if (error) {
+				debug.log(1, 'configdb', 'Error while deleting light Device: ' + device.devID + ' Error: ' + error.message);
+			} else {
+				debug.log(5, 'configdb', 'Deleted device: ' + device.devID + ', ardID: ' + device.ardID);
+			}
+		});
+	} else if (device.devType == 'shade') {
+		db.run(SQLShadeDelete, values, function(error) {
+			if (error) {
+				debug.log(1, 'configdb', 'Error while deleting shade Device: ' + device.devID + ' Error: ' + error.message);
+			} else {
+				debug.log(5, 'configdb', 'Deleted device: ' + device.devID + ', ardID: ' + device.ardID);
+			}
+		});
+	} else {
+		debug.log(1, 'configdb', 'Incorrect devType used to delete a device: : ' + device.devType);
+	}
+	
 }
 
 ConfigDB.prototype.deleteArduino = function(accountID, arduino) {
@@ -405,6 +525,7 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 						var row = rows[i];
 						var raspyID = row.raspyID;
 						var ardID = row.ardID;
+						var desc = row.desc;
 
 						if (typeof(raspys[raspyID]) == 'undefined') {
 							raspys[raspyID] = {};
@@ -415,6 +536,10 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 						raspys[raspyID].arduinos[ardID].devices = {}
 						raspys[raspyID].arduinos[ardID].IP = row.IP;
 						raspys[raspyID].arduinos[ardID].raspyID = raspyID;
+						raspys[raspyID].arduinos[ardID].desc = desc;
+						raspys[raspyID].arduinos[ardID].mac = row.mac;
+						raspys[raspyID].arduinos[ardID].ctrlON = row.ctrlON;
+						raspys[raspyID].arduinos[ardID].mode = row.mode;
 					}
 
 					db.all(SQLDevices, [accountID], function(error, rows) {
@@ -447,6 +572,11 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 								raspys[raspyID].arduinos[ardID].devices[devID].raspyID = row.raspyID;
 								raspys[raspyID].arduinos[ardID].devices[devID].value = row.value;
 								raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
+								raspys[raspyID].arduinos[ardID].devices[devID].lightType = row.lightType;
+								raspys[raspyID].arduinos[ardID].devices[devID].lightInputType = row.lightInputType
+								raspys[raspyID].arduinos[ardID].devices[devID].timer = row.timer;
+								raspys[raspyID].arduinos[ardID].devices[devID].ctrlON = row.ctrlON;
+								raspys[raspyID].arduinos[ardID].devices[devID].extType = row.extType;
 								debug.log(5, 'configdb', 'Reading device from DB: ' + JSON.stringify(raspys[raspyID].arduinos[ardID].devices[devID]));
 							}
 							//console.log(JSON.stringify(devices));

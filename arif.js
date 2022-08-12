@@ -12,6 +12,9 @@ var ARiF = function() {
 	this.mem = require('./mem.js');
 	this.raspyID = this.config.rcpclient.vpnID.split('-')[1];
 	
+	/* variables indicating that there is an ARiF operation in progress */
+	this.arduinos = {};
+	
 	/* multicast server setup for Beacon */
 	const dgram = require('dgram');
 	const BBSocket = dgram.createSocket('udp4');
@@ -20,6 +23,7 @@ var ARiF = function() {
 	var c = this.config;
 	var m = this.mem;
 	var a = this;
+	var raspyID = this.raspyID
 	
 	/* variable holding status of cloud connection */
 	this.cloudAlive = false;
@@ -36,17 +40,23 @@ var ARiF = function() {
 		d.log(2, 'arif', 'Beacon received from: ' + rinfo.address + ':' + rinfo.port + ' url: ' + msg);
 		var ardID = (msg + '').split('/')[2];
 		
+		
 		/* we need to start new registration procedure */
 		if (ardID == '0') {
 			d.log(2, 'arif', 'Registration beacon received from: ' + rinfo.address);
 			if (m.isPendingArduinoAllowed(rinfo.address)) {
 				d.log(2, 'arif', 'Beacon received from ' + rinfo.address + ' is allowed, beginning registration');
 				var newArdID = m.registerArduino(c.cloud.id, rinfo.address);
-				a.sendRegisterCommand(rinfo.address, newArdID, 'EE:EA:DE:AD:BA:BE', function() {
+				var hexArdID = newArdID.toString(16);
+				if (newArdID < 16) hexArdID = '0' + newArdID.toString(16);
+				a.sendRegisterCommand(rinfo.address, newArdID, c.arif.partMAC + hexArdID, function() {
 					d.log(2, 'arif', 'Registration finished of ardID: ' + newArdID);
 					m.deletePendingArduino(c.cloud.id, rinfo.address);
+					m.updateArduinoMAC(c.cloud.id, raspyID, newArdID, c.arif.partMAC + hexArdID);
+					a.arduinos[newArdID] = {};
+					a.arduinos[newArdID].queue = {};
+					a.arduinos[newArdID].arifOngoing = false;
 				});
-				
 			}
 			else {
 				m.updatePendingArduino(rinfo.address);
@@ -64,12 +74,19 @@ var ARiF = function() {
 			if (m.isPendingArduinoAllowed(rinfo.address)) {
 				d.log(2, 'arif', 'Beacon received from ' + rinfo.address + ' is allowed, beginning registration');
 				var newArdID = m.registerArduino(c.cloud.id, rinfo.address);
-				a.sendRegisterCommand(rinfo.address, newArdID, 'EE:EA:DE:AD:BA:BE', function () {
+				var hexArdID = newArdID.toString(16);
+				if (ardID < 16) hexArdID = '0' + newArdID.toString(16);
+				a.sendRegisterCommand(rinfo.address, newArdID, c.arif.partMAC + hexArdID, function () {
 					d.log(2, 'arif', 'Registration finished of ardID: ' + newArdID);
 					m.deletePendingArduino(c.cloud.id, rinfo.address);
+					m.updateArduinoMAC(c.cloud.id, raspyID, newArdID, c.arif.partMAC + hexArdID);
+					a.arduinos[newArdID] = {};
+					a.arduinos[newArdID].queue = {};
+					a.arduinos[newArdID].arifOngoing = false;
 				});
 			}
 			else {
+				d.log(3, 'arif', 'Updating a pending arduino: ' + ardID + ', IP: ' + rinfo.address);
 				m.updatePendingArduino(rinfo.address);
 			}
 		} else {
@@ -126,13 +143,13 @@ function sendHeartbeat(ardID, IP) {
 	};
 	
 	var req = http.request(options, function (res){
-		debug.log(5, 'arif', 'Received Heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
+		debug.log(5, 'arif', 'Received heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
 		mem.clearArduinoDeadCounter(accountID, raspyID, ardID);
 	}).on('error', function(error) {
-		debug.log(1, 'arif', 'Error in Heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
+		debug.log(1, 'arif', 'Error in heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
 		mem.increaseArduinoDeadCounter(accountID, raspyID, ardID);
 	}).on('timeout', function(error) {
-		debug.log(1, 'arif', 'Timeout in Heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
+		debug.log(1, 'arif', 'Timeout in heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
 		mem.increaseArduinoDeadCounter(accountID, raspyID, ardID);
 	});
 	req.setTimeout(3000);
@@ -144,7 +161,22 @@ function sendHeartbeat(ardID, IP) {
 /**
  * Sends a command to an Arduino
  * Arguments:
- * device must have the following attributes: devID, ardID, IP.
+ * device must have the following attributes: 
+ * 		device.devID
+ *		device.ardID
+ *		device.IP
+ *
+ * additionally the following attributes are necessary for the give commands:
+ *
+ * shadePOS
+ * 		device.position
+ *
+ * shadeTILT
+ *		device.tilt
+ *
+ * lightType
+ *		device.lightType
+ *
  */
 ARiF.prototype.sendCommand = function(device, command, callback) {
 	var debug = this.debug;
@@ -164,11 +196,26 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 	
 	/* add specifics of the shade */
 	if (command == 'shadePOS') {
-		options.path += 'value=' + device.position;
+		
+		if (typeof(device.position) == 'object') {
+			device.position = parseInt(device.position.toString());
+		}
+		
+		options.path += '&value=' + device.position;
+		
+		console.log('----------- Path: ' + options.path);
+		
+		console.log('----------- Value 2: ' + JSON.stringify(device));
+		console.log('----------- Value 1: ' + device.position);
+		
 	}
 	
 	if (command == 'shadeTILT') {
-		options.path += 'value=' + device.tilt;
+		options.path += '&value=' + device.tilt;
+	}
+	
+	if (command == 'lightTimer') {
+		options.path += 'value=' + device.timer;
 	}
 	
 	if (command == 'lightType') {
@@ -181,25 +228,73 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 			'&raspyID=' + this.config.rcpclient.vpnID.split('-')[1] + '&cmd=' + command;
 	}
 	
-	console.log('======== path: ' + options.path);
 	
-	var req = http.request(options, function (res){
-		debug.log(1, 'arif', 'Received ARiF command resp from: ' + device.devID + ' ardID: ' + 
-			device.ardID + ' IP: ' + device.IP);
-	}).on('error', function(error) {
-		debug.log(1, 'arif', 'Error in ARiF comms with: ' + device.devID + ' ardID: ' + 
-			device.ardID + ' IP: ' + device.IP);
-	});
+	if (typeof(this.arduinos[device.ardID]) == 'undefined') {
+		this.arduinos[device.ardID] = {};
+		this.arduinos[device.ardID].queue = {};
+		this.arduinos[device.ardID].arifOngoing = false;
+	}
+
+	let arifOngoing = this.arduinos[device.ardID].arifOngoing;
+	if (this.arduinos[device.ardID].arifOngoing == false) {
+		this.arduinos[device.ardID].arifOngoing = true;
+		var req = http.request(options, function (res){
+			debug.log(1, 'arif', 'Received ARiF command resp from: ' + device.devID + ' ardID: ' + device.ardID + ' IP: ' + device.IP);
+			require('./arif.js').arduinos[device.ardID].arifOngoing = false;
+			if (callback != null)
+				callback(true);
+			require('./arif.js').sendQueuedARiF(device.ardID);
+		}).on('error', function(error) {
+			debug.log(1, 'arif', 'Error in ARiF comms with: ' + device.devID + ' ardID: ' + device.ardID + ' IP: ' + device.IP);
+			require('./arif.js').arduinos[device.ardID].arifOngoing = false;
+			if (callback != null)
+				callback(true);
+			require('./arif.js').sendQueuedARiF(device.ardID);
+		});
+		req.write('');
+		req.end();
+	} else { /* arif ongoing - need to queue the transaction */
+		//queue transaction
+		debug.log(1, 'arif', 'ARiF cmd in progress, queueing... ' + device.devID + ' ardID: ' + device.ardID);
+		this.arduinos[device.ardID].queue[device.devID + command] = {};
+		//this.arduinos[device.ardID].queue[device.devID + command].devID = device.devID;
+		this.arduinos[device.ardID].queue[device.devID + command].device = device;
+		this.arduinos[device.ardID].queue[device.devID + command].device.position = device.position;
+		this.arduinos[device.ardID].queue[device.devID + command].command = command;
+		
+		
+		//debug.log(1, 'arif', 'ARiF queue: ' + JSON.stringify(this.arduinos[device.ardID]));
+	}
+}
+
+/**
+ * Function to send a queued ARiF message to an arduino. 
+ * returns true if it sends a message, returns false if the queue is empty.
+ */
+ARiF.prototype.sendQueuedARiF = function(ardID) {
+	let debug = require('./debug.js');
+	var arif = this;
 	
-	req.write('');
-	req.end();
+	for (var transaction in this.arduinos[ardID].queue) {
+		var device = this.arduinos[ardID].queue[transaction];
+		var deviceClone = JSON.parse(JSON.stringify(this.arduinos[ardID].queue[transaction].device));
+		var commandClone = JSON.parse(JSON.stringify(this.arduinos[ardID].queue[transaction].command));
+		console.log('--- device to be send: ' + JSON.stringify(this.arduinos[ardID].queue[transaction].device));
+		delete this.arduinos[ardID].queue[transaction];
+		arif.sendCommand(deviceClone, commandClone, function(){
+			
+		});
+		return true;
+	}
+	debug.log(5, 'arif', 'ARiF queue empty.');
+	return false;
 }
 
 /** send register command */
 ARiF.prototype.sendRegisterCommand = function(IP, ardID, MAC, callback) {
 	var debug = this.debug;
 	debug.log(1, 'arif', 'Sending ARiF register cmd to IP: ' + IP);
-	var partMAC = 'FF:01:34:00:00:';
+	var partMAC = '4C:A1:34:00:00:';
 	var hexArdID = ardID.toString(16);
 	if (ardID < 16) hexArdID = '0' + ardID.toString(16);
 	var fullMAC = partMAC + hexArdID;
@@ -209,7 +304,7 @@ ARiF.prototype.sendRegisterCommand = function(IP, ardID, MAC, callback) {
 		hostname: IP,
 		port: this.config.arif.port,
 		path: '/?devID=0&ardID=' + ardID + 
-				'&raspyID=' + this.config.rcpclient.vpnID.split('-')[1] + '&cmd=register' + '&value=' + fullMAC,
+				'&raspyID=' + this.config.rcpclient.vpnID.split('-')[1] + '&cmd=register' + '&value=' + MAC,
 		method: 'POST',
 		agent: false
 	};

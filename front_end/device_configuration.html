@@ -73,46 +73,65 @@
     }
 	
 	function receiveArduino(msg) {
-		console.log('arduino received: ' + msg.ardID);
+		//console.log('arduino received: ' + JSON.stringify(msg));
 		if (document.getElementById('arduino-' + msg.ardID) == null) {
 			/* this is a new arduino so whole div structure needs to be created */
 			addArduinoTableRow(msg);
 		} else {
 			/* the device already reported, structure needs to be filled in with new data */
-			$('#ardID-' + msg.ardID).html('ardID: ' + msg.ardID + '<br>name: ' + msg.name + '</strong> ');
+			console.log('Arduino: name: ' + msg.desc + ', ardID: ' + msg.ardID + 'JSON: ' + JSON.stringify(msg));
+			$('#row-settings-' + msg.ardID).html('ardID: ' + msg.ardID + '<br>name: ' + msg.desc + '</strong> ');
 		}
 	}
 	
 	function addArduinoTableRow(device) {
-		console.log('device name: ' + JSON.stringify(device));
 		var deviceIDArg = '?raspyID=' + device.raspyID + '&ardID=' + device.ardID;
-		var name = 'Not available';
-		if (typeof(device.name) != 'undefined')
-			name = device.name;
+		var ardName = 'Not available';
+		
+		if (typeof(device.name) != '')
+			ardName = device.desc;
 		
 		var row = '<div class="card" style="width: 100%; margin: 2%" id=12_ard-card>  <!-- arduino start here  --> \
 					<div class="card-header" id="heading-' + device.ardID + '"> \
 						<h5 class="mb-0"> \
 							<div class="col-sm text-black" id="row-settings-' + device.ardID + '"> \
   								ardID: ' + device.ardID + '<br> \
-  								Name: ' + name + '<br> \
+  								Name: ' + ardName + '<br> \
 							</div> \
   							<button type="button" class="btn text-white conf-button" onclick="location.href=\'device-configuration-arduino' + deviceIDArg + '\';"> \
   								<span class="fa fa-cog" aria-hidden="true"></span> \
   								Configure \
   							</button> \
-  	        				<button class="btn btn-link" data-toggle="collapse" data-target="#collapse-' + device.ardID + '" aria-expanded="false" aria-controls="collapse-' + device.ardID + '" style="float: right" onclick="expandCollapse(this)" id="expand-' + device.ardID + '"> \
+							<button class="btn btn-link" style="float: right" onclick="expandCollapse(this)" id="expand-' + device.ardID + '"> \
 								Expand \
 							</button> \
 						</h5>  \
 					</div> <!-- arduino header stops here  --> \
-					<div id="collapse-' + device.ardID + '" class="collapse" aria-labelledby="heading-' + device.ardID + '" data-parent="#accordion"> \
+					<div id="collapse-' + device.ardID + '" aria-labelledby="heading-' + device.ardID + '" data-parent="#accordion"> \
 						<div class="card-body" id="arduino-' + device.ardID + '"> \
 						</div> \
   	    			</div> \
 				  </div>';
 		
 		$("#arduinos").append(row);
+		//<button class="btn btn-link" data-toggle="collapse" data-target="#collapse-' + device.ardID + '" aria-expanded="false" aria-controls="collapse-' + device.ardID + '" style="float: right" onclick="expandCollapse(this)" id="expand-' + device.ardID + '"> \
+		
+		//<div id="collapse-' + device.ardID + '" class="collapse" aria-labelledby="heading-' + device.ardID + '" data-parent="#accordion">
+		
+		//var ele = document.getElementById("collapse-" + device.ardID);
+		//ele.style.display = "none";
+		//ele.style.display = "block";
+		let arduinoCard = document.getElementById("collapse-" + device.ardID);
+		let expandButton = document.getElementById("expand-" + device.ardID);
+		let expCookie = getCookie('c-ard-exp-' + device.ardID);
+		console.log("cookie: " + expCookie);
+		if (expCookie == 'expanded') {
+			arduinoCard.style.display = "block";
+			expandButton.innerText = 'Collapse';
+		} else if (expCookie == 'collapsed') {
+			arduinoCard.style.display = "none";
+			expandButton.innerText = 'Expand';
+		}
 	}
 
 	function addDeviceTableRow(device) {
@@ -157,20 +176,48 @@
 	}
 	
 	function expandCollapse(e) {
+		var ardID = e.id.slice(7,9);
+		var ele = document.getElementById("collapse-" + ardID);
 		if (e.innerText == 'Collapse') {
 			e.innerText = 'Expand';
+			setCookie('c-ard-exp-' + ardID, 'collapsed', null);
+			ele.style.display = "none";
 		} else if (e.innerText == 'Expand') {
 			e.innerText = 'Collapse';
+			setCookie('c-ard-exp-' + ardID, 'expanded', null);
+			ele.style.display = "block";
 		}
 	}
-
+	
+	function setCookie(cookieName, value, expireDate) {
+		var exdate = new Date();
+		exdate.setDate(exdate.getDate() + expireDate);
+		document.cookie = cookieName + "=" + value + ";path=/" + ((expireDate ==null) ? "" : ";expires=" + exdate.toGMTString());
+	}
+	
+	function getCookie(cookieName) {
+		var dc = document.cookie;
+		var prefix = cookieName +"=";
+		var begin = dc.indexOf("; " + prefix);
+		if (begin == -1) {
+			begin = dc.indexOf(prefix);
+			if (begin != 0)return null;
+		} else {
+			begin += 2;
+		}
+		var end = document.cookie.indexOf(";", begin);
+		if (end == -1) {
+			end = dc.length;
+		}
+		return unescape(dc.substring(begin + prefix.length, end));
+	}
 
 	/* display success message when the device was succesfully configuring and redirection 
 		comes from device-configuration-single */
 	if (urlParams['cmd'] == 'dev-save-success')
 		displaySuccessMsg('Device has been configured and saved.')
 	if (urlParams['cmd'] == 'ard-del-success')
-		displaySuccessMsg('Arduino has been deleted and saved from configuration.')
+		displaySuccessMsg('Arduino has been deleted from configuration.')
 	
 </script>
 </html>

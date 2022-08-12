@@ -228,18 +228,6 @@ function onLogout(req,res) {
 	});
 }
 
-/*
-function onLogout(req, res) {
-	var email = req.session.email;
-	console.log('logout')
-	req.session.destroy(function(err) {
-  	// cannot access session here
-  	require('./debug.js').log(5, 'backend', 'Logout POST received with email: ' + email);
-  	res.end('done');
-	})
-}
-*/
-
 /**
  *
  */
@@ -330,6 +318,9 @@ function onWSAuthorize(socket, next) {
 							socket.on('delete_arduino', function (BFPPayload) {
 								onBFPGenericMessage('delete_arduino', BFPPayload, socket);
 							});
+							socket.on('restore_arduino', function (BFPPayload) {
+								onBFPGenericMessage('restore_arduino', BFPPayload, socket);
+							});
 							socket.on('device_discovered', function (BFPPayload) {
 								onBFPGenericMessage('device_discovered', BFPPayload, socket);
 							});
@@ -417,6 +408,9 @@ function onBFPGenericMessage(msg, BFPPayload, socket) {
 				break;
 			case 'delete_arduino':
 				onBFPDeleteArduino(BFPPayload, socket);
+				break;
+			case 'restore_arduino':
+				onBFPRestoreArduino(BFPPayload, socket);
 				break;
 			case 'device_discovered':
 				onBFPDeviceDiscovered(BFPPayload, socket);
@@ -592,7 +586,7 @@ function onBFPUpdateArduino(msg, socket) {
 	var m = require('./mem.js');
 	
 	debug.log(5, 'backend', '[' + accountID + '] WS received event: update_arduino with: ' + JSON.stringify(msg));
-	m.updateArduino(accountID, msg.raspyID, msg.ardID, msg.name);
+	m.updateArduino(accountID, msg.raspyID, msg.ardID, msg.desc, msg.ctrlON, msg.mode);
 }
 
 /**
@@ -600,9 +594,10 @@ function onBFPUpdateArduino(msg, socket) {
  */
 function onBFPDeviceUpdate(msg, socket) {
 	var accountID = require('./config.js').cloud.id;
+	let mem = require('./mem.js');
 
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: device_settings with: ' + JSON.stringify(msg));
-	var mem = components.getFacility('mem');
+	//var mem = components.getFacility('mem');
 	var devices = mem.getClientDevices(accountID);
 	var device = devices.raspys[msg.raspyID].arduinos[msg.ardID].devices[msg.devID];
 
@@ -611,38 +606,16 @@ function onBFPDeviceUpdate(msg, socket) {
 		device.discovered = false;
 	}
 	
-	device.desc = msg.desc;
-	device.activated = msg.activated;
+	if (msg.devType == 'digitOUT')
+		mem.reconfigureLight(accountID, msg.raspyID, msg.ardID, msg.devID, msg.desc, msg.activated, msg.ctrlON, msg.timer, msg.lightType, msg.lightInputType, msg.extType);
+	else if (msg.devType == 'shade')
+		mem.reconfigureShade(accountID, msg.raspyID, msg.ardID, msg.devID, msg.desc, msg.activated, msg.positionTimer, msg.tiltTimer);
+	
 	require('./configdb.js').updateDevice(accountID, device);
 	var bfp = require('./bfp.js');
 	var BFPDeviceStatus = bfp.BFPCreateDeviceStatusFromMem(device);
 	var io = this.components.getFacility('backend').io;
 	io.of('/iot').to(accountID).emit('device_status', BFPDeviceStatus);
-	
-	msg.IP = device.IP;
-	
-	require('./arif.js').sendCommand(msg, 'lightType', function(message) {
-		//socket.emit('device_response', message);
-	});
-	if (msg.lightInputType == 0) {
-		require('./arif.js').sendCommand(msg, 'inputHold', function(message) {
-			//socket.emit('device_response', message);
-		});
-	} else if (msg.lightInputType == 1) {
-		require('./arif.js').sendCommand(msg, 'inputRelease', function(message) {
-			//socket.emit('device_response', message);
-		});
-	} else if (msg.lightInputType == 2) {
-		require('./arif.js').sendCommand(msg, 'inputOverrideOn', function(message) {
-			//socket.emit('device_response', message);
-		});
-	} else if (msg.lightInputType == 3) {
-		require('./arif.js').sendCommand(msg, 'inputOverrideOff', function(message) {
-			//socket.emit('device_response', message);
-		});
-	} else if (msg.lightInputType == 4) {
-		
-	}
 }
 
 /**
@@ -696,7 +669,7 @@ function onBFPDeviceCommand(BFPDeviceCommand, socket) {
 			device.tilt = BFPDeviceCommand.body.tilt;
 		}
 		require('./arif.js').sendCommand(BFPDeviceCommand.body, command, function(message) {
-			socket.emit('device_response', message);
+			//socket.emit('device_response', message);
 		});
 	} else {
 		// send to appropriate raspy
@@ -708,11 +681,21 @@ function onBFPDeleteArduino(msg, socket) {
 	var accountID = require('./config.js').cloud.id;
 	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: delete_arduino with: ' + JSON.stringify(msg));
 	var mem = components.getFacility('mem');
-	//var devices = mem.getClientDevices(accountID);
 	var raspyID = msg.raspyID;
 	var ardID = msg.ardID;
 	
 	mem.deleteArduino(accountID, raspyID, ardID);
+}
+
+function onBFPRestoreArduino(msg, socket) {
+	var accountID = require('./config.js').cloud.id;
+	require('./debug.js').log(5, 'backend', '[' + accountID + '] WS received event: restore_arduino with: ' + JSON.stringify(msg));
+	
+	var mem = components.getFacility('mem');
+	var raspyID = msg.raspyID;
+	var ardID = msg.ardID;
+	
+	mem.restoreArduino(accountID, raspyID, ardID);
 }
 
 /**
@@ -823,6 +806,10 @@ function pushAllArduinos(socket, accountID) {
 							arduino.ctrlON = devices.raspys[raspyID].arduinos[ardID].ctrlON;
 							arduino.mode = devices.raspys[raspyID].arduinos[ardID].mode;
 							arduino.version = devices.raspys[raspyID].arduinos[ardID].version;
+							arduino.desc = devices.raspys[raspyID].arduinos[ardID].desc;
+							arduino.mac = devices.raspys[raspyID].arduinos[ardID].mac;
+							arduino.uptime = devices.raspys[raspyID].arduinos[ardID].uptime;
+							arduino.restore = devices.raspys[raspyID].arduinos[ardID].restore;
 							
 							require('./debug.js').log(5, 'backend', '[' + accountID + '] Emitting Arduino data of raspyID: ' + raspyID +
 									' ardID: ' + ardID);

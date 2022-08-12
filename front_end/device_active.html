@@ -54,24 +54,36 @@
 			if (document.getElementById(FID + '_row') == null) {
 				if (BFPDeviceStatus.body.activated == true) {
 					/* this is a new device so whole div structure needs to be created */
-					addActiveDeviceTableRow(BFPDeviceStatus.body);
-					$("#" + FID + "_button").on('click', function() {
-						console.log('on clicked FID: ' + FID);
-						var BFPDeviceCommand = BFPCreateDeviceCommandFromMem(BFPDeviceStatus.body);
-						setDeviceCommandOn(BFPDeviceStatus.body);
-						disableLightButton(BFPDeviceStatus.body);
-						setDeviceTimer(BFPDeviceStatus.body, setTimeout(function() { onCommandTimeout(BFPDeviceStatus.body); }, 5000));
-						socket.emit('device_command', BFPDeviceCommand);
-					});
+					if (BFPDeviceStatus.body.extType == 0) {
+						addActiveDeviceTableRow(BFPDeviceStatus.body);
+						$("#" + FID + "_button").on('click', function() {
+							console.log('on clicked FID: ' + FID);
+							var BFPDeviceCommand = BFPCreateDeviceCommandFromMem(BFPDeviceStatus.body);
+							setDeviceCommandOn(BFPDeviceStatus.body);
+							disableLightButton(BFPDeviceStatus.body);
+							setDeviceTimer(BFPDeviceStatus.body, setTimeout(function() { onCommandTimeout(BFPDeviceStatus.body); }, 5000));
+							socket.emit('device_command', BFPDeviceCommand);
+						});
+					} else if (BFPDeviceStatus.body.extType == 1) {
+						addActiveBinarySensorTableRow(BFPDeviceStatus.body);
+					}
 				}
 			} else {
 				/* the device already reported, structure needs to be filled in with new data */
 				if (BFPDeviceStatus.body.lightType == 0 || BFPDeviceStatus.body.lightType == 1 || typeof(BFPDeviceStatus.body.lightType) == 'undefined') {
-					if (BFPDeviceStatus.body.value == '0' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
-						offLightButton(BFPDeviceStatus.body);
-					else if (BFPDeviceStatus.body.value == '1' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
-						onLightButton(BFPDeviceStatus.body);
-					else {
+					if (BFPDeviceStatus.body.value == '0' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
+						if (BFPDeviceStatus.body.extType != 1) {
+							offLightButton(BFPDeviceStatus.body);
+						} else {
+							setBinarySensorOff(BFPDeviceStatus.body);
+						}
+					} else if (BFPDeviceStatus.body.value == '1' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
+						if (BFPDeviceStatus.body.extType != 1) {
+							onLightButton(BFPDeviceStatus.body);
+						} else {
+							setBinarySensorOn(BFPDeviceStatus.body);
+						}
+					} else {
 						errorLightButton(BFPDeviceStatus.body);
 					}
 				} else if (BFPDeviceStatus.body.lightType == 2) {
@@ -260,8 +272,38 @@
 			errorLightButton(body);
 	}
 	
-	function updateActiveDeviceTableRow(device) {
+	function addActiveBinarySensorTableRow(body) {
+		let FID = body.raspyID + '-' + body.devID + '-' + body.ardID;
+		let active = 'Off';
+		if (body.value == '1')
+			active = ' On';
+		
+		let row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row">';
+		row += '<div class="col-sm text-white row-settings">' + body.desc + '</div>';		
+		
+
+		if (body.value == '0' && body.alive == true) {
+			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">OFF</div> \
+			</div>';
+		} else if (body.value == '1' && body.alive == true) {
+			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">ON</div> \
+			</div>';
+		} else {
+			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">' + Error + '</div> \
+			</div>';
+		}
+		
+		$("#devices").append(row);
+	}
 	
+	function setBinarySensorOn(device) {
+		let sensorID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_sensor';
+		$('#' + sensorID).html('ON');
+	}
+	
+	function setBinarySensorOff(device) {
+		let sensorID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_sensor';
+		$('#' + sensorID).html('OFF');
 	}
 	
 	function onResponse(msg) {

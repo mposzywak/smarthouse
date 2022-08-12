@@ -15,6 +15,7 @@ const BFP_PUBLIC_KEY = 'BFP_PUBLIC_KEY';
 const BFP_CTRL_STATUS = 'BFP_CTRL_STATUS';
 const BFP_LIGHT_TYPE = 'BFP_LIGHT_TYPE';
 const BFP_LIGHT_INPUT_TYPE = 'BFP_LIGHT_INPUT_TYPE';
+const BFP_LIGHT_SETTINGS = 'BFP_LIGHT_SETTINGS';
 
 /* BFP (Backend Frontend Protocol) commands */
 const BFP_HEARTBEAT = 'heartbeat';
@@ -86,6 +87,22 @@ BFP.prototype.BFPCreateLightType = function(devID, ardID, raspyID, lightType) {
 	return message;
 }
 
+BFP.prototype.BFPCreateLightSettings = function(devID, ardID, raspyID, lightType, lightInputType, ctrlON, timer) {
+	var message = {};
+	message.header = {};
+	message.header.code = BFP_LIGHT_SETTINGS;
+	message.body = {};
+	message.body.raspyID = raspyID;
+	message.body.ardID = ardID;
+	message.body.devID = devID;
+	message.body.lightType = lightType;
+	message.body.lightInputType = lightInputType;
+	message.body.ctrlON = ctrlON;
+	message.body.timer = timer;
+	
+	return message;
+}
+
 BFP.prototype.BFPCreateLightInputType = function(devID, ardID, raspyID, lightInputType) {
 	var message = {};
 	message.header = {};
@@ -110,7 +127,7 @@ BFP.prototype.BFPCreateDeviceStatusFromMem = function(device) {
 }
 
 /* Create a Settings BFP message */
-BFP.prototype.BFPCreateSettings = function(ardID, raspyID, version, mode, ctrlON) {
+BFP.prototype.BFPCreateSettings = function(ardID, raspyID, version, mode, ctrlON, uptime, restore) {
 	message = {};
 	message.header = {};
 	message.header.code = BFP_CTRL_STATUS;
@@ -120,6 +137,8 @@ BFP.prototype.BFPCreateSettings = function(ardID, raspyID, version, mode, ctrlON
 	message.body.version = version;
 	message.body.mode = mode;
 	message.body.ctrlON = ctrlON;
+	message.body.uptime = uptime;
+	message.body.restore = restore;
 	
 	return message;
 }
