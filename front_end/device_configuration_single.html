@@ -130,8 +130,46 @@
 	</div>
 	<div class="row justify-content-md-center top-buffer">
 		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>Device Type: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<select class="custom-select my-1 mr-sm-2" id="device-type-select">
+				<option selected value="0">Classic Light</option>
+				<option value="1">Timer Light</option>
+				<option value="2">Simple Heat</option>
+				<option value="3">Binary Sensor</option>
+			</select>
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>Device Input Type: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<select class="custom-select my-1 mr-sm-2" id="device-input-select">
+
+			</select>
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-text"><strong>Timer: </strong></div>
+		</div>
+		<div class="col-sm text-white conf-data-panel">
+			<input type="text" class="form-control" id="timer-input" aria-describedby="emailHelp">
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
 			<div class="conf-data-panel-checkbox">
 				<input type="checkbox" id="enabled" class="form-check-input">Enabled
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center top-buffer">
+		<div class="col-sm text-white conf-data-panel">
+			<div class="conf-data-panel-checkbox">
+				<input type="checkbox" id="ctrl-controlled" class="form-check-input">Centrally Controlled
 			</div>
 		</div>
 	</div>
@@ -152,6 +190,10 @@
 <script>
 	$('document').ready(loadNavbar('device-configuration'));
     var socket = io('/iot');
+	var device = {};
+	
+	/* variable to hold info on received device data, to make sure the GUI is updated only once */
+	device.received = false;
 	
 	// set connection actions
 	socket.on('connect', onConnect);
@@ -167,11 +209,65 @@
 		updateDevice(BFPDeviceStatus.body);
 		
 		var FID = BFPDeviceStatus.body.raspyID + '-' + BFPDeviceStatus.body.devID + '-' + BFPDeviceStatus.body.ardID;
-		if (BFPDeviceStatus.body.raspyID == urlParams['raspyID'] && BFPDeviceStatus.body.ardID == urlParams['ardID'] && BFPDeviceStatus.body.devID == urlParams['devID']) {
+		if (BFPDeviceStatus.body.raspyID == urlParams['raspyID'] && BFPDeviceStatus.body.ardID == urlParams['ardID'] && BFPDeviceStatus.body.devID == urlParams['devID'] && device.received == false) {
+			device.received = true;
+			console.log("Device: " + JSON.stringify(BFPDeviceStatus));
 			$("#enabled").attr("checked", BFPDeviceStatus.body.activated);
-			if (BFPDeviceStatus.body.desc != '')
+			if (BFPDeviceStatus.body.desc != '') {
 				$("#name-input").attr("placeholder", BFPDeviceStatus.body.desc);
+				device.desc = BFPDeviceStatus.body.desc;
+			}
+			if (BFPDeviceStatus.body.timer != '') {
+				$("#timer-input").attr("placeholder", BFPDeviceStatus.body.timer);
+				device.timer = BFPDeviceStatus.body.timer;
+			}
+			if (typeof(BFPDeviceStatus.body.lightType) != 'undefined') {
+				console.log('lightType available');
+				const $select = document.querySelector('#device-type-select');
+				if (typeof(BFPDeviceStatus.body.lightInputType) != 'undefined') {
+					if (BFPDeviceStatus.body.lightType == 0 && BFPDeviceStatus.body.extType == 0) { /* the classic on/off light */
+						$select.value = BFPDeviceStatus.body.lightType;
+						device.lightType = 0;
+						let options =  '<option selected value="0">Switch based light</option> \
+										<option selected value="1">Button based light</option>'
+						$("#device-input-select").append(options);
+						$("#timer-input").attr("disabled", "disabled");
+					} else if (BFPDeviceStatus.body.lightType == 1) { /* timer based light */
+						$select.value = BFPDeviceStatus.body.lightType;
+						device.lightType = 1;
+						let options =  '<option selected value="0">Switch based light</option> \
+										<option selected value="1">Button based light</option>'
+						$("#device-input-select").append(options);
+					} else if (BFPDeviceStatus.body.lightType == 2) { /* simple heat */
+						$select.value = BFPDeviceStatus.body.lightType;
+						device.lightType = 2
+						let options =  '<option selected value="2">Raspy Control</option> \
+										<option selected value="3">Physical Pin Control</option>'
+						$("#device-input-select").append(options);
+						$("#timer-input").attr("disabled", "disabled");
+					} else if (BFPDeviceStatus.body.lightType == 0 && BFPDeviceStatus.body.extType == 1) { /* binary sensor */
+						console.log("selectect binary sensor!")
+						$select.value = 3;
+						let options =  '<option selected value="0">Switch based light</option> \
+										<option selected value="1">Button based light</option>'
+						$("#device-input-select").append(options);
+						$("#device-input-select").attr("disabled", "disabled");
+						$("#timer-input").attr("disabled", "disabled");
+					} else {
+						
+					}
+					const $select2 = document.querySelector('#device-input-select');
+					$select2.value = BFPDeviceStatus.body.lightInputType;
+				}
+			}
+			if (BFPDeviceStatus.body.ctrlON == 1)
+				$("#ctrl-controlled").attr("checked", true);
+			else
+				$("#ctrl-controlled").attr("checked", false);
 		}
+		
+		//device.desc = BFPDeviceStatus.body.desc;
+		console.log("desc incoming: " + device.desc);
 	}
 	
 	/* setting the right devID */
@@ -184,16 +280,53 @@
 	
 	$("#save-button").click(function() {
 		console.log('save button pressed. desc = ' + $('#name-input').val() + ' enabled: ' + $('#enabled').val());
-		var device = {};
+		var updateDevice = {};
 		var enabled = false;
 		if ($('#enabled').val() == "on")
 			enabled = true;
-		device.raspyID = urlParams['raspyID'];
-		device.ardID = urlParams['ardID'];
-		device.devID = urlParams['devID'];
-		device.desc = $('#name-input').val();
-		device.activated = $('#enabled').is(':checked');
-		socket.emit('device_settings', device);
+		const $lightType = document.querySelector('#device-type-select');
+		const $lightInputType = document.querySelector('#device-input-select');
+		updateDevice.raspyID = urlParams['raspyID'];
+		updateDevice.ardID = urlParams['ardID'];
+		updateDevice.devID = urlParams['devID'];
+		//device.desc = $('#name-input').val();
+		if ($('#name-input').val() != '')
+			updateDevice.desc = $('#name-input').val();
+		else
+			updateDevice.desc = device.desc;
+		
+		if ($('#timer-input').val() != '') {
+			updateDevice.timer = $('#timer-input').val();
+		} else {
+			updateDevice.timer = device.timer;
+		}
+		updateDevice.activated = $('#enabled').is(':checked');
+		if ($('#ctrl-controlled').is(':checked') == true)
+			updateDevice.ctrlON = 1;
+		else
+			updateDevice.ctrlON = 0;
+		
+		if ($lightType.value == 0) { /* classic light */
+			updateDevice.extType = 0;
+			updateDevice.lightType = 0;
+			updateDevice.lightInputType = $lightInputType.value;
+		} else if ($lightType.value == 1) { /* timer light */
+			updateDevice.extType = 0;
+			updateDevice.lightType = 1;
+			updateDevice.lightInputType = $lightInputType.value;
+		} else if ($lightType.value == 2) { /* classic light */
+			updateDevice.extType = 0;
+			updateDevice.lightType = 2;
+			updateDevice.lightInputType = $lightInputType.value;
+		} else if ($lightType.value == 3) { /* binary sensor */
+			updateDevice.extType = 1;
+			updateDevice.lightType = 0;
+			updateDevice.lightInputType = 0;
+		}
+		
+		updateDevice.devType = 'digitOUT'
+		
+		socket.emit('device_settings', updateDevice);
 	});
 
 	
@@ -210,5 +343,46 @@
 		//console.log(JSON.stringify(msg));
 	}
 	//function update
+	
+	document.getElementById('device-type-select').onchange = function() {
+		console.log("option change");
+		let select = document.getElementById('device-input-select');
+		const $select = document.querySelector('#device-type-select');
+		console.log($select.value);
+		if ($select.value == 0  && device.lightType != 0) {
+			console.log('   remove attr');
+			$("#timer-input").attr("disabled", "disabled");
+			$("#device-input-select").removeAttr("disabled", "disabled");
+			select.remove(1);
+			select.remove(0);
+			let options =  '<option selected value="0">Switch based light</option> \
+							<option selected value="1">Button based light</option>'
+			$("#device-input-select").append(options);
+			device.lightType = $select.value;
+		} else if ($select.value == 1  && device.lightType != 1) {
+			$("#device-input-select").removeAttr("disabled", "disabled");
+			$("#timer-input").removeAttr("disabled", "disabled");
+			select.remove(1);
+			select.remove(0);
+			let options =  '<option selected value="0">Switch based light</option> \
+							<option selected value="1">Button based light</option>'
+			$("#device-input-select").append(options);
+			device.lightType = $select.value;
+		} else if ($select.value == 2 && device.lightType != 2) {
+			console.log('   remove attr');
+			$("#device-input-select").removeAttr("disabled", "disabled");
+			$("#timer-input").attr("disabled", "disabled");
+			select.remove(1);
+			select.remove(0);
+			let options =  '<option selected value="2">Raspy Control</option> \
+							<option selected value="3">Physical Pin Control</option>'
+			$("#device-input-select").append(options);
+			device.lightType = $select.value;
+		} else if ($select.value == 3 && device.lightType != 3) {
+			$("#device-input-select").attr("disabled", "disabled");
+			$("#timer-input").attr("disabled", "disabled");
+			device.lightType = $select.value;
+		}
+	};
 </script>
 </html>

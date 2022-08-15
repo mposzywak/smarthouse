@@ -55,6 +55,11 @@ CREATE TABLE arduinos (
     raspyID VARCHAR(3) NOT NULL,
     accountID VARCHAR(8) NOT NULL,
     IP TEXT,
+    desc TEXT,
+    mac TEXT,
+    ctrlON NUMERIC,
+    mode NUMERIC,
+    version TEXT,
     FOREIGN KEY (raspyID) REFERENCES raspys(raspyID) ON DELETE CASCADE, 
     FOREIGN KEY (accountid) REFERENCES accounts(accountID) ON DELETE CASCADE, 
     PRIMARY KEY (ardID, raspyID, accountID)
@@ -73,7 +78,9 @@ CREATE TABLE devices (
     desc TEXT,
     IP TEXT,
     activated NUMERIC,
-	controlledDevs TEXT,
+    controlledDevs TEXT,
+    lightType NUMERIC,
+    lightInputType NUMERIC,
     FOREIGN KEY (ardID) REFERENCES arduinos(ardID) ON DELETE CASCADE,
     FOREIGN KEY (raspyID) REFERENCES raspys(raspyID) ON DELETE CASCADE, 
     FOREIGN KEY (accountID) REFERENCES accounts(accountID) ON DELETE CASCADE, 
@@ -88,6 +95,7 @@ CREATE TABLE shades (
     accountID VARCHAR(8) NOT NULL,
     date TEXT,
     devType VARCHAR(2),
+    dataType VARCHAR(2),
     direction TEXT,
     tilt TEXT,
     position TEXT,
@@ -104,7 +112,6 @@ CREATE TABLE shades (
 );
 
 
-
 -- sample account creation with one raspy:
 INSERT INTO accounts (accountID, name) VALUES ('admin', 'Initial Account');
 UPDATE accounts SET 
@@ -114,4 +121,6 @@ UPDATE accounts SET
 INSERT INTO raspys (raspyID, accountID, vpnID, cloudService, remoteService, backupService) VALUES ('001', 'admin', '00000001-001', '0', '0', '0');
 UPDATE raspys SET vpnKey = 'ffffffffffffffff' WHERE raspyID = '001' AND accountID = 'admin';
 
+-- alter table to add a column
+ALTER TABLE devices ADD COLUMN lightType NUMERIC;
 

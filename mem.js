@@ -34,17 +34,29 @@ Mem.prototype.initialize = function(callback) {
 		this.accountID = this.config.cloud.id;
 		var accountID = this.accountID;
 		var raspyID = this.raspyID;
+		let mqtt = require('./mqtt.js');
 		this.devices[this.accountID] = {};
 		this.devices[this.accountID].raspys = {};
 		this.devices[this.accountID].raspys[this.raspyID] = {};
 		
 		this.db.getAllAccountDevices(this.accountID, function(error, raspys) {
 			if (error) {
-				require('./debug.js').log(1, 'configdb', 'Failed to access configDB: ' + error.message);
+				require('./debug.js').log(3, 'configdb', 'Failed to access configDB: ' + error.message);
 			} else {
 				devices[accountID].raspys = raspys;
 				devices[accountID].raspys[raspyID].pending = {};
-				require('./debug.js').log(1, 'configdb', 'ConfigDB contents loaded succesfully [Raspy mode]');
+				require('./debug.js').log(3, 'configdb', 'ConfigDB contents loaded succesfully [Raspy mode]');
+				for (var ardID in devices[accountID].raspys[raspyID].arduinos) {
+					for (var devID in devices[accountID].raspys[raspyID].arduinos[ardID].devices) {
+						if (devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].devType == 'digitOUT') {
+							mqtt.subscribeLight(raspyID, ardID, devID);
+						} else if (devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].devType == 'shade') {
+							mqtt.subscribeShade(raspyID, ardID, devID);
+						} else {
+							require('./debug.js').log(1, 'mem', 'devID: ' + devID + ', ardID: ' + ardID + ' of unknown type!');
+						}
+					}
+				}
 				if (devices[accountID].raspys[raspyID].cloud) {
 					// start VPN here:
 					connectVPN();
@@ -71,18 +83,27 @@ Mem.prototype.initialize = function(callback) {
    it returns arduino ID
 */
 Mem.prototype.registerArduino = function(accountID, IP) {
+	var mqtt = require('./mqtt.js');
 	// check if the accountID, device and arduino exists
 	if (typeof(this.devices[accountID].raspys[this.raspyID].arduinos) == 'undefined') {
-		var ardID = '1'; /* if entered this condition it means this is the first arduino, give it ID "1" */
-
+		var ardID; /* if entered this condition it means this is the first arduino, give it ID "1" */
+		if (typeof(this.config.mem.minArdID) == 'undefined') {
+			ardID = '2';
+		} else {
+			ardID = this.config.mem.minArdID;
+		}
 		this.devices[accountID].raspys[this.raspyID].arduinos = {};
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID] = {};
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices = {};
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].IP = IP; 
 		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].raspyID = this.raspyID;
-		this.db.insertArduino(accountID, this.raspyID, IP, ardID);
+		var desc = 'Arduino ' + ardID;
+		this.devices[accountID].raspys[this.raspyID].arduinos[ardID].desc = desc;
+		this.db.insertArduino(accountID, this.raspyID, IP, ardID, desc);
 		this.components.getFacility('debug').log(4, 'mem', 'accountID id: ' + accountID + 
 				', new Arduino registered: ' + ardID + ' from: ' + IP);
+		
+		mqtt.configureArduino(this.raspyID, ardID, 'Arduino ' + ardID);
 		return ardID;
 	} else { /* if at least one Arduino already registered (check by IP) */
 	
@@ -92,16 +113,25 @@ Mem.prototype.registerArduino = function(accountID, IP) {
 				', Arduino from: ' + IP + ' registered already as: ' + ardIDRegistered);
 			return ardIDRegistered;
 		} else { /* new Arduino device (new IP) */
-			ardID = '2';
+			if (typeof(this.config.mem.minArdID) == 'undefined') {
+				ardID = '2';
+			} else {
+				ardID = this.config.mem.minArdID;
+			}
 			while (true) {
 				if (typeof(this.devices[accountID].raspys[this.raspyID].arduinos[ardID]) == 'undefined') {
+					
 					this.devices[accountID].raspys[this.raspyID].arduinos[ardID] = {};
 					this.devices[accountID].raspys[this.raspyID].arduinos[ardID].devices = {}
 					this.devices[accountID].raspys[this.raspyID].arduinos[ardID].IP = IP;
 					this.devices[accountID].raspys[this.raspyID].arduinos[ardID].raspyID = this.raspyID;
-					this.db.insertArduino(accountID, this.raspyID, IP, ardID);
+					var desc = 'Arduino ' + ardID;
+					this.devices[accountID].raspys[this.raspyID].arduinos[ardID].desc = desc;
+					this.db.insertArduino(accountID, this.raspyID, IP, ardID, desc);
 					this.components.getFacility('debug').log(4, 'mem', 'accountID id: ' + accountID + 
 							', new Arduino registered: ' + ardID + ' from: ' + IP);
+							
+					mqtt.configureArduino(this.raspyID, ardID, 'Arduino ' + ardID);
 					return ardID;
 				}
 				ardIDDec = parseInt(ardID, 10);
@@ -173,11 +203,35 @@ Mem.prototype.isArduinoIPRegistered = function(accountID, IP) {
 Mem.prototype.deleteArduino = function(accountID, raspyID, ardID) {
 	var arduinos = this.devices[accountID].raspys[raspyID].arduinos;
 	var arduino = {}
+	var mqtt = require('./mqtt.js');
+	var debug = require('./debug.js');
 	arduino.ardID = ardID;
 	arduino.raspyID = raspyID;
+	for (var devID in arduinos[ardID].devices) {
+		if (arduinos[ardID].devices[devID].activated == true){
+			if (arduinos[ardID].devices[devID].devType == 'digitOUT') {
+				mqtt.removeLight(raspyID, ardID, devID, arduinos[ardID].devices[devID].extType);
+			} else if (arduinos[ardID].devices[devID].devType == 'shade') {
+				mqtt.removeShade(raspyID, ardID, devID);
+			}
+		}
+	}
+	mqtt.removeArduino(raspyID, ardID);
+	debug.log(5, 'mem', 'ArdID and its devIDs removed: ' + ardID + ' on raspyID: ' + raspyID);
 	delete arduinos[ardID];
 	this.db.deleteArduino(accountID, arduino);
 }
+
+Mem.prototype.restoreArduino = function(accountID, raspyID, ardID) {
+	var arif = require('./arif.js');
+	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
+	var device = {};
+	device.ardID = ardID;
+	device.devID = 0;
+	device.IP = arduino.IP;
+	arif.sendCommand(device, 'restore', null);
+}
+
 /* the method puts the latest status into the mem cache 
 	As an argument it takes BFPDeviceStatus object and accountID.
 */
@@ -208,18 +262,16 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		newDevice.raspyID = this.raspyID;
 		newDevice.ardID = BFPDeviceStatus.body.ardID;
 		newDevice.devID = BFPDeviceStatus.body.devID;
+		newDevice.extType = 0;
 		newDevice.alive = true;
 		isDeviceNew = true;
 		debug.log(4, 'mem', identityLog + 'New Device registered.');
-
-
+		
 		this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID] = newDevice;
 		device = this.devices[accountID].raspys[BFPDeviceStatus.body.raspyID].arduinos[BFPDeviceStatus.body.ardID].devices[BFPDeviceStatus.body.devID];
 		
-		/* new device so time to subscribe to MQTT topics */
-		if (newDevice.devType == 'shade') {
-			mqtt.subscribeShade(newDevice.raspyID, newDevice.ardID, newDevice.devID);
-		} else if (newDevice.devType == 'digitOUT') {
+		
+		if (newDevice.devType == 'digitOUT') {
 			newDevice.value = BFPDeviceStatus.body.value;
 		}
 	}
@@ -232,12 +284,13 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	/* section with specific settings for different type of devices, currently: shades, digitOUT
 	   This sections should contain handling for new and existing devices */
 	if (BFPDeviceStatus.body.devType == 'digitOUT') { /* digitOUT (mostly lights) specific handling */
+		mqtt.subscribeLight(BFPDeviceStatus.body.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
 		debug.log(5, 'mem', identityLog + 'DigitOUT device type received at mem.');
 		device.dataType = BFPDeviceStatus.body.dataType;
 		if (isDeviceNew) {
 			this.db.insertDevice(accountID, device);
 		} else {
-			var oldValue = device.value
+			var oldValue = device.value;
 			device.value = BFPDeviceStatus.body.value;
 			device.date = BFPDeviceStatus.body.date;
 			if (oldValue != device.value) {
@@ -245,6 +298,7 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 			}
 		}
 	} else if (BFPDeviceStatus.body.devType == 'shade') { /* shades specific handling */
+		mqtt.subscribeShade(BFPDeviceStatus.body.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
 		debug.log(5, 'mem', identityLog + 'Shade device type received at mem.');
 		if (BFPDeviceStatus.body.dataType == 'direction') {
 			device.direction = BFPDeviceStatus.body.value;
@@ -270,6 +324,12 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		} else {
 			this.db.updateDevice(accountID, device);
 		}
+	} else if (BFPDeviceStatus.body.devType == 'temp') { /* temp sensor specific handling */
+		mqtt.subscribeTemp(BFPDeviceStatus.body.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
+		debug.log(5, 'mem', identityLog + 'Temperature sensor device type received at mem.');
+		if (BFPDeviceStatus.body.dataType == 'float') {
+			device.temperature = BFPDeviceStatus.body.value;
+		}
 	} else { /* unknown device handling */
 		debug.log(2, 'mem', identityLog + 'Unknown device type received: ' + BFPDeviceStatus.body.devType);
 		return;
@@ -282,14 +342,25 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	onValueChange(accountID, newBFPDeviceStatus);
 
 	/* also send to MQTT */
-	mqtt.publishShadeOnline(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
+	mqtt.publishDeviceOnline(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
 	if (BFPDeviceStatus.body.dataType == 'position')
 		mqtt.publishShadePosition(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.position);
 	if (BFPDeviceStatus.body.dataType == 'tilt')
 		mqtt.publishShadeTilt(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.tilt);
-
+	if (BFPDeviceStatus.body.devType == 'digitOUT') {
+		mqtt.publishLightStatus(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.value);
+	}
+	if (BFPDeviceStatus.body.devType == 'temp') {
+		mqtt.publishTempStatus(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.temperature);
+	}
+	
 	if (!this.config.cloud.enabled)
 		this.rcpclient.sendUplinkMessage(newBFPDeviceStatus);
+
+	if (typeof(device.IP) == 'undefined' || device.IP == null) {	
+		device.IP = this.getArduinoIP(accountID, BFPDeviceStatus.body.ardID);
+		debug.log(3, 'mem', identityLog + 'Problem with obtaining IP of the device from lower layers. Obtaining IP from Arduino record: ' + device.IP);
+	}
 
 	debug.log(5, 'mem', 
 		'For accountID id: ' + accountID + ', Arduino: "' + device.ardID + '", Device: "' + device.devID +
@@ -333,6 +404,248 @@ Mem.prototype.setDevice = function(accountID, devID, ardID, devType, date, IP, c
 				ardID + ' existing devID mapping came: ' + devID);
 		return;
 	}
+}
+
+Mem.prototype.setLightSettings = function(accountID, BFPLightSettings) {
+	let raspyID = BFPLightSettings.body.raspyID;
+	let ardID = BFPLightSettings.body.ardID;
+	let devID = BFPLightSettings.body.devID;
+	let lightType = BFPLightSettings.body.lightType;
+	let lightInputType = BFPLightSettings.body.lightInputType;
+	let ctrlON = BFPLightSettings.body.ctrlON;
+	let timer = BFPLightSettings.body.timer;
+	let debug = require('./debug.js');
+	let configdb = require('./configdb.js');
+	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID]
+	
+	
+	if (typeof(device) == 'undefined') {
+		debug.log(1, 'mem', 'for unknown accountID: ' + accountID + ' devID: ' + devID + ', ardID: ' + ardID + ', raspyID: ' + raspyID + ' received Light Settings command!');
+	} else {
+		//this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].lightInputType = BFPLightInputType.body.lightInputType;
+		debug.log(4, 'mem', 'got settings. lightType: ' + lightType + ', lightInputType: ' + lightInputType + 
+					', ctrlON: ' + ctrlON + ', timer: ' + timer + ' devID: ' + devID + ', ardID: ' + ardID);
+					
+		device.lightType = lightType;
+		device.lightInputType = lightInputType;
+		device.ctrlON = ctrlON;
+		device.timer = timer;
+
+		let updateDevice = {};
+		updateDevice.devID = devID;
+		updateDevice.ardID = ardID;
+		updateDevice.raspyID = raspyID;
+		updateDevice.lightType = lightType;
+		updateDevice.lightInputType = lightInputType;
+		updateDevice.ctrlON = ctrlON;
+		updateDevice.timer = timer;
+		
+		configdb.updateDevice(accountID, updateDevice);
+	}
+}
+
+/**
+ * Activate a device and configure it in HA
+ */
+/*Mem.prototype.activateDevice = function(accountID, raspyID, ardID, devID, desc) {
+	let mqtt = require('./mqtt.js');
+	let debug = require('./debug.js');
+	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+	
+	if (device.activated == false) {
+		device.activated = true;
+		device.desc = desc;
+		debug.log(2, 'mem', 'devID: ' + devID + ', ardID: ' + ardID + ' activating device.');
+		mqtt.configureLight(raspyID, ardID, devID, desc, device.extType);
+	} else {
+		debug.log(2, 'mem', 'devID: ' + devID + ', ardID: ' + ardID + ' already activated. This should not happen.');
+	}
+} */
+
+/**
+ * Deactivate a device and remove its configuration from HA
+ */
+/*Mem.prototype.deactivateDevice = function(accountID, raspyID, ardID, devID) {
+	let mqtt = require('./mqtt.js');
+	let debug = require('./debug.js');
+	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+	
+	if (device.activated == true) {
+		this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].activated = false;
+		debug.log(2, 'mem', 'devID: ' + devID + ', ardID: ' + ardID + ' deactivating device.');
+		mqtt.removeLight(raspyID, ardID, devID, device.extType);
+	} else {
+		debug.log(2, 'mem', 'devID: ' + devID + ', ardID: ' + ardID + 'already deactivated. This should not happen.');
+	}
+} */
+
+/**
+ * Change device's configuration (if necesssary adjust HA config - not done when device is not activated)
+ */
+Mem.prototype.reconfigureShade = function(accountID, raspyID, ardID, devID, desc, activated, positionTimer, tiltTimer) {
+	let mqtt = require('./mqtt.js');
+	let debug = require('./debug.js');
+	let arif = require('./arif.js');
+	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+	let deviceInfo = 'ArdID: ' + ardID + ', devID: ' + devID;
+	
+	/* MQTT handling + device activation */
+	if (device.activated == true && activated == true && (device.desc != desc || device.extType != extType)) {
+		debug.log(2, 'mem', deviceInfo + ' reconfiguring activated Shade device. Values: desc: ' + desc);
+		mqtt.removeShade(raspyID, ardID, devID);
+		mqtt.configureShade(raspyID, ardID, devID, desc);
+	} else if (device.activated == false && activated == false) {
+		debug.log(2, 'mem', deviceInfo + ' reconfiguring deactivated Shade device. Values: desc: ' + desc);
+	} else if (device.activated == false && activated == true) { /* activate device */
+		debug.log(2, 'mem', deviceInfo + ' activating Shade device.');
+		device.activated = true;
+		mqtt.configureShade(raspyID, ardID, devID, desc);
+	} else if (device.activated == true && activated == false) { /* deactivate device */
+		debug.log(2, 'mem', deviceInfo + ' deactivating Shade device.');
+		device.activated = false;
+		mqtt.removeShade(raspyID, ardID, devID);
+	}
+	
+	device.desc = desc;
+	
+	let updateDevice = {};
+	updateDevice.IP = device.IP;
+	updateDevice.ardID = ardID;
+	updateDevice.devID = devID;
+}
+
+/**
+ * Change device's configuration (if necesssary adjust HA config - not done when device is not activated)
+ */
+Mem.prototype.reconfigureLight = function(accountID, raspyID, ardID, devID, desc, activated, ctrlON, timer, lightType, lightInputType, extType) {
+	let mqtt = require('./mqtt.js');
+	let debug = require('./debug.js');
+	let arif = require('./arif.js');
+	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+	let deviceInfo = 'ArdID: ' + ardID + ', devID: ' + devID;
+	
+	/* MQTT handling + device activation */
+	if (device.activated == true && activated == true && (device.desc != desc || device.extType != extType)) {
+		debug.log(2, 'mem', deviceInfo + ' reconfiguring activated Light/Sensor device. Values: desc: ' + desc);
+		mqtt.removeLight(raspyID, ardID, devID, device.extType);
+		mqtt.configureLight(raspyID, ardID, devID, desc, extType);
+	} else if (device.activated == false && activated == false) {
+		debug.log(2, 'mem', deviceInfo + ' reconfiguring deactivated  Light/Sensor device. Values: desc: ' + desc);
+	} else if (device.activated == false && activated == true) { /* activate device */
+		debug.log(2, 'mem', deviceInfo + ' activating Light/Sensor device.');
+		device.activated = true;
+		mqtt.configureLight(raspyID, ardID, devID, desc, extType);
+	} else if (device.activated == true && activated == false) { /* deactivate device */
+		debug.log(2, 'mem', deviceInfo + ' deactivating Light/Sensor device.');
+		device.activated = false;
+		mqtt.removeLight(raspyID, ardID, devID, extType);
+	}
+	
+	
+	device.desc = desc;
+	device.extType = extType;
+	
+	let updateDevice = {};
+	updateDevice.IP = device.IP;
+	updateDevice.ardID = ardID;
+	updateDevice.devID = devID;
+	updateDevice.extType = extType;
+	if (device.ctrlON != ctrlON) {
+		if (ctrlON == 1) {
+			require('./arif.js').sendCommand(updateDevice, 'devCtrlON', function(message) {
+				//socket.emit('device_response', message);
+			});
+		} else if (ctrlON == 0) {
+			require('./arif.js').sendCommand(updateDevice, 'devCtrlOFF', function(message) {
+				//socket.emit('device_response', message);
+			});
+		}
+	}
+
+	if (device.lightType != lightType) {
+		updateDevice.lightType = lightType;
+		arif.sendCommand(updateDevice, 'lightType', function(message) {
+		//socket.emit('device_response', message);
+		});
+	}
+	
+	let msTimer = this.validateLightTimer(timer);
+	if (msTimer == 0) {
+		debug.log(1, 'mem', 'Not updating arduino. Timer value has incorrect format: ' + timer);
+	} else if (device.timer != msTimer) {
+		updateDevice.timer = msTimer;
+		arif.sendCommand(updateDevice, 'lightTimer', function(message) {
+		//socket.emit('device_response', message);
+		});
+	}
+	
+	if (device.lightInputType != lightInputType) {
+		if (lightInputType == 0) {
+			require('./arif.js').sendCommand(updateDevice, 'inputHold', function(message) {
+				//socket.emit('device_response', message);
+			});
+		} else if (lightInputType == 1) {
+			require('./arif.js').sendCommand(updateDevice, 'inputRelease', function(message) {
+				//socket.emit('device_response', message);
+			});
+		} else if (lightInputType == 2) {
+			require('./arif.js').sendCommand(updateDevice, 'inputOverrideOn', function(message) {
+			//socket.emit('device_response', message);
+			});
+		} else if (lightInputType == 3) {
+			require('./arif.js').sendCommand(updateDevice, 'inputOverrideOff', function(message) {
+				//socket.emit('device_response', message);
+			});
+		} else if (lightInputType == 4) {
+		
+		}
+	}
+}
+
+/**
+ * convert the timer value to miliseconds, possible values are:
+ * 		[number]
+ *		[number]ms
+ *.     [number]s
+ *		[number]m
+ *		[number]h
+ *		
+ *		if value is incorrect return 0;
+ */
+Mem.prototype.validateLightTimer = function(timer) {
+	var debug = require('./debug.js');
+	var timerRgx = /^[1-9]\d{0,8}$/;
+	var msTimerRgx = /^[1-9]\d{0,8}(ms)$/;
+	var sTimerRgx = /^[1-9]\d{0,3}(s)$/;
+	var mTimerRgx = /^[1-9]\d{0,3}(m)$/;
+	var hTimerRgx = /^[1-9]\d{0,2}(h)$/;
+	var outputTimer;
+	
+	if (timerRgx.test(timer)) {
+		return timer;
+	} else if (msTimerRgx.test(timer)) {
+		outputTimer = timer.slice(0, -2);
+		return outputTimer;
+	} else if (sTimerRgx.test(timer)) {
+		outputTimer = timer.slice(0, -1);
+		return outputTimer * 1000;
+	} else if (mTimerRgx.test(timer)) {
+		outputTimer = timer.slice(0, -1);
+		return outputTimer * 60000;
+	} else if (hTimerRgx.test(timer)) {
+		utputTimer = timer.slice(0, -1);
+		return outputTimer * 3600000;
+	} else { /* if no regex is matched, means format is incorrect */
+		return 0;
+	}
+}
+
+
+/**
+ * Check if device is activated, return true if yes, false otherwise
+ */
+Mem.prototype.isDeviceActive = function(accountID, raspyID, ardID, devID) {
+	return this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].activated;
 }
 
 Mem.prototype.updateRaspyIP = function(accountID, raspyID, IP) {
@@ -421,8 +734,16 @@ function onArduinoChange(accountID, raspyID, ardID) {
 	arduinoToSend.IP = arduino.IP;
 	arduinoToSend.alive = arduino.alive;
 	arduinoToSend.raspyID = raspyID;
+	arduinoToSend.desc = arduino.desc;
+	arduinoToSend.ctrlON = arduino.ctrlON;
+	arduinoToSend.version = arduino.version;
+	arduinoToSend.mode = arduino.mode;
+	arduinoToSend.mac = arduino.mac;
+	arduinoToSend.uptime = arduino.uptime;
+	arduinoToSend.restore = arduino.restore;
 	require('./debug.js').log(5, 'mem', '[' + accountID + '] Emitting Arduino data of raspyID: ' + arduino.raspyID +
-									' ardID: ' + arduino.ardID);
+									' ardID: ' + ardID);
+	
 	io.of('/iot').to(accountID).emit('arduino', arduinoToSend);
 }
 
@@ -437,6 +758,7 @@ function sendArduinoDeadMessage(accountID, raspyID, ardID) {
 	io = this.components.getFacility('backend').io;
 	io.of('/iot').to(accountID).emit('message', message);
 	onArduinoChange(accountID, raspyID, ardID);
+	require('./mqtt.js').publishArduinoOffline(raspyID, ardID);
 }
 
 function sendArduinoAliveMessage(accountID, raspyID, ardID) {
@@ -448,6 +770,7 @@ function sendArduinoAliveMessage(accountID, raspyID, ardID) {
 	io = this.components.getFacility('backend').io;
 	io.of('/iot').to(accountID).emit('message', message);
 	onArduinoChange(accountID, raspyID, ardID);
+	require('./mqtt.js').publishArduinoOnline(raspyID, ardID);
 }
 
 /**
@@ -456,6 +779,7 @@ function sendArduinoAliveMessage(accountID, raspyID, ardID) {
 function sendPendingArduinoUpdate(raspyID, ardIP) {
 	var message = {};
 	var m = require('./mem.js');
+	let debug = require('./debug.js');
 	var pending = m.devices[m.accountID].raspys[m.raspyID].pending;
 	message.code = MSG_ARDUINO_ALIVE;
 	message.raspyID = raspyID;
@@ -464,6 +788,7 @@ function sendPendingArduinoUpdate(raspyID, ardIP) {
 	message.firstDate = pending[ardIP].firstDate;
 	message.ardIP = ardIP;
 	
+	debug.log(5, 'mem', 'Emitting pending Arduino data: ' + JSON.stringify(message));
 	io = this.components.getFacility('backend').io;
 	io.of('/iot').to(m.accountID).emit('pending_arduino', message);
 }
@@ -667,7 +992,7 @@ Mem.prototype.clearRaspyDeadCounter = function(accountID, raspyID) {
 /* sets a given Arduino status dead and all its devices (both raspy and cloud) */
 Mem.prototype.setArduinoDead = function(accountID, raspyID, ardID) {
 	var arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
-
+	let mqtt = require('./mqtt.js');
 	arduino.alive = false;
 
 	for (var devID in arduino.devices) {
@@ -679,8 +1004,8 @@ Mem.prototype.setArduinoDead = function(accountID, raspyID, ardID) {
 				var BFPDeviceStatus = require('./bfp.js').BFPCreateDeviceStatusFromMem(device);
 				onValueChange(accountID, BFPDeviceStatus);
 				/* also send to MQTT */
-				let mqtt = require('./mqtt.js');
-				mqtt.publishShadeOffline(raspyID, ardID, devID);
+				
+				mqtt.publishDeviceOffline(raspyID, ardID, devID);
 				
 				this.components.getFacility('debug').log(5, 'mem', '[' + accountID + '] ArdID and its devIDs declared dead: ' + 
 						ardID + ' on raspyID: ' + raspyID + ' devID: ' + devID);
@@ -688,11 +1013,13 @@ Mem.prototype.setArduinoDead = function(accountID, raspyID, ardID) {
 		}
 	}
 	sendArduinoDeadMessage(accountID, raspyID, ardID);
+	mqtt.publishArduinoOffline(raspyID, ardID);
 }
 
 /* sets a given Arduino status alive and all its devices (both raspy and cloud) */
 Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
 	this.devices[accountID].raspys[raspyID].arduinos[ardID].alive = true;
+	let mqtt = require('./mqtt.js');
 	
 	for (var devID in this.devices[accountID].raspys[raspyID].arduinos[ardID].devices) {
 		if (this.devices[accountID].raspys[raspyID].arduinos[ardID].devices.hasOwnProperty(devID)){
@@ -705,12 +1032,12 @@ Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
 				onValueChange(accountID, BFPDeviceStatus);
 				
 				/* also send to MQTT */
-				let mqtt = require('./mqtt.js');
-				mqtt.publishShadeOnline(raspyID, ardID, devID);
+				mqtt.publishDeviceOnline(raspyID, ardID, devID);
 			}
 		}
 	}
 	sendArduinoAliveMessage(accountID, raspyID, ardID);
+	mqtt.publishArduinoOnline(raspyID, ardID);
 }
 
 /* sets give Raspy status to alive (only cloud) */
@@ -802,8 +1129,14 @@ Mem.prototype.isPendingArduinoAllowed = function(ardIP) {
  *	Set this pending arduino to be allowed to register (both raspy and cloud function)
  */ 
 Mem.prototype.allowPendingArduino = function(accountID, raspyID, ardIP) {
+	let debug = require('./debug.js');
 	let pending = this.devices[accountID].raspys[raspyID].pending;
-	pending[ardIP].allowed = true;
+	
+	if (typeof(pending) != 'undefined') {
+		pending[ardIP].allowed = true;
+	} else {
+		debuug.log(1, 'mem', 'Trying to Register non pending ardID: ' + ardIP)
+	}
 }
 
 /**
@@ -818,10 +1151,95 @@ Mem.prototype.removePendingArduino = function(accountID, raspyID, ardIP) {
  * Update arduino information in the mem structure (both raspy and cloud function)
  * trigger also DB entry update.
  */
-Mem.prototype.updateArduino = function(accountID, raspyID, ardID, name) {
+Mem.prototype.updateArduino = function(accountID, raspyID, ardID, desc, ctrlON, mode) {
 	let arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
+	let updateArduino = {};
+	let arif = require('./arif.js');
+	let debug = require('./debug.js');
+	let mqtt = require('./mqtt.js');
+	debug.log(4, 'mem', 'Updating Arduino entry with name: ' + desc + ', ardID: ' + ardID);
 	
-	arduino.name = name;
+	updateArduino.raspyID = raspyID;
+	updateArduino.ardID = ardID;
+	if (arduino.desc != desc) {
+		arduino.desc = desc;
+		updateArduino.desc = desc;
+		mqtt.renameArduino(raspyID, ardID, desc);
+		require('./configdb.js').updateArduino(accountID, updateArduino);
+	}
+	
+	//updateArduino.raspyID = raspyID;
+	let device = {};
+	device.devID = 0;
+	device.ardID = ardID;
+	device.IP = arduino.IP;
+	
+	//updateArduino.ardID = ardID;
+	if (arduino.ctrlON != ctrlON) {
+		/* update ARiF */
+		if (arduino.ctrlON == 0 && ctrlON == 1)
+			arif.sendCommand(device, 'ctrlON');
+		else if (arduino.ctrlON == 1 && ctrlON == 0)
+			arif.sendCommand(device, 'ctrlOFF');
+		else
+			debug.log(5, 'mem', 'ctrlON - no update needed.');
+	}
+	if (arduino.mode != mode) {
+		/* update ARiF */
+		if (mode == 0) {
+			this.removeAllShades(accountID, raspyID, ardID);
+			arif.sendCommand(device, 'modeLights');
+		} else if (mode == 1) {
+			this.removeAllLights(accountID, raspyID, ardID);
+			arif.sendCommand(device, 'modeShades');
+		} else {
+			debug.log(1, 'mem', 'unrecognized mode received - nothing sent over ARiF.');
+		}
+	}
+}
+
+/**
+ * Remove all light devices from a given arduino
+ */
+Mem.prototype.removeAllLights = function(accountID, raspyID, ardID) {
+	let arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
+	let debug = require('./debug.js');
+	let db = require('./configdb.js');
+	let mqtt = require('./mqtt.js');
+	
+	for (var devID in arduino.devices) {
+		var device = arduino.devices[devID];
+		if (device.devType == 'digitOUT') {
+			debug.log(3, 'mem', 'deleting light devID: ' + device.devID + ' from arduino: ' + ardID);
+			db.deleteDevice(accountID, device);
+			if (device.activated == true){
+				mqtt.removeLight(raspyID, ardID, devID, device.extType);
+			}
+			delete this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+		}
+	}
+}
+
+/**
+ * Remove all shades devices from a given arduino
+ */
+Mem.prototype.removeAllShades = function(accountID, raspyID, ardID) {
+	let arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID];
+	let debug = require('./debug.js');
+	let db = require('./configdb.js');
+	let mqtt = require('./mqtt.js');
+	
+	for (var devID in arduino.devices) {
+		var device = arduino.devices[devID];
+		if (device.devType == 'shade') {
+			debug.log(3, 'mem', 'deleting shade devID: ' + device.devID + ' from arduino: ' + ardID);
+			db.deleteDevice(accountID, device);
+			if (device.activated == true){
+				mqtt.removeShade(raspyID, ardID, devID);
+			}
+			delete this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+		}
+	}
 }
 
 /**
@@ -832,6 +1250,59 @@ Mem.prototype.clearDeviceDiscovered = function(accountID, raspyID, ardID, devID)
 	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
 
 	device.discovered = false;
+}
+
+/**
+ * Sets the MAC address of an arduino
+ */
+Mem.prototype.updateArduinoMAC = function(accountID, raspyID, ardID, MAC) {
+	let arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID]
+	arduino.mac = MAC;
+	let updateArduino = {};
+	require('./debug.js').log(4, 'mem', 'Updating Arduino MAC entry: ' + MAC + ', ardID: ' + ardID);
+	updateArduino.mac = MAC;
+	updateArduino.raspyID = raspyID;
+	updateArduino.ardID = ardID;
+	
+	require('./configdb.js').updateArduino(accountID, updateArduino);
+}
+
+/**
+ * Function to set the Arduino CtrlON functionality
+ */
+Mem.prototype.setCtrlON = function(accountID, BFPCtrl) {
+	let arduino = this.devices[accountID].raspys[BFPCtrl.body.raspyID].arduinos[BFPCtrl.body.ardID];
+	
+	arduino.ctrlON = BFPCtrl.header.enabled;
+	require('./debug.js').log(4, 'mem', '[' + accountID + '] setting CtrlON of ardID: ' + BFPCtrl.body.ardID + ' to: ' + arduino.ctrlON);
+	
+	onArduinoChange(accountID, BFPCtrl.body.raspyID, BFPCtrl.body.ardID);
+}
+
+/**
+ * Function to set the Arduino settings - arduino specific settings and parameters
+ */
+Mem.prototype.setSettings = function(accountID, BFPSettings) {
+	let arduino = this.devices[accountID].raspys[BFPSettings.body.raspyID].arduinos[BFPSettings.body.ardID];
+	let configdb = require('./configdb.js');
+	
+	arduino.ctrlON = BFPSettings.body.ctrlON;
+	arduino.mode = BFPSettings.body.mode;
+	arduino.version = BFPSettings.body.version;
+	arduino.uptime = BFPSettings.body.uptime;
+	arduino.restore = BFPSettings.body.restore;
+	
+	let updateArduino = {};
+	updateArduino.ardID = BFPSettings.body.ardID;
+	updateArduino.raspyID = BFPSettings.body.raspyID;
+	updateArduino.ctrlON = BFPSettings.body.ctrlON;
+	updateArduino.mode = BFPSettings.body.mode;
+	updateArduino.version = BFPSettings.body.version;
+	configdb.updateArduino(accountID, updateArduino);
+	
+	require('./debug.js').log(4, 'mem', '[' + accountID + '] setting on ardID: ' + BFPSettings.body.ardID + ' ctrlON: ' + arduino.ctrlON + ' version: ' + arduino.version + ' mode: ' + arduino.mode + ' uptime: ' + arduino.uptime);
+	
+	onArduinoChange(accountID, BFPSettings.body.raspyID, BFPSettings.body.ardID);
 }
 
 /**

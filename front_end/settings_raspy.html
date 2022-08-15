@@ -190,47 +190,58 @@
 						Valid VPNID number in form XXXXXXXX-XXX is required.
 					</div>
 				</div>
-			<div class="col-md-6 mb-3">
-				<label for="validationSecrectKey">Raspy Secrect Key</label>
-				<input type="text" class="form-control" id="validationSecrectKey" placeholder="<secret key>" value="" required>
-				<div class="invalid-feedback">
-					Valid Secret Key association with VPNID is required.
+				<div class="col-md-6 mb-3">
+					<label for="validationSecrectKey">Raspy Secrect Key</label>
+					<input type="text" class="form-control" id="validationSecrectKey" placeholder="<secret key>" value="" required>
+						<div class="invalid-feedback">
+							Valid Secret Key association with VPNID is required.
+						</div>
+					</div>
+				</div>
+				<div class="custom-control custom-switch">
+					<input type="checkbox" class="custom-control-input" id="cloudEnableSwitch">
+					<label class="custom-control-label" for="cloudEnableSwitch">Cloud Connection</label>
+				</div>
+
+
+				<hr class="mb-4">
+
+
+				<button class="btn btn-primary btn-lg btn-block" type="submit" id="cloudSubmitButton">Submit Cloud Settings</button>
+		<!-- </form> -->
+		 
+				<p> </p>
+				<h4 class="mb-3">User Interface Settings</h4>
+				<div class="row">
+					<div class="col-md-6 mb-3">
+						<label>Language</label>
+						<select class="custom-select d-block w-100" id="language" required="">
+							<option value="">English</option>
+							<option>Polski</option>
+							<option>Český</option>
+						</select>
+					</div>
+				</div>
+				
+				<h4 class="mb-3">Authentication</h4>
+				<div class="row">
+					<div class="col-md-6 mb-3">
+						<label for="validationVPNID">Password</label>
+						<input type="text" class="form-control" id="password" placeholder="**********" value="" required>
+						<div class="invalid-feedback">
+							Passwords don't match
+						</div>
+					</div>
+					<div class="col-md-6 mb-3">
+						<label for="validationSecrectKey">Repeat password</label>
+						<input type="text" class="form-control" id="repeatedPassword" placeholder="**********" value="" required>
+					</div>
+					<div class="col-md-6 mb-3">
+						<button class="btn btn-primary btn-lg btn-block" type="submit" id="passwordSubmitButton">Change password</button>
+					</div>
 				</div>
 			</div>
 		</div>
-		<div class="custom-control custom-switch">
-			<input type="checkbox" class="custom-control-input" id="cloudEnableSwitch">
-			<label class="custom-control-label" for="cloudEnableSwitch">Cloud Connection</label>
-		</div>
-
-
-		<hr class="mb-4">
-
-
-		<button class="btn btn-primary btn-lg btn-block" type="submit" id="cloudSubmitButton">Submit Cloud Settings</button>
-		<!-- </form> -->
-		 
-		<p> </p>
-		<h4 class="mb-3">User Interface Settings</h4>
-		<div class="row">
-			<div class="col-md-6 mb-3">
-				<label>Language</label>
-				<select class="custom-select d-block w-100" id="language" required="">
-					<option value="">English</option>
-					<option>Polski</option>
-					<option>Český</option>
-				</select>
-			</div>
-		</div>
-		<h4 class="mb-3">Home Assistant Synchronization</h4>
-		<div class="col-md-8 order-md-1">
-			
-		</div>
-		<hr class="mb-4">
-		<button class="btn btn-primary btn-lg btn-block" type="submit" id="syncHAButton">
-			Sync HA config
-		</button>
-		
 	</div>
 </div>
 
@@ -257,7 +268,6 @@
 	socket.on('arduino', onArduino);
 	socket.on('cloud_status', onCloudStatus);
 	socket.on('mqtt_status', onMQTTStatus);
-	socket.on('sync_ha_status', onSyncHAStatus);
 
 	let submitCloudButton = document.getElementById('cloudSubmitButton');
 	let syncHAButton = document.getElementById('syncHAButton');
@@ -303,22 +313,30 @@
 	
 	function addArduinoTableRow(device) {
 		console.log('device name: ' + JSON.stringify(device));
-		var name = 'name not set';
+		var desc = 'name not set';
 		var alive = 'UP';
 		var textClass = "text-success";
+		var mac = 'MAC not set';
+		var uptime = 'uptime not available';
 		var itemID = 'arduino-' + device.raspyID + '-' + device.ardID;
 		if (device.alive == false) {
 			alive = "DOWN";
 			textClass = "text-danger";
 		}
-		if (typeof(device.name) != 'undefined')
-			name = device.name;
+		if (device.mac != null)
+			mac = device.mac
+		if (device.desc != null)
+			desc = device.desc;
+		if (device.uptime != null)
+			uptime = 'Uptime: ' + msToTime(device.uptime);
 		
 		var row = '<li class="list-group-item d-flex justify-content-between bg-light" id="' + itemID + '"> \
               <div class="' + textClass + '"> \
                 <h6 class="my-0">Arduino: ' + device.ardID + '</h6> \
-                <small>' + name + '</small> \
-                <small>(' + device.IP + ')</small> \
+				<small>' + uptime + '</small><br> \
+                <small>' + desc + '</small> \
+                <small>(' + device.IP + ')</small><br> \
+		        <small>' + mac + '</small> \
               </div> \
               <span class="' + textClass + '">' + alive + '</span> \
             </li>';
@@ -442,18 +460,6 @@
         	$("#mqtts").append(row);
 		}
 	}
-	
-	function onSyncHAStatus(BFPSyncHAStatus) {
-		console.log('Sync HA Status received');
-		if (BFPSyncHAStatus.header.syncing) { // HA Syncing is ongoing
-			syncHAButton.html = 'Sync HA config \
-								<div class="spinner-border spinner-border-sm" role="status"> \
-									<span class="sr-only">Loading...</span> \
-								</div>';
-		} else { // HA Syncing is idle
-			syncHAButton.html = 'Sync HA config';
-		}
-	}
 
 	function removeElementFromList(parentID, childID) {
 		var list = document.getElementById(parentID);
@@ -463,6 +469,37 @@
 		//console.log(list);
 	}
 	
+	function msToTime(s) {
+	  var ms = s % 1000;
+	  s = (s - ms) / 1000;
+	  var secs = s % 60;
+	  s = (s - secs) / 60;
+	  var mins = s % 60;
+	  var hrs = (s - mins) / 60;
+	  var h = hrs % 24;
+	  var days = (hrs - h) / 24;
+	  
+	  var timeString;
+	  if (days < 10)
+		  timeString = '0' + days + 'd ';
+	  else
+		  timeString = days + 'd ';
+	  if (h < 10)
+		  timeString = timeString + '0' + h + ':';
+	  else
+		  timeString = timeString + h + ':';
+	  if (mins < 10)
+		  timeString = timeString + '0' + mins + ':';
+	  else
+		  timeString = timeString + mins + ':';
+	  if (secs < 10)
+		  timeString = timeString + '0' + secs;
+	  else
+		  timeString = timeString + secs;
+
+
+	  return timeString;
+	}
 	
 
 	window.addEventListener('load', function() {

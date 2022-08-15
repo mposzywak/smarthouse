@@ -47,7 +47,7 @@ function updateDevice(device) {
 	if (typeof(devices[raspyID][ardID][devID]) == 'undefined') {
 		devices[raspyID][ardID][devID] = device;
 	} else {
-		devices[raspyID][ardID][devID].value == device.value;
+		devices[raspyID][ardID][devID].value = device.value;
 		//devices[raspyID][ardID][devID].direction == device.direction;
 	}
 	

@@ -36,7 +36,7 @@ function sendHeartbeat() {
 			return;
 	}
 
-	debug.log(5, 'rcpclient', 'Sending hearbeat to cloud server.');
+	debug.log(5, 'rcpclient', 'Sending heartbeat to cloud server.');
 	rcpclient.sendMessage(url, payload, function(error, res) {
 		if (res) {
 			if (res.statusCode == 200 && rcpclient.isCloudAlive == false) {
@@ -155,10 +155,13 @@ RCPClient.prototype.sendPublicKey = function(key, callback) {
 				//console.log('Body raw: ' + body);
 				//console.log('Body JSON: ' + JSON.stringify(body));
 				//console.log('Body parsed JSON: ' + JSON.stringify(JSON.parse(body).body));
-				let bfp = JSON.parse(body);
-				//let bfp = JSON.parse(body);
-				debug.log(4, 'rcpclient', 'Received SendPublicKey Response with cloud key: ' + bfp.body);
-				callback(bfp.body)
+				try {
+					let bfp = JSON.parse(body);
+					debug.log(4, 'rcpclient', 'Received SendPublicKey Response with cloud key: ' + bfp.body);
+					callback(bfp.body)
+				} catch (error) {
+					debug.log(1, 'rcpclient', 'Failed to parse send-pubkey response: ' + error.message);
+				}
 			});
 		}
 		if (error) {

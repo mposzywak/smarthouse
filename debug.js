@@ -41,7 +41,7 @@ Debug.prototype.log = function(severity, facility, msg) {
 /*
  * handle debug GETs, example usage:
  *
- *  wget -qO- http://localhost:32301/view/mem/devices | python -m json.tool
+ *  wget -qO- http://localhost:32303/view/mem/devices | python -m json.tool
  *  Don't display directly the facility objects as they have circular structure
  *  for example /view/mem will not work, but /view/mem/devices will. Config facility doesn't
  *  have circular structure as the only one. Don't add "/" at the end of the URL. 

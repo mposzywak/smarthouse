@@ -97,7 +97,8 @@ function onUplink(req, res) {
 				switch (BFPMessage.header.code) {
 					case 'BFP_DEVICE_STATUS':
 						debug.log(1, 'rcpserver', 'Code BFP_DEVICE_STATUS received, passing to mem');
-						mem.setDeviceStatus(accountID, req.body);
+						/* commented out as it was causing crashes */
+						//mem.setDeviceStatus(accountID, req.body);
 						break;
 					case undefined: 
 						debug.log(1, 'rcpserver', 'Undefined Code in BFP, dropping message!');
@@ -193,7 +194,8 @@ function onArduinoDead(req, res) {
 			accountID = vpnid.split('-')[0];
 			raspyID = vpnid.split('-')[1];
 			var ardID = req.query.ardID;
-			require('./mem.js').setArduinoDead(accountID, raspyID, ardID);
+			/* removing as it was causing crashes, not needed */
+			//require('./mem.js').setArduinoDead(accountID, raspyID, ardID);
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
 			res.end('ok');
 		}
@@ -207,7 +209,8 @@ function onArduinoAlive(req, res) {
 			accountID = vpnid.split('-')[0];
 			raspyID = vpnid.split('-')[1];
 			var ardID = req.query.ardID;
-			require('./mem.js').setArduinoAlive(accountID, raspyID, ardID);
+			/* removing as it was causing crashes, not needed */
+			//require('./mem.js').setArduinoAlive(accountID, raspyID, ardID);
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
 			res.end('ok');
 		}

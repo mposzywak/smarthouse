@@ -216,6 +216,7 @@
 		device.devID = urlParams['devID'];
 		device.desc = $('#name-input').val();
 		device.activated = $('#enabled').is(':checked');
+		device.devType = 'shade';
 		socket.emit('device_settings', device);
 	});
 

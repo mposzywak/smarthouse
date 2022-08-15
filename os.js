@@ -344,7 +344,13 @@ OS.prototype.sendPublicKey = function(callback) {
  */
 
 OS.prototype.getServerSSHPublicKey = function() {
-	let hostKey = this.fs.readFileSync('/home/velen-service/.ssh/id_rsa.pub', 'utf8');
+	let hostKey;
+	let debug = require('./debug.js');
+	try {
+		hostKey = this.fs.readFileSync('/home/velen-service/.ssh/id_rsa.pub', 'utf8');
+	} catch (error) {
+		debug.log(1, 'os', 'Failed to open id_rsa.pub:' + error);
+	}
 	return hostKey;
 }
 

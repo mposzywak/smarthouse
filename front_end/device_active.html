@@ -45,33 +45,56 @@
 	socket.on('device_response', onResponse);
 	socket.on('message', onMessage);
 	
+	
 	function onDeviceStatus(BFPDeviceStatus) {
+		console.log('device_status received with: ' + JSON.stringify(BFPDeviceStatus));
 		updateDevice(BFPDeviceStatus.body);
 		var FID = BFPDeviceStatus.body.raspyID + '-' + BFPDeviceStatus.body.devID + '-' + BFPDeviceStatus.body.ardID;
 		if (BFPDeviceStatus.body.devType == TYPE_DIGITOUT) { /* ------------- the DigitOUT device handling */
-			console.log(JSON.stringify(BFPDeviceStatus));
 			if (document.getElementById(FID + '_row') == null) {
 				if (BFPDeviceStatus.body.activated == true) {
 					/* this is a new device so whole div structure needs to be created */
-					addActiveDeviceTableRow(BFPDeviceStatus.body);
-					$("#" + FID + "_button").on('click', function() {
-						console.log('on clicked FID: ' + FID);
-						var BFPDeviceCommand = BFPCreateDeviceCommandFromMem(BFPDeviceStatus.body);
-						setDeviceCommandOn(BFPDeviceStatus.body);
-						disableLightButton(BFPDeviceStatus.body);
-						setDeviceTimer(BFPDeviceStatus.body, setTimeout(function() { onCommandTimeout(BFPDeviceStatus.body); }, 5000));
-						socket.emit('device_command', BFPDeviceCommand);
-					});
+					if (BFPDeviceStatus.body.extType == 0) {
+						addActiveDeviceTableRow(BFPDeviceStatus.body);
+						$("#" + FID + "_button").on('click', function() {
+							console.log('on clicked FID: ' + FID);
+							var BFPDeviceCommand = BFPCreateDeviceCommandFromMem(BFPDeviceStatus.body);
+							setDeviceCommandOn(BFPDeviceStatus.body);
+							disableLightButton(BFPDeviceStatus.body);
+							setDeviceTimer(BFPDeviceStatus.body, setTimeout(function() { onCommandTimeout(BFPDeviceStatus.body); }, 5000));
+							socket.emit('device_command', BFPDeviceCommand);
+						});
+					} else if (BFPDeviceStatus.body.extType == 1) {
+						addActiveBinarySensorTableRow(BFPDeviceStatus.body);
+					}
 				}
 			} else {
 				/* the device already reported, structure needs to be filled in with new data */
-				if (BFPDeviceStatus.body.value == '0' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
-					offLightButton(BFPDeviceStatus.body);
-				else if (BFPDeviceStatus.body.value == '1' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
-					onLightButton(BFPDeviceStatus.body);
-				else 
-				{
-					errorLightButton(BFPDeviceStatus.body);
+				if (BFPDeviceStatus.body.lightType == 0 || BFPDeviceStatus.body.lightType == 1 || typeof(BFPDeviceStatus.body.lightType) == 'undefined') {
+					if (BFPDeviceStatus.body.value == '0' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
+						if (BFPDeviceStatus.body.extType != 1) {
+							offLightButton(BFPDeviceStatus.body);
+						} else {
+							setBinarySensorOff(BFPDeviceStatus.body);
+						}
+					} else if (BFPDeviceStatus.body.value == '1' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
+						if (BFPDeviceStatus.body.extType != 1) {
+							onLightButton(BFPDeviceStatus.body);
+						} else {
+							setBinarySensorOn(BFPDeviceStatus.body);
+						}
+					} else {
+						errorLightButton(BFPDeviceStatus.body);
+					}
+				} else if (BFPDeviceStatus.body.lightType == 2) {
+					/* simple heat device */
+					if (BFPDeviceStatus.body.value == '0' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
+						offLightButton(BFPDeviceStatus.body);
+					else if (BFPDeviceStatus.body.value == '1' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true)
+						onLightButton(BFPDeviceStatus.body);
+					else {
+						errorLightButton(BFPDeviceStatus.body);
+					}
 				}
 
 				clearDeviceTimer(BFPDeviceStatus.body);
@@ -150,6 +173,7 @@
 		let tiltSlider = document.getElementById(FID + '_tilt_slider');
 		let button = document.getElementById(FID + '_direction');
 		
+		
 		if (body.alive == true && body.sync == true) {
 			stopShade(body);
 		} else if (body.direction == 'up' && body.alive == true && body.sync == true) {
@@ -165,8 +189,10 @@
 			disableShadeDevice(body);
 		}
 		
-		setTiltSlider(body);
-		setPositionSlider(body);
+		if (body.sync != false) {
+			setTiltSlider(body);
+			setPositionSlider(body);
+		}
 
 
 		button.onmouseup = function () {
@@ -186,7 +212,7 @@
 			setDeviceShadeInMotion(body);
 			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADEPOS);
 			console.log('position changed: ' + FID);
-			BFPDeviceCommand.body.position = this.value; /* overwrite the device position value with the value taken from the moved slider */
+			BFPDeviceCommand.body.position = this.value; // overwrite the device position value with the value taken from the moved slider 
 			socket.emit('device_command', BFPDeviceCommand);
 		}
 		
@@ -194,7 +220,7 @@
 			setDeviceShadeInMotion(body);
 			let BFPDeviceCommand = BFPCreateDeviceCommandShade(body, this.value, BFP_SHADEPOS);
 			console.log('position changed: ' + FID);
-			BFPDeviceCommand.body.position = this.value; /* overwrite the device position value with the value taken from the moved slider */
+			BFPDeviceCommand.body.position = this.value; // overwrite the device position value with the value taken from the moved slider 
 			socket.emit('device_command', BFPDeviceCommand);
 		}
 		
@@ -246,8 +272,38 @@
 			errorLightButton(body);
 	}
 	
-	function updateActiveDeviceTableRow(device) {
+	function addActiveBinarySensorTableRow(body) {
+		let FID = body.raspyID + '-' + body.devID + '-' + body.ardID;
+		let active = 'Off';
+		if (body.value == '1')
+			active = ' On';
+		
+		let row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row">';
+		row += '<div class="col-sm text-white row-settings">' + body.desc + '</div>';		
+		
+
+		if (body.value == '0' && body.alive == true) {
+			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">OFF</div> \
+			</div>';
+		} else if (body.value == '1' && body.alive == true) {
+			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">ON</div> \
+			</div>';
+		} else {
+			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">' + Error + '</div> \
+			</div>';
+		}
+		
+		$("#devices").append(row);
+	}
 	
+	function setBinarySensorOn(device) {
+		let sensorID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_sensor';
+		$('#' + sensorID).html('ON');
+	}
+	
+	function setBinarySensorOff(device) {
+		let sensorID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_sensor';
+		$('#' + sensorID).html('OFF');
 	}
 	
 	function onResponse(msg) {

@@ -38,7 +38,7 @@ mem.initialize(function(error) {
 		server.on('error', onHTTPError);
 
 		arif = require('./arif.js');
-
+		app.use(express.json());
 		app.post('/*', onPostRequest);
 	}
 	/* multicast server setup for BB */
@@ -69,6 +69,12 @@ const ARIF_DEV_MAPPING = '32';
 const ARIF_DEV_STATUS_DIR = 'statusDIR';
 const ARIF_DEV_STATUS_POS = 'statusPOS';
 const ARIF_DEV_STATUS_TILT = 'statusTILT';
+const ARIF_ARD_CTRL_ON = 'ctrlON';
+const ARIF_ARD_CTRL_OFF = 'ctrlOFF';
+const ARIF_ARD_SETTINGS = 'settings';
+const ARIF_DEV_LIGHT_INPUT_TYPE = 'lightInputType';
+const ARIF_DEV_LIGHT_TYPE = 'lightType';
+const ARIF_DEV_LIGHT_SETTINGS = 'lightSettings';
 
 //app.use(express.static('smarthouse'))
 
@@ -77,6 +83,9 @@ function onPostRequest(req, res) {
 	var reqDate = new Date().getTime();
 	let srcIP = req.connection.remoteAddress;
 	debug.log(4, 'arif', 'Request POST URL: ' + req.originalUrl + ' from: ' + srcIP);
+	//console.log(req.connection.remoteAddress);
+	//console.log(req.socket.remoteAddress);
+	//console.log(req.ip);
 
 	if (!config.cloud.id) {
 		debug.log(1, 'arif', 'Sending 502: ARIF interface not enabled, system configured for cloud');
@@ -94,7 +103,7 @@ function onPostRequest(req, res) {
 	var cmd = params.cmd; 
 
 	
-	if (devID && ardID && raspyID && cmd && url.length < 256 && devID != '0') {
+	if (devID && ardID && raspyID && cmd && url.length < 256) {
 		//debug.log(5, 'arif', 'URL match result: ' + result + ' command: ' + command);
 		if (raspyID != require('./config.js').rcpclient.vpnID.split('-')[1]) {
 			debug.log(1, 'arif', 'Sending 403: ARIF received raspyID different from the one configured!');
@@ -102,61 +111,102 @@ function onPostRequest(req, res) {
         	res.end('Error: incorrect raspyID');
 			return;
 		}
-		switch (cmd) {
-			case ARIF_REGISTER:
-				var newArdID = mem.registerArduino(config.cloud.id, srcIP);
-				res.set('X-arduino', newArdID);
-				break;
-			case ARIF_DEV_STATUS:
-				var devType = params.devType; // url.split('/')[5];
-				var dataType = params.dataType; //url.split('/')[6];
-				var value = params.value; //url.split('/')[7];
-				var userIndicaitonHeader = false;
-				if (req.get('iot-user') == 'true')
-					userIndicaitonHeader = true;
+		if (devID == '0') {
+			switch (cmd) {
+				case ARIF_ARD_CTRL_ON:
+					var BFPCtrlON = bfp.BFPCreateCtrlONEnabled(ardID, raspyID);
+					mem.setCtrlON(config.cloud.id, BFPCtrlON);
+					break;
+				case ARIF_ARD_CTRL_OFF:
+					var BFPCtrlON = bfp.BFPCreateCtrlONDisabled(ardID, raspyID);
+					mem.setCtrlON(config.cloud.id, BFPCtrlON);
+					break;
+				case ARIF_ARD_SETTINGS:
+					debug.log(5, 'arif', 'settings received from: ' + srcIP + ', data: ' + JSON.stringify(req.body));				
+					var BFPSettings = bfp.BFPCreateSettings(ardID, raspyID, req.body.version, req.body.mode, req.body.ctrlON, req.body.uptime, req.body.restore);
+					mem.setSettings(config.cloud.id, BFPSettings);
+					break;
+				default:
+					debug.log(1, 'arif', 'command on ardID 0: ' + cmd + ' from: ' + srcIP + ' is unknown!');	
+			}
+		} else {
+			switch (cmd) {
+				case ARIF_REGISTER:
+					var newArdID = mem.registerArduino(config.cloud.id, srcIP);
+					res.set('X-arduino', newArdID);
+					break;
+				case ARIF_DEV_STATUS:
+					var devType = params.devType; // url.split('/')[5];
+					var dataType = params.dataType; //url.split('/')[6];
+					var value = params.value; //url.split('/')[7];
+					var userIndicaitonHeader = false;
+					if (req.get('iot-user') == 'true') {
+						userIndicaitonHeader = true;
+					}
 				
-				if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP)) {
-					var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, userIndicaitonHeader);
-					mem.setDeviceStatus(config.cloud.id, BFPDeviceStatus);
-				} else {
+					if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP)) {
+						var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, userIndicaitonHeader);
+						mem.setDeviceStatus(config.cloud.id, BFPDeviceStatus);
+					} else {
 					
-					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);
-					res.writeHead(404, { 'Content-Type' : 'text/plain'});
-					res.end('Error: probably wrong URL');
-					return;
-				}
-				break;
-			case ARIF_DEV_MAPPING:
-				devType = validateDevType(url.split('/')[4]);
-				dataType = validateDataType(url.split('/')[5]);
-				controlledDevs = url.split('/').slice(5); // get rest of array from 5th element
-				console.log(controlledDevs);
-				mem.setDevice(config.cloud.id, devid, ardid, devType, reqDate, srcIP, controlledDevs)
-				break;
-			case ARIF_DEV_STATUS_DIR:
-				var devType = params.devType; // url.split('/')[5];
-				var dataType = params.dataType; //url.split('/')[6];
-				var value = params.value; //url.split('/')[7];
-				var userIndicaitonHeader = false;
-				if (req.get('iot-user') == 'true')
-					userIndicaitonHeader = true;
+						debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);
+						res.writeHead(404, { 'Content-Type' : 'text/plain'});
+						res.end('Error: probably wrong URL');
+						return;
+					}
+					break;
+				case ARIF_DEV_MAPPING:
+					devType = validateDevType(url.split('/')[4]);
+					dataType = validateDataType(url.split('/')[5]);
+					controlledDevs = url.split('/').slice(5); // get rest of array from 5th element
+					console.log(controlledDevs);
+					mem.setDevice(config.cloud.id, devid, ardid, devType, reqDate, srcIP, controlledDevs)
+					break;
+				case ARIF_DEV_STATUS_DIR:
+					var devType = params.devType; // url.split('/')[5];
+					var dataType = params.dataType; //url.split('/')[6];
+					var value = params.value; //url.split('/')[7];
+					var userIndicaitonHeader = false;
+					if (req.get('iot-user') == 'true')
+						userIndicaitonHeader = true;
 				
-				if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP)) {
-					var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, userIndicaitonHeader);
-					mem.setDeviceStatus(config.cloud.id, BFPDeviceStatus);
-				} else {
-					debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);
-					res.writeHead(404, { 'Content-Type' : 'text/plain'});
-					res.end('Error: probably wrong URL');
-					return;
-				}
-				break;
-			case ARIF_DEV_STATUS_POS:
-				break;
-			case ARIF_DEV_STATUS_TILT:
-				break;
-			default:
-				debug.log(1, 'arif', 'command: ' + cmd + ' from: ' + srcIP + ' is unknown!');
+					if (arif.validateDeviceStatusData(devID, ardID, raspyID, devType, dataType, value, srcIP)) {
+						var BFPDeviceStatus = bfp.BFPCreateDeviceStatus(devID, ardID, raspyID, devType, dataType, value, reqDate, srcIP, userIndicaitonHeader);
+						mem.setDeviceStatus(config.cloud.id, BFPDeviceStatus);
+					} else {
+						debug.log(2, 'arif', 'Sending 404, improper URL or IP received: ' + url + ' from: ' + srcIP);
+						res.writeHead(404, { 'Content-Type' : 'text/plain'});
+						res.end('Error: probably wrong URL');
+						return;
+					}
+					break;
+				case ARIF_DEV_LIGHT_INPUT_TYPE:
+					var value = params.value;
+					var BFPLightInputType = bfp.BFPCreateLightInputType(devID, ardID, raspyID, value);
+					mem.setLightInputType(config.cloud.id, BFPLightInputType);
+					break;
+				case ARIF_DEV_LIGHT_TYPE:
+					var value = params.value;
+					var BFPLightType = bfp.BFPCreateLightType(devID, ardID, raspyID, value);
+					mem.setLightType(config.cloud.id, BFPLightType);
+					break;
+				case ARIF_DEV_LIGHT_SETTINGS:
+					debug.log(5, 'arif', 'Light settings received from: ' + srcIP + ' of: ' + devID + ', data: ' + JSON.stringify(req.body));
+					//var BFPLightInputType = bfp.BFPCreateLightInputType(devID, ardID, raspyID, req.body.lightInputType);
+					//var BFPLightType = bfp.BFPCreateLightType(devID, ardID, raspyID, req.body.lightType);
+					//var BFPLightCtrlON = bfp.BFPCreateLightCtrlON(devID, ardID, raspyID, req.body.ctrlON);
+					var BFPLightSettings = bfp.BFPCreateLightSettings(devID, ardID, raspyID, req.body.lightType, req.body.lightInputType, req.body.ctrlON, req.body.timer);
+					mem.setLightSettings(config.cloud.id, BFPLightSettings);
+					//mem.setLightType(config.cloud.id, BFPLightType);
+					//mem.setLightCtrlON(config.cloud.id, BFPLightCtrlON);
+					break;
+				case ARIF_DEV_STATUS_POS:
+					break;
+				case ARIF_DEV_STATUS_TILT:
+					break;
+				default:
+					debug.log(1, 'arif', 'command: ' + cmd + ' from: ' + srcIP + ' is unknown!');
+			}
 		}
 		debug.log(4, 'arif', 'Sending 200 OK to: ' + srcIP + ' for GET URL: ' + url);
 		res.writeHead(200, { 'Content-Type' : 'text/plain'});
