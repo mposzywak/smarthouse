@@ -24,4 +24,5 @@ Debug.prototype.log = function(severity, facility, msg) {
 }
 
 
+
 module.exports = debug;

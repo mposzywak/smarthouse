@@ -216,9 +216,9 @@
 					<div class="col-md-6 mb-3">
 						<label>Language</label>
 						<select class="custom-select d-block w-100" id="language" required="">
-							<option value="">English</option>
-							<option>Polski</option>
-							<option>Český</option>
+							<option value="EN">English</option>
+							<option value="PL">Polski</option>
+							<option value="CZ">Český</option>
 						</select>
 					</div>
 				</div>
@@ -270,13 +270,6 @@
 	socket.on('mqtt_status', onMQTTStatus);
 
 	let submitCloudButton = document.getElementById('cloudSubmitButton');
-	let syncHAButton = document.getElementById('syncHAButton');
-	
-	syncHAButton.onclick = function() {
-		let BFPSyncHA = BFPCreateSyncHA();
-		console.log('Committing cloud settings: ' + JSON.stringify(BFPSyncHA));
-		socket.emit('sync_ha', BFPSyncHA);
-	}
 	
 	submitCloudButton.onclick = function() {
 		let vpnid = $('#validationVPNID').val();

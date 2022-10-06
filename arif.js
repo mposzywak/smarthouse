@@ -203,10 +203,10 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 		
 		options.path += '&value=' + device.position;
 		
-		console.log('----------- Path: ' + options.path);
+		//console.log('----------- Path: ' + options.path);
 		
-		console.log('----------- Value 2: ' + JSON.stringify(device));
-		console.log('----------- Value 1: ' + device.position);
+		//console.log('----------- Value 2: ' + JSON.stringify(device));
+		//console.log('----------- Value 1: ' + device.position);
 		
 	}
 	
@@ -216,6 +216,14 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 	
 	if (command == 'lightTimer') {
 		options.path += 'value=' + device.timer;
+	}
+	
+	if (command == 'shadePTimer') {
+		options.path += 'value=' + device.positionTimer;
+	}
+	
+	if (command == 'shadeTTimer') {
+		options.path += 'value=' + device.tiltTimer;
 	}
 	
 	if (command == 'lightType') {

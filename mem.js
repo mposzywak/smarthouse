@@ -213,6 +213,8 @@ Mem.prototype.deleteArduino = function(accountID, raspyID, ardID) {
 				mqtt.removeLight(raspyID, ardID, devID, arduinos[ardID].devices[devID].extType);
 			} else if (arduinos[ardID].devices[devID].devType == 'shade') {
 				mqtt.removeShade(raspyID, ardID, devID);
+			} else if (arduinos[ardID].devices[devID].devType == 'temp') {
+				mqtt.removeTemp(raspyID, ardID, devID);
 			}
 		}
 	}
@@ -262,7 +264,8 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		newDevice.raspyID = this.raspyID;
 		newDevice.ardID = BFPDeviceStatus.body.ardID;
 		newDevice.devID = BFPDeviceStatus.body.devID;
-		newDevice.extType = 0;
+		if (BFPDeviceStatus.body.devType == 'digitOUT')
+			newDevice.extType = 0;
 		newDevice.alive = true;
 		isDeviceNew = true;
 		debug.log(4, 'mem', identityLog + 'New Device registered.');
@@ -328,7 +331,13 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		mqtt.subscribeTemp(BFPDeviceStatus.body.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
 		debug.log(5, 'mem', identityLog + 'Temperature sensor device type received at mem.');
 		if (BFPDeviceStatus.body.dataType == 'float') {
-			device.temperature = BFPDeviceStatus.body.value;
+			device.value = BFPDeviceStatus.body.value;
+			device.dataType = 'float';
+		}
+		if (isDeviceNew) {
+			this.db.insertDevice(accountID, device);
+		} else {
+			this.db.updateDevice(accountID, device);
 		}
 	} else { /* unknown device handling */
 		debug.log(2, 'mem', identityLog + 'Unknown device type received: ' + BFPDeviceStatus.body.devType);
@@ -351,11 +360,13 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		mqtt.publishLightStatus(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.value);
 	}
 	if (BFPDeviceStatus.body.devType == 'temp') {
-		mqtt.publishTempStatus(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.temperature);
+		mqtt.publishTempStatus(this.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID, device.value);
 	}
 	
 	if (!this.config.cloud.enabled)
 		this.rcpclient.sendUplinkMessage(newBFPDeviceStatus);
+	/* update the IP address */
+	device.IP = BFPDeviceStatus.body.IP;
 
 	if (typeof(device.IP) == 'undefined' || device.IP == null) {	
 		device.IP = this.getArduinoIP(accountID, BFPDeviceStatus.body.ardID);
@@ -423,7 +434,7 @@ Mem.prototype.setLightSettings = function(accountID, BFPLightSettings) {
 		debug.log(1, 'mem', 'for unknown accountID: ' + accountID + ' devID: ' + devID + ', ardID: ' + ardID + ', raspyID: ' + raspyID + ' received Light Settings command!');
 	} else {
 		//this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].lightInputType = BFPLightInputType.body.lightInputType;
-		debug.log(4, 'mem', 'got settings. lightType: ' + lightType + ', lightInputType: ' + lightInputType + 
+		debug.log(4, 'mem', 'got Light settings. lightType: ' + lightType + ', lightInputType: ' + lightInputType + 
 					', ctrlON: ' + ctrlON + ', timer: ' + timer + ' devID: ' + devID + ', ardID: ' + ardID);
 					
 		device.lightType = lightType;
@@ -444,40 +455,65 @@ Mem.prototype.setLightSettings = function(accountID, BFPLightSettings) {
 	}
 }
 
-/**
- * Activate a device and configure it in HA
- */
-/*Mem.prototype.activateDevice = function(accountID, raspyID, ardID, devID, desc) {
-	let mqtt = require('./mqtt.js');
-	let debug = require('./debug.js');
-	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+Mem.prototype.setShadeSettings = function(accountID, BFPShadeSettings) {
+	let raspyID = BFPShadeSettings.body.raspyID;
+	let ardID = BFPShadeSettings.body.ardID;
+	let devID = BFPShadeSettings.body.devID;
+	let positionTimer = BFPShadeSettings.body.positionTimer;
+	let tiltTimer = BFPShadeSettings.body.tiltTimer;
 	
-	if (device.activated == false) {
-		device.activated = true;
-		device.desc = desc;
-		debug.log(2, 'mem', 'devID: ' + devID + ', ardID: ' + ardID + ' activating device.');
-		mqtt.configureLight(raspyID, ardID, devID, desc, device.extType);
+	let debug = require('./debug.js');
+	let configdb = require('./configdb.js');
+	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID]
+	
+	if (typeof(device) == 'undefined') {
+		debug.log(1, 'mem', 'for unknown accountID: ' + accountID + ' devID: ' + devID + ', ardID: ' + ardID + ', raspyID: ' + raspyID + ' received Shade Settings command!');
 	} else {
-		debug.log(2, 'mem', 'devID: ' + devID + ', ardID: ' + ardID + ' already activated. This should not happen.');
+		debug.log(4, 'mem', 'got Shade settings. positionTimer: ' + positionTimer + ', tiltTimer: ' + tiltTimer + ', devID: ' + devID + ', ardID: ' + ardID);
+		
+		device.positionTimer = positionTimer;
+		device.tiltTimer = tiltTimer;
+		
+		let updateDevice = {};
+		updateDevice.devID = devID;
+		updateDevice.ardID = ardID;
+		updateDevice.raspyID = raspyID;
+		updateDevice.devType = 'shade';
+		updateDevice.positionTimer = positionTimer;
+		updateDevice.tiltTimer = tiltTimer;
+		
+		configdb.updateDevice(accountID, updateDevice);
 	}
-} */
+}
 
-/**
- * Deactivate a device and remove its configuration from HA
- */
-/*Mem.prototype.deactivateDevice = function(accountID, raspyID, ardID, devID) {
+Mem.prototype.reconfigureTemp = function(accountID, raspyID, ardID, devID, desc, activated) {
 	let mqtt = require('./mqtt.js');
 	let debug = require('./debug.js');
 	let device = this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID];
+	let deviceInfo = 'ArdID: ' + ardID + ', devID: ' + devID;
 	
-	if (device.activated == true) {
-		this.devices[accountID].raspys[raspyID].arduinos[ardID].devices[devID].activated = false;
-		debug.log(2, 'mem', 'devID: ' + devID + ', ardID: ' + ardID + ' deactivating device.');
-		mqtt.removeLight(raspyID, ardID, devID, device.extType);
-	} else {
-		debug.log(2, 'mem', 'devID: ' + devID + ', ardID: ' + ardID + 'already deactivated. This should not happen.');
+	/* MQTT handling + device activation */
+	if (device.activated == true && activated == true && device.desc != desc) {
+		debug.log(2, 'mem', deviceInfo + ' reconfiguring activated Temperature device. Values: desc: ' + desc);
+		/* TODO: MQTT stuff here */
+		mqtt.removeTemp(raspyID, ardID, devID);
+		mqtt.configureTemp(raspyID, ardID, devID, desc);
+	} else if (device.activated == false && activated == false) {
+		debug.log(2, 'mem', deviceInfo + ' reconfiguring deactivated Temperature device. Values: desc: ' + desc);
+	} else if (device.activated == false && activated == true) { /* activate device */
+		debug.log(2, 'mem', deviceInfo + ' activating Temperature device.');
+		device.activated = true;
+		/* TODO: MQTT stuff here */
+		mqtt.configureTemp(raspyID, ardID, devID, desc);
+	} else if (device.activated == true && activated == false) { /* deactivate device */
+		debug.log(2, 'mem', deviceInfo + ' deactivating Temperature device.');
+		device.activated = false;
+		/* TODO: MQTT stuff here */
+		mqtt.removeTemp(raspyID, ardID, devID);
 	}
-} */
+	
+	device.desc = desc;
+}
 
 /**
  * Change device's configuration (if necesssary adjust HA config - not done when device is not activated)
@@ -490,7 +526,7 @@ Mem.prototype.reconfigureShade = function(accountID, raspyID, ardID, devID, desc
 	let deviceInfo = 'ArdID: ' + ardID + ', devID: ' + devID;
 	
 	/* MQTT handling + device activation */
-	if (device.activated == true && activated == true && (device.desc != desc || device.extType != extType)) {
+	if (device.activated == true && activated == true && device.desc != desc) {
 		debug.log(2, 'mem', deviceInfo + ' reconfiguring activated Shade device. Values: desc: ' + desc);
 		mqtt.removeShade(raspyID, ardID, devID);
 		mqtt.configureShade(raspyID, ardID, devID, desc);
@@ -512,6 +548,20 @@ Mem.prototype.reconfigureShade = function(accountID, raspyID, ardID, devID, desc
 	updateDevice.IP = device.IP;
 	updateDevice.ardID = ardID;
 	updateDevice.devID = devID;
+	updateDevice.positionTimer = positionTimer;
+	updateDevice.tiltTimer = tiltTimer;
+	
+	
+	if (device.positionTimer != positionTimer) {
+		arif.sendCommand(updateDevice, 'shadePTimer', function(message) {
+			//socket.emit('device_response', message);
+		});
+	}
+	if (device.tiltTimer != tiltTimer) {
+		arif.sendCommand(updateDevice, 'shadeTTimer', function(message) {
+			//socket.emit('device_response', message);
+		});
+	}
 }
 
 /**
@@ -565,7 +615,7 @@ Mem.prototype.reconfigureLight = function(accountID, raspyID, ardID, devID, desc
 	if (device.lightType != lightType) {
 		updateDevice.lightType = lightType;
 		arif.sendCommand(updateDevice, 'lightType', function(message) {
-		//socket.emit('device_response', message);
+			//socket.emit('device_response', message);
 		});
 	}
 	
@@ -575,7 +625,7 @@ Mem.prototype.reconfigureLight = function(accountID, raspyID, ardID, devID, desc
 	} else if (device.timer != msTimer) {
 		updateDevice.timer = msTimer;
 		arif.sendCommand(updateDevice, 'lightTimer', function(message) {
-		//socket.emit('device_response', message);
+			//socket.emit('device_response', message);
 		});
 	}
 	
@@ -899,17 +949,14 @@ Mem.prototype.getVPNKey = function (accountID, raspyID) {
  * return vpnKey for a given accountID/raspyID.
  */
 Mem.prototype.getLatestVPNKey = function (accountID, raspyID, callback) {
-	let raspy = this.devices[accountID].raspys[raspyID];
-	
 	if (typeof(this.devices[accountID]) == 'undefined') {
-		callback(true, null, null);
-		return;
+		this.devices[accountID] = {};
+		this.devices[accountID].raspys = {};
 	}
 	if (typeof(this.devices[accountID].raspys[raspyID]) == 'undefined') {
-		callback(true, null, null);
-		return;
+		this.devices[accountID].raspys[raspyID] = {};
 	}
-	
+	let raspy = this.devices[accountID].raspys[raspyID];
 	let db = require('./configdb.js');
 	db.getVpnID(accountID, raspyID, function(error, vpnID, vpnKey, initVpnKey, cloud) {
 		if (!error) {

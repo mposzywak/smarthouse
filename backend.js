@@ -62,8 +62,10 @@ var Backend = function() {
 	this.app.get('/device-configuration-arduino', onDeviceConfigurationArduino);
 	this.app.get('/device-configuration-discovered', onDeviceConfigurationDiscovered);
 	this.app.get('/device-configuration-shade', onDeviceConfigurationShade);
+	this.app.get('/device-configuration-temp', onDeviceConfigurationTemp);
 	this.app.get('/device-discovery', onDeviceDiscovery);
 	this.app.get('/settings', onSettings);
+	this.app.get('/about', onAbout);
 
 	this.app.get('', onAnyHTML);       // redirect to login page on '/'
 	//executed on login inforamtion
@@ -196,8 +198,16 @@ function onDeviceConfigurationShade(req, res) {
 	onWebPageRequest(req, res, 'device_configuration_shade.html'); 
 }
 
+function onDeviceConfigurationTemp(req, res) {
+	onWebPageRequest(req, res, 'device_configuration_temp.html'); 
+}
+
 function onSettings(req, res) {
 	onWebPageRequest(req, res, 'settings_raspy.html'); 
+}
+
+function onAbout(req, res) {
+	onWebPageRequest(req, res, 'about.html'); 
 }
 
 function onWebPageRequest(req, res, webFile) {
@@ -610,6 +620,8 @@ function onBFPDeviceUpdate(msg, socket) {
 		mem.reconfigureLight(accountID, msg.raspyID, msg.ardID, msg.devID, msg.desc, msg.activated, msg.ctrlON, msg.timer, msg.lightType, msg.lightInputType, msg.extType);
 	else if (msg.devType == 'shade')
 		mem.reconfigureShade(accountID, msg.raspyID, msg.ardID, msg.devID, msg.desc, msg.activated, msg.positionTimer, msg.tiltTimer);
+	else if (msg.devType == 'temp')
+		mem.reconfigureTemp(accountID, msg.raspyID, msg.ardID, msg.devID, msg.desc, msg.activated);
 	
 	require('./configdb.js').updateDevice(accountID, device);
 	var bfp = require('./bfp.js');

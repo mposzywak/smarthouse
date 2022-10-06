@@ -120,7 +120,14 @@ RCPClient.prototype.requestVPNKey = function(callback) {
 	this.sendMessage(url, null, function(error, res) {
 		if (res) {
 			res.on('data', function(body) {
-				let bfp = JSON.parse(body);
+				let bfp;
+				try {
+					bfp = JSON.parse(body);
+				} catch (e) {
+					debug.log(1, 'rcpclient', 'Received Invalid VPNKey response: JSON parsing issue: ' + body);
+					callback("JSON parsing issue", null);
+					return;
+				}
 				let bfp2 = JSON.parse(bfp);
 				if (bfp2.header.status) {
 					debug.log(4, 'rcpclient', 'Received VPNKey Response: ' + res.statusCode);

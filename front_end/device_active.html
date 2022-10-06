@@ -64,7 +64,7 @@
 							setDeviceTimer(BFPDeviceStatus.body, setTimeout(function() { onCommandTimeout(BFPDeviceStatus.body); }, 5000));
 							socket.emit('device_command', BFPDeviceCommand);
 						});
-					} else if (BFPDeviceStatus.body.extType == 1) {
+					} else if (BFPDeviceStatus.body.extType == 1 || BFPDeviceStatus.body.extType == 2) {
 						addActiveBinarySensorTableRow(BFPDeviceStatus.body);
 					}
 				}
@@ -72,16 +72,20 @@
 				/* the device already reported, structure needs to be filled in with new data */
 				if (BFPDeviceStatus.body.lightType == 0 || BFPDeviceStatus.body.lightType == 1 || typeof(BFPDeviceStatus.body.lightType) == 'undefined') {
 					if (BFPDeviceStatus.body.value == '0' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
-						if (BFPDeviceStatus.body.extType != 1) {
+						if (BFPDeviceStatus.body.extType == 0) {
 							offLightButton(BFPDeviceStatus.body);
-						} else {
+						} else if (BFPDeviceStatus.body.extType == 1) {
 							setBinarySensorOff(BFPDeviceStatus.body);
+						} else if (BFPDeviceStatus.body.extType == 2) {
+							setBinarySensorOn(BFPDeviceStatus.body);
 						}
 					} else if (BFPDeviceStatus.body.value == '1' && BFPDeviceStatus.body.alive == true && BFPDeviceStatus.body.activated == true) {
-						if (BFPDeviceStatus.body.extType != 1) {
+						if (BFPDeviceStatus.body.extType == 0) {
 							onLightButton(BFPDeviceStatus.body);
-						} else {
+						} else if (BFPDeviceStatus.body.extType == 1) {
 							setBinarySensorOn(BFPDeviceStatus.body);
+						} else if (BFPDeviceStatus.body.extType == 2) {
+							setBinarySensorOff(BFPDeviceStatus.body);
 						}
 					} else {
 						errorLightButton(BFPDeviceStatus.body);
@@ -143,6 +147,20 @@
 						}
 					} else if (BFPDeviceStatus.body.alive == false) {
 						disableShadeDevice(BFPDeviceStatus.body);
+					}
+				}
+			}
+		} else if (BFPDeviceStatus.body.devType == TYPE_TEMP) {
+			if (document.getElementById(FID + '_row') == null) { /* this is a new device so whole div structure needs to be created */
+				if (BFPDeviceStatus.body.activated == true) {
+					addActiveTemperatureTableRow(BFPDeviceStatus.body);
+				}
+			} else { /* the device already reported, structure needs to be filled in with new data */
+				if (BFPDeviceStatus.body.activated == true) {
+					if (BFPDeviceStatus.body.alive == true) {
+						setTemperatureValue(BFPDeviceStatus.body);
+					} else if (BFPDeviceStatus.body.alive == false) {
+						// TODO: Disable Temp device
 					}
 				}
 			}
@@ -282,11 +300,17 @@
 		row += '<div class="col-sm text-white row-settings">' + body.desc + '</div>';		
 		
 
-		if (body.value == '0' && body.alive == true) {
+		if (body.value == '0' && body.alive == true && body.extType == 1) {
 			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">OFF</div> \
 			</div>';
-		} else if (body.value == '1' && body.alive == true) {
+		} else if (body.value == '1' && body.alive == true && body.extType == 1) {
 			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">ON</div> \
+			</div>';
+		} else if (body.value == '0' && body.alive == true && body.extType == 2) {
+			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">ON</div> \
+			</div>';
+		} else if (body.value == '1' && body.alive == true && body.extType == 2) {
+			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">OFF</div> \
 			</div>';
 		} else {
 			row += '<div class="col-sm text-white row-settings" id="' + FID + '_sensor">' + Error + '</div> \
@@ -294,6 +318,24 @@
 		}
 		
 		$("#devices").append(row);
+	}
+	
+	function addActiveTemperatureTableRow(body) {
+		let FID = body.raspyID + '-' + body.devID + '-' + body.ardID;
+		
+		let row = '<div class="row justify-content-md-center top-buffer" id="' + FID + '_row">';
+		row += '<div class="col-sm text-white row-settings">' + body.desc + '</div>';		
+		
+
+		row += '<div class="col-sm text-white row-settings" id="' + FID + '_temp">' + body.value + '&#8451;</div> \
+			</div>';
+
+		$("#devices").append(row);
+	}
+	
+	function setTemperatureValue(device) {
+		let sensorID = device.raspyID + '-' + device.devID + '-' + device.ardID + '_temp';
+		$('#' + sensorID).html(device.value + '&#8451;');
 	}
 	
 	function setBinarySensorOn(device) {

@@ -224,6 +224,7 @@
 			if (typeof(BFPDeviceStatus.body.lightType) != 'undefined') {
 				console.log('lightType available');
 				const $select = document.querySelector('#device-type-select');
+				const $select2 = document.querySelector('#device-input-select');
 				if (typeof(BFPDeviceStatus.body.lightInputType) != 'undefined') {
 					if (BFPDeviceStatus.body.lightType == 0 && BFPDeviceStatus.body.extType == 0) { /* the classic on/off light */
 						$select.value = BFPDeviceStatus.body.lightType;
@@ -232,12 +233,14 @@
 										<option selected value="1">Button based light</option>'
 						$("#device-input-select").append(options);
 						$("#timer-input").attr("disabled", "disabled");
+						$select2.value = BFPDeviceStatus.body.lightInputType;
 					} else if (BFPDeviceStatus.body.lightType == 1) { /* timer based light */
 						$select.value = BFPDeviceStatus.body.lightType;
 						device.lightType = 1;
 						let options =  '<option selected value="0">Switch based light</option> \
 										<option selected value="1">Button based light</option>'
 						$("#device-input-select").append(options);
+						$select2.value = BFPDeviceStatus.body.lightInputType;
 					} else if (BFPDeviceStatus.body.lightType == 2) { /* simple heat */
 						$select.value = BFPDeviceStatus.body.lightType;
 						device.lightType = 2
@@ -245,19 +248,24 @@
 										<option selected value="3">Physical Pin Control</option>'
 						$("#device-input-select").append(options);
 						$("#timer-input").attr("disabled", "disabled");
-					} else if (BFPDeviceStatus.body.lightType == 0 && BFPDeviceStatus.body.extType == 1) { /* binary sensor */
+					} else if (BFPDeviceStatus.body.lightType == 0 && (BFPDeviceStatus.body.extType == 1 || BFPDeviceStatus.body.extType == 2)) { /* binary sensor */
 						console.log("selectect binary sensor!")
 						$select.value = 3;
-						let options =  '<option selected value="0">Switch based light</option> \
-										<option selected value="1">Button based light</option>'
+						let options =  '<option selected value="4">Normal input</option> \
+										<option selected value="5">Reversed input</option>'
 						$("#device-input-select").append(options);
-						$("#device-input-select").attr("disabled", "disabled");
 						$("#timer-input").attr("disabled", "disabled");
+						if (BFPDeviceStatus.body.extType == 1) { /* Normal input */
+							$select2.value = 4;
+						} else if (BFPDeviceStatus.body.extType == 2) {
+							$select2.value = 5;
+						}
+						device.extType = BFPDeviceStatus.body.extType;
 					} else {
 						
 					}
-					const $select2 = document.querySelector('#device-input-select');
-					$select2.value = BFPDeviceStatus.body.lightInputType;
+					
+					//$select2.value = BFPDeviceStatus.body.lightInputType;
 				}
 			}
 			if (BFPDeviceStatus.body.ctrlON == 1)
@@ -319,9 +327,14 @@
 			updateDevice.lightType = 2;
 			updateDevice.lightInputType = $lightInputType.value;
 		} else if ($lightType.value == 3) { /* binary sensor */
-			updateDevice.extType = 1;
+			if ($lightInputType.value == 4) {
+				updateDevice.extType = 1;
+			} else if ($lightInputType.value == 5) {
+				updateDevice.extType = 2;
+			}
 			updateDevice.lightType = 0;
 			updateDevice.lightInputType = 0;
+
 		}
 		
 		updateDevice.devType = 'digitOUT'
@@ -349,7 +362,7 @@
 		let select = document.getElementById('device-input-select');
 		const $select = document.querySelector('#device-type-select');
 		console.log($select.value);
-		if ($select.value == 0  && device.lightType != 0) {
+		if ($select.value == 0  && device.lightType != 0) { /* classic light */
 			console.log('   remove attr');
 			$("#timer-input").attr("disabled", "disabled");
 			$("#device-input-select").removeAttr("disabled", "disabled");
@@ -359,7 +372,7 @@
 							<option selected value="1">Button based light</option>'
 			$("#device-input-select").append(options);
 			device.lightType = $select.value;
-		} else if ($select.value == 1  && device.lightType != 1) {
+		} else if ($select.value == 1  && device.lightType != 1) { /* timer based light */
 			$("#device-input-select").removeAttr("disabled", "disabled");
 			$("#timer-input").removeAttr("disabled", "disabled");
 			select.remove(1);
@@ -368,7 +381,7 @@
 							<option selected value="1">Button based light</option>'
 			$("#device-input-select").append(options);
 			device.lightType = $select.value;
-		} else if ($select.value == 2 && device.lightType != 2) {
+		} else if ($select.value == 2 && device.lightType != 2) { /* simple heat */
 			console.log('   remove attr');
 			$("#device-input-select").removeAttr("disabled", "disabled");
 			$("#timer-input").attr("disabled", "disabled");
@@ -378,9 +391,14 @@
 							<option selected value="3">Physical Pin Control</option>'
 			$("#device-input-select").append(options);
 			device.lightType = $select.value;
-		} else if ($select.value == 3 && device.lightType != 3) {
-			$("#device-input-select").attr("disabled", "disabled");
+		} else if ($select.value == 3 && device.lightType != 3) { /* binary sensor */
+			$("#device-input-select").removeAttr("disabled", "disabled");
 			$("#timer-input").attr("disabled", "disabled");
+			select.remove(1);
+			select.remove(0);
+			let options =  '<option selected value="4">Normal input</option> \
+							<option selected value="5">Reversed input</option>'
+			$("#device-input-select").append(options);
 			device.lightType = $select.value;
 		}
 	};

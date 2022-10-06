@@ -17,6 +17,7 @@ const COMMAND_CLEAR = 0;
 const TYPE_DIGITIN = 'digitIN';
 const TYPE_DIGITOUT = 'digitOUT';
 const TYPE_SHADE = 'shade';
+const TYPE_TEMP = 'temp';
 
 /* consts for message codes */
 const MSG_ARDUINO_DEAD = 0;
