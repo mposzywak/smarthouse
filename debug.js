@@ -38,6 +38,20 @@ Debug.prototype.log = function(severity, facility, msg) {
 	}
 }
 
+Debug.prototype.logVPN = function(severity, facility, vpnKey, msg) {
+	if (typeof(this.components.getFacility('config')[facility]) == 'undefined') {
+		date = new Date();
+		dateString = date.toString().split(' ').splice(1,4).join(' ') + ':' + date.getMilliseconds();
+		console.log(dateString + ' Facility: ' + facility + ' is undefined. The log() function is called improperly');
+	} else {
+		if (this.components.getFacility('config')[facility].debug >= severity) {
+			date = new Date();
+			dateString = date.toString().split(' ').splice(1,4).join(' ') + ':' + date.getMilliseconds();
+			console.log(dateString + ' [' + facility + ': ' + severity + ' ][ ' + vpnKey + ' ] ' + msg);
+		}
+	}
+}
+
 /*
  * handle debug GETs, example usage:
  *

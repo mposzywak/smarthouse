@@ -145,6 +145,8 @@
 			redirectPage = 'device-configuration-single';
 		else if (device.devType == 'shade')
 			redirectPage = 'device-configuration-shade';
+		else if (device.devType == 'temp')
+			redirectPage = 'device-configuration-temp';
 		
 		if (typeof(device.desc) == 'undefined' || device.desc == '' || device.desc == null)
 			desc = '<font color="#911414">\(Not set\)</font>';

@@ -75,6 +75,7 @@ const ARIF_ARD_SETTINGS = 'settings';
 const ARIF_DEV_LIGHT_INPUT_TYPE = 'lightInputType';
 const ARIF_DEV_LIGHT_TYPE = 'lightType';
 const ARIF_DEV_LIGHT_SETTINGS = 'lightSettings';
+const ARIF_DEV_SHADE_SETTINGS = 'shadeSettings';
 
 //app.use(express.static('smarthouse'))
 
@@ -192,13 +193,13 @@ function onPostRequest(req, res) {
 					break;
 				case ARIF_DEV_LIGHT_SETTINGS:
 					debug.log(5, 'arif', 'Light settings received from: ' + srcIP + ' of: ' + devID + ', data: ' + JSON.stringify(req.body));
-					//var BFPLightInputType = bfp.BFPCreateLightInputType(devID, ardID, raspyID, req.body.lightInputType);
-					//var BFPLightType = bfp.BFPCreateLightType(devID, ardID, raspyID, req.body.lightType);
-					//var BFPLightCtrlON = bfp.BFPCreateLightCtrlON(devID, ardID, raspyID, req.body.ctrlON);
 					var BFPLightSettings = bfp.BFPCreateLightSettings(devID, ardID, raspyID, req.body.lightType, req.body.lightInputType, req.body.ctrlON, req.body.timer);
 					mem.setLightSettings(config.cloud.id, BFPLightSettings);
-					//mem.setLightType(config.cloud.id, BFPLightType);
-					//mem.setLightCtrlON(config.cloud.id, BFPLightCtrlON);
+					break;
+				case ARIF_DEV_SHADE_SETTINGS:
+					debug.log(5, 'arif', 'Shade settings received from: ' + srcIP + ' of: ' + devID + ', data: ' + JSON.stringify(req.body));
+					var BFPShadeSettings = bfp.BFPCreateShadeSettings(devID, ardID, raspyID, req.body.posTimer, req.body.tiltTimer);
+					mem.setShadeSettings(config.cloud.id, BFPShadeSettings);
 					break;
 				case ARIF_DEV_STATUS_POS:
 					break;

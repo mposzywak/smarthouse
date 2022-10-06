@@ -35,16 +35,26 @@ ConfigDB.prototype.insertRaspy = function(accountID, raspyID, vpnID, vpnKey, rem
  * (only Raspy) function returns vpnID value for the raspy, if it is not configured, returns null
  */
 ConfigDB.prototype.getVpnID = function(accountID, raspyID, callback) {
+	var debug = this.debug;
+	var vpnID = accountID + '-' + raspyID
+	
 	var sql = 'SELECT vpnID, vpnKey, initVpnKey, cloudService FROM raspys WHERE accountID = ? AND raspyID = ?';
 
 	this.db.all(sql, [accountID, raspyID], function(error, rows) {
+		
 		if (error) {
 			callback(error, null);
-		} else {
-			for (var i = 0; i < rows.length; i++) {
-				var row = rows[i];
-				callback(null, row.vpnID, row.vpnKey, row.initVpnKey, row.cloud);
-			}
+			return;
+		}
+		if (rows.length == 0) {
+			debug.logVPN(1, 'configdb', vpnID, 'DB row empty. accountID or raspyID not found in the DB.');
+			callback(true, null);
+			return;
+		}
+		for (var i = 0; i < rows.length; i++) {
+			var row = rows[i];
+			callback(null, row.vpnID, row.vpnKey, row.initVpnKey, row.cloud);
+			return;
 		}
 	});
 }
@@ -134,6 +144,8 @@ ConfigDB.prototype.insertDevice = function(accountID, device) {
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 	var sqlShades = 'INSERT INTO shades (devID, ardID, raspyID, accountID, devType, position, tilt, sync, date, desc, activated, IP) \
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+	var sqlTemp = 'INSERT INTO devices (devID, ardID, raspyID, accountID, devType, dataType, value, date, desc, activated, IP) \
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 	debug.log(5, 'configdb', 'Inserting the following device into the DB: ' + JSON.stringify(device));
 
 	if (device.devType == 'digitOUT') {
@@ -145,6 +157,18 @@ ConfigDB.prototype.insertDevice = function(accountID, device) {
 				debug.log(1, 'configdb', 'Error while inserting new Device: ' + error.message);
 			} else {
 				debug.log(5, 'configdb', 'Inserted digitOUT Device, accountid: ' + accountID + ', raspyid: ' +
+					device.raspyID + ', devID: ' + device.devID + ', ardID: ' + device.ardID);
+			}
+		});
+	} else if (device.devType == 'temp') {
+		this.db.run(sqlTemp, [device.devID, device.ardID, device.raspyID, accountID,
+			device.devType, device.dataType, device.value, JSON.stringify(device.date),
+			device.desc, device.activated ? 1 : 0, device.IP
+		], function(error) {
+			if (error) {
+				debug.log(1, 'configdb', 'Error while inserting new Temperature Device: ' + error.message);
+			} else {
+				debug.log(5, 'configdb', 'Inserted Temperature Device, accountid: ' + accountID + ', raspyid: ' +
 					device.raspyID + ', devID: ' + device.devID + ', ardID: ' + device.ardID);
 			}
 		});
@@ -173,7 +197,7 @@ ConfigDB.prototype.insertDevice = function(accountID, device) {
 			if (error) {
 				debug.log(1, 'configdb', 'Error while inserting new Shade Device: ' + error.message);
 			} else {
-				debug.log(5, 'configdb', 'Inserted shade Device, accountid: ' + accountID + ', raspyid: ' +
+				debug.log(5, 'configdb', 'Inserted Shade Device, accountid: ' + accountID + ', raspyid: ' +
 					device.raspyID + ', devID: ' + device.devID + ', ardID: ' + device.ardID);
 			}
 		});
@@ -276,6 +300,14 @@ ConfigDB.prototype.updateDevice = function(accountID, device) {
 			case 'position':
 				SQLUpdate += ' position = ?,';
 				values.push(device.position);
+				break;
+			case 'positionTimer':
+				SQLUpdate += ' positionTimer = ?,';
+				values.push(device.positionTimer);
+				break;
+			case 'tiltTimer':
+				SQLUpdate += ' tiltTimer = ?,';
+				values.push(device.tiltTimer);
 				break;
 			case 'direction':
 				SQLUpdate += ' direction = ?,';
@@ -615,6 +647,8 @@ ConfigDB.prototype.getAllAccountDevices = function(accountID, callback) {
 									raspys[raspyID].arduinos[ardID].devices[devID].position = row.position;
 									raspys[raspyID].arduinos[ardID].devices[devID].sync = row.sync ? true : false;
 									raspys[raspyID].arduinos[ardID].devices[devID].alive = false;
+									raspys[raspyID].arduinos[ardID].devices[devID].positionTimer = row.positionTimer;
+									raspys[raspyID].arduinos[ardID].devices[devID].tiltTimer = row.tiltTimer;
 									debug.log(5, 'configdb', 'Reading shade from DB: ' + JSON.stringify(raspys[raspyID].arduinos[ardID].devices[devID]));
 								}
 								//console.log(JSON.stringify(devices));

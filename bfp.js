@@ -16,6 +16,7 @@ const BFP_CTRL_STATUS = 'BFP_CTRL_STATUS';
 const BFP_LIGHT_TYPE = 'BFP_LIGHT_TYPE';
 const BFP_LIGHT_INPUT_TYPE = 'BFP_LIGHT_INPUT_TYPE';
 const BFP_LIGHT_SETTINGS = 'BFP_LIGHT_SETTINGS';
+const BFP_SHADE_SETTINGS = 'BFP_SHADE_SETTINGS';
 
 /* BFP (Backend Frontend Protocol) commands */
 const BFP_HEARTBEAT = 'heartbeat';
@@ -99,6 +100,20 @@ BFP.prototype.BFPCreateLightSettings = function(devID, ardID, raspyID, lightType
 	message.body.lightInputType = lightInputType;
 	message.body.ctrlON = ctrlON;
 	message.body.timer = timer;
+	
+	return message;
+}
+
+BFP.prototype.BFPCreateShadeSettings = function(devID, ardID, raspyID, positionTimer, tiltTimer) {
+	var message = {};
+	message.header = {};
+	message.header.code = BFP_SHADE_SETTINGS;
+	message.body = {};
+	message.body.raspyID = raspyID;
+	message.body.ardID = ardID;
+	message.body.devID = devID;
+	message.body.positionTimer = positionTimer;
+	message.body.tiltTimer = tiltTimer;
 	
 	return message;
 }

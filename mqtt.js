@@ -131,16 +131,20 @@ function directionCommand(topic, payload) {
 		return;
 	}
 	/* commenting it out as it looks like it is not necessary feature */
-	/*if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
-		debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
-		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish = false;
-		return;
-	}*/
-	let BFPDeviceCommand = bfp.BFPCreateDeviceCommandShade(device, null, payload);
-	BFPDeviceCommand.body.IP = device.IP;
-	arif.sendCommand(BFPDeviceCommand.body, BFPDeviceCommand.header.command, function(message) {
-		//debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
-	});
+	let savedTopic = require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic];
+	
+	if (typeof(savedTopic) != 'undefined') {
+		if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignoreFirstPublish == true) {
+			debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
+			require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignoreFirstPublish = false;
+			return;
+		}
+		let BFPDeviceCommand = bfp.BFPCreateDeviceCommandShade(device, null, payload);
+		BFPDeviceCommand.body.IP = device.IP;
+		arif.sendCommand(BFPDeviceCommand.body, BFPDeviceCommand.header.command, function(message) {
+	
+		});
+	}
 }
 
 function positionCommand(topic, payload) {
@@ -160,17 +164,21 @@ function positionCommand(topic, payload) {
 		return;
 	}
 	/* commenting it out as it looks like it is not necessary feature */
-	/*if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
-		debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
-		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish = false;
-		return;
-	}*/
-	let BFPDeviceCommand = bfp.BFPCreateDeviceCommandShade(device, payload, 'shadePOS');
+	let savedTopic = require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic];
 	
-	BFPDeviceCommand.body.IP = device.IP;
-	arif.sendCommand(BFPDeviceCommand.body, BFPDeviceCommand.header.command, function(message) {
-		//debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
-	});
+	if (typeof(savedTopic) != 'undefined') {
+		if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignoreFirstPublish == true) {
+			debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
+			require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignoreFirstPublish = false;
+			return;
+		}
+		let BFPDeviceCommand = bfp.BFPCreateDeviceCommandShade(device, payload, 'shadePOS');
+		
+		BFPDeviceCommand.body.IP = device.IP;
+		arif.sendCommand(BFPDeviceCommand.body, BFPDeviceCommand.header.command, function(message) {
+
+		});
+	}
 }
 
 function tiltCommand(topic, payload) {
@@ -190,25 +198,29 @@ function tiltCommand(topic, payload) {
 		return;
 	}
 	/* commenting it out as it looks like it is not necessary feature */
-	/*if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
-		debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
-		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish = false;
-		return;
-	}*/
-	let newValue;
-	if (payload <= 30)
-		newValue = 90;
-	else if (payload > 30 && payload <= 70)
-		newValue = 45;
-	else if (payload > 70) 
-		newValue = 0;
+	let savedTopic = require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic];
 	
-	let BFPDeviceCommand = bfp.BFPCreateDeviceCommandShade(device, newValue, 'shadeTILT');
+	if (typeof(savedTopic) != 'undefined') {
+		if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignoreFirstPublish == true) {
+			debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
+			require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignoreFirstPublish = false;
+			return;
+		}
+		let newValue;
+		if (payload <= 30)
+			newValue = 90;
+		else if (payload > 30 && payload <= 70)
+			newValue = 45;
+		else if (payload > 70) 
+			newValue = 0;
 	
-	BFPDeviceCommand.body.IP = device.IP;
-	arif.sendCommand(BFPDeviceCommand.body, BFPDeviceCommand.header.command, function(message) {
-		//debug.log(5, 'mqtt', 'Received response from ARiF: ' + JSON.stringify(message));
-	});
+		let BFPDeviceCommand = bfp.BFPCreateDeviceCommandShade(device, newValue, 'shadeTILT');
+	
+		BFPDeviceCommand.body.IP = device.IP;
+		arif.sendCommand(BFPDeviceCommand.body, BFPDeviceCommand.header.command, function(message) {
+
+		});
+	}
 }
 
 function switchCommand(topic, payload) {
@@ -228,9 +240,9 @@ function switchCommand(topic, payload) {
 		return;
 	}
 	/* commenting it out as it looks like it is not necessary feature */
-	/*if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish == true) {
+	/*if (require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignoreFirstPublish == true) {
 		debug.log(5, 'mqtt', 'Ignoring this MQTT message as it is first after connectivity established with Home Assistant.');
-		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignorePublish = false;
+		require('./mqtt.js').MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[topic].ignoreFirstPublish = false;
 		return;
 	}*/
 	
@@ -358,12 +370,12 @@ function setAllDevicesToIgnore() {
 					commandTopic = topicPrefix + '/direction-cmd';
 					setPositionTopic = topicPrefix + '/position-cmd';
 					tiltCommandTopic = topicPrefix + '/tilt-cmd';
-					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignorePublish = true;
-					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic].ignorePublish = true;
-					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic].ignorePublish = true;
+					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignoreFirstPublish = true;
+					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic].ignoreFirstPublish = true;
+					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic].ignoreFirstPublish = true;
 				} else if (mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType == 'digitOUT') {
 					statusTopic = topicPrefix + '/switch-cmd';
-					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[statusTopic].ignorePublish = true;
+					mqtt.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[statusTopic].ignoreFirstPublish = true;
 				}
 				debug.log(5, 'mqtt', 'Setting raspyID: ' + raspyID + ' ardID: ' + ardID + ' devID: ' + devID + ' to ignore first incoming MQTT message.')
 			}
@@ -399,7 +411,11 @@ MQTT.prototype.subscribeLight = function(raspyID, ardID, devID) {
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType = 'digitOUT';
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics = {};
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic] = {};
-		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignorePublish = true;
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignoreFirstPublish = true;
+	} else if (this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType != 'digitOUT') {
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType = 'digitOUT';
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignoreFirstPublish = true;
 	} else {
 		debug.log(5, 'mqtt', 'Device: ' + devID + ', ardID: ' + ardID + ', topic: ' + commandTopic + ' already subscribed. Doing nothing.');
 		return;
@@ -440,17 +456,27 @@ MQTT.prototype.subscribeShade = function(raspyID, ardID, devID) {
 	}
 	if (typeof(this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID]) == 'undefined') {
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType = 'shade';
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics = {};
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic] = {};
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic] = {};
 		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic] = {};
-		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignorePublish = true;
-		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic].ignorePublish = true;
-		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic].ignorePublish = true;
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignoreFirstPublish = true;
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic].ignoreFirstPublish = true;
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic].ignoreFirstPublish = true;
+	} else if (this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType != 'shade') {
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].devType = 'shade';
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic] = {};
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignoreFirstPublish = true;
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic].ignoreFirstPublish = true;
+		this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic].ignoreFirstPublish = true;
+	} else {
+		debug.log(5, 'mqtt', 'Device: ' + devID + ', ardID: ' + ardID + ', shade topics already subscribed. Doing nothing.');
+		return;
 	}
 
-
-	
 	this.client.subscribe(commandTopic, {"rap": true}, function(error){
 		if (error)
 			debug.log(2, 'mqtt', 'Problem with subscribing to topic: ' + commandTopic + ' error: ' + error.toString());
@@ -469,6 +495,16 @@ MQTT.prototype.subscribeShade = function(raspyID, ardID, devID) {
 		else
 			debug.log(4, 'mqtt', 'Succesfully subscribed to topic: ' + tiltCommandTopic);
 	});
+	
+	var commandTopicIgnoreFirstPublish = this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[commandTopic].ignoreFirstPublish;
+	var positionTopicIgnoreFirstPublish = this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[setPositionTopic].ignoreFirstPublish;
+	var tiltCommandTopicIgnoreFirstPublish = this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].topics[tiltCommandTopic].ignoreFirstPublish;
+	
+	setTimeout(function() {
+		commandTopicIgnoreFirstPublish = false;
+		positionTopicIgnoreFirstPublish = false;
+		tiltCommandTopicIgnoreFirstPublish = false;
+	}, 3000)
 }
 
 
@@ -560,6 +596,49 @@ MQTT.prototype.renameArduino = function(raspyID, ardID, name) {
 }
 
 /**
+ * Send MQTT based temperature sensor configuration to HA
+ */
+MQTT.prototype.configureTemp = function(raspyID, ardID, devID, name) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix;
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	let configString;
+	let discoveryString;
+	
+	configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/temp-status", \
+					"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
+					"unit_of_measurement": "°C", "device_class": "temperature", \
+					"unique_id": "sensor.temp-' + ardID + '-' + devID + '"}';
+	discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-temp-' + devID + '/config';
+	
+	debug.log(4, 'mqtt', 'Publishing Temp sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
+	this.client.publish(discoveryTopic, configString, options);
+}
+
+/**
+ * remove MQTT based temperature sensor configuration from HA
+ */
+MQTT.prototype.removeTemp = function(raspyID, ardID, devID) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix;
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	let discoveryTopic;
+	let configString = ''
+	
+	discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-temp-' + devID + '/config';
+	debug.log(4, 'mqtt', 'Removing Temp sensor configuration of ardID: ' + ardID + ', devID: ' + devID);
+	this.client.publish(discoveryTopic, configString, options);	
+}
+
+/**
  * Send MQTT based light configuration to HA
  */
 MQTT.prototype.configureLight = function(raspyID, ardID, devID, name, extType) {
@@ -590,7 +669,16 @@ MQTT.prototype.configureLight = function(raspyID, ardID, devID, name, extType) {
 				"optimistic": "false", "unique_id": "binary_sensor.sensor-' + ardID + '-' + devID + '"}';
 		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
 		
-		debug.log(4, 'mqtt', 'Publishing Binary Sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
+		debug.log(4, 'mqtt', 'Publishing Normal Binary Sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
+		this.client.publish(discoveryTopic, configString, options);
+	} else if (extType == 2) {
+		configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/status", \
+						"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
+						"qos": 0, "payload_on": "OFF", "payload_off": "ON", "state_on": "OFF", "state_off": "ON", \
+						"optimistic": "false", "unique_id": "binary_sensor.sensor-' + ardID + '-' + devID + '"}';
+		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
+
+		debug.log(4, 'mqtt', 'Publishing Reversed Binary Sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 		this.client.publish(discoveryTopic, configString, options);
 	} else {
 		debug.log(1, 'mqtt', 'Something went wrong when publishing MQTT configuration, wrong extType: ' + extType);
@@ -612,7 +700,7 @@ MQTT.prototype.removeLight = function(raspyID, ardID, devID, extType) {
 		discoveryTopic = 'velen-discovery/light/arduino-' + ardID + '-light-' + devID + '/config';
 		debug.log(4, 'mqtt', 'Removing Light configuration of ardID: ' + ardID + ', devID: ' + devID);
 		this.client.publish(discoveryTopic, configString, options);
-	} else if (extType == 1) {
+	} else if (extType == 1 || extType == 2) {
 		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
 		debug.log(4, 'mqtt', 'Removing Binary Sensor configuration of ardID: ' + ardID + ', devID: ' + devID);
 		this.client.publish(discoveryTopic, configString, options);

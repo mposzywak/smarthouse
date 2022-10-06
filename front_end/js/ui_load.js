@@ -24,6 +24,7 @@ function loadNavbar(item) {
             <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">User</a> \
               <div class="dropdown-menu"> \
               	<a class="dropdown-item" href="/settings">Settings & Connection Status</a> \
+                <a class="dropdown-item" href="/about">About</a> \
                 <div class="dropdown-divider"></div> \
                 <a class="dropdown-item" id="logout" href="/logout"><span class="fa fa-sign-out" aria-hidden="true"></span> Logout</a> \
               </div> \
