@@ -42,6 +42,7 @@ config.arif.beaconPort = 5007;
 // config of the mem cache component
 config.mem.debug = 5;
 config.mem.minArdID = 20;
+config.mem.wattMultiplier = 1.25;
 
 // config of the backend
 config.backend.debug = 5;

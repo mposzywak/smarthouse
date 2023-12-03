@@ -45,6 +45,8 @@ CREATE TABLE raspys (
     cloudService NUMERIC,
     remoteService NUMERIC,
     backupService NUMERIC,
+    lastSeen TEXT,
+    alive NUMERIC,
     FOREIGN KEY (accountID) REFERENCES accounts(accountID) ON DELETE CASCADE, 
     PRIMARY KEY (raspyID, accountID)
 );

@@ -4,6 +4,12 @@
 	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
+.top-buffer-highlight {
+	margin-top:20px; 
+	min-height:0px !important;
+	box-shadow: 0 4px 8px 0 rgba(0, 66, 183, 0.6), 0 6px 20px 0 rgba(0, 66, 183, 0.5);
+}
+
 .switch-button-margin {
 	margin-top:8px; 
 	margin-bottom:8px;
@@ -128,5 +134,5 @@
 }
 
 .container{
-    max-width: 300px;
+    max-width: 400px;
 }

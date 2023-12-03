@@ -421,6 +421,7 @@ ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 
 		}
 	}
+	/* remove the trailing comma */
 	SQLUpdate = SQLUpdate.substring(0, SQLUpdate.length - 1);
 	//console.log('query: ' + SQLUpdate + SQLWhere);
 
@@ -433,6 +434,56 @@ ConfigDB.prototype.updateArduino = function(accountID, arduino) {
 		} else {
 			debug.log(5, 'configdb', 'Updated Arduino, accountid: ' + accountID + ', raspyid: ' +
 				arduino.raspyID + ', ardID: ' + arduino.ardID);
+		}
+	});
+}
+
+/**
+ * This function updates the Raspy. (cloud only)
+ * Requires the following fields:
+ *		raspy.raspyID
+ * either:
+ *		raspy.alive
+ *		raspy.lastSeen
+ */
+ConfigDB.prototype.updateRaspy = function(accountID, raspy) {
+	var debug = this.debug;
+	sql = 'UPDATE raspys SET alive = ?, lastSeen = ? \
+			WHERE raspyID = ? AND accountID = ?';
+	SQLUpdate = 'UPDATE raspys SET ';
+	SQLWhere = ' WHERE raspyID = ? AND accountID = ?';
+	values = [];
+	for (key in raspy) {
+		switch (key) {
+			case 'alive':
+				SQLUpdate += ' alive = ?,';
+				if (raspy.alive)
+					values.push(1);
+				else
+					values.push(0)
+				break;
+			case 'lastSeen':
+				SQLUpdate += ' lastSeen = ?,';
+				values.push(raspy.lastSeen);
+				break;
+			case 'raspyID':
+				break;
+			default:
+				debug.log(1, 'configdb', 'Error while parsing raspy fields, implementation issue: ' + key);
+		}
+	}
+	
+	/* remove the trailing comma */
+	SQLUpdate = SQLUpdate.substring(0, SQLUpdate.length - 1);
+	
+	values.push(raspy.raspyID);
+	values.push(accountID);
+	
+	this.db.run(SQLUpdate + SQLWhere, values, function(error) {
+		if (error) {
+			debug.log(1, 'configdb', 'Error while updating Raspy: ' + error.message);
+		} else {
+			debug.log(5, 'configdb', 'Updated raspy, accountid: ' + accountID + ', raspyid: ' + raspy.raspyID);
 		}
 	});
 }

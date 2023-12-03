@@ -510,7 +510,7 @@ MQTT.prototype.subscribeShade = function(raspyID, ardID, devID) {
 
 
 /*
- * Function to subscribe to all topics necessary for Shades to run.
+ * Function to subscribe to all topics necessary for Temperature sensor to run.
  */
 MQTT.prototype.subscribeTemp = function(raspyID, ardID, devID) {
 	let debug = require('./debug.js');
@@ -560,9 +560,9 @@ MQTT.prototype.configureArduino = function(raspyID, ardID, name) {
 		retain: true 
 	};
 	let configString = '{"name": "' + name + '", "unique_id": "binary_sensor.arduino-' + ardID + '", \
-						"state_topic": "velen-mqtt/001/' + ardID + '/arduino-status", "payload_on": "ON", \
-						"payload_off": "OFF", "availability_topic": "velen-mqtt/001/' + ardID + '/arduino-availability", \
-						"payload_available": "online", "payload_not_available": "offline", "qos": 0, "device_class": "connectivity"}';
+	"state_topic": "velen-mqtt/001/' + ardID + '/arduino-status", "payload_on": "ON", "object_id": "arduino-' + ardID + '", \
+	"payload_off": "OFF", "availability_topic": "velen-mqtt/001/' + ardID + '/arduino-availability", \
+	"payload_available": "online", "payload_not_available": "offline", "qos": 0, "device_class": "connectivity"}';
 	
 	let discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '/config';
 	
@@ -610,12 +610,36 @@ MQTT.prototype.configureTemp = function(raspyID, ardID, devID, name) {
 	let discoveryString;
 	
 	configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/temp-status", \
-					"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
-					"unit_of_measurement": "°C", "device_class": "temperature", \
-					"unique_id": "sensor.temp-' + ardID + '-' + devID + '"}';
+	"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
+	"unit_of_measurement": "°C", "device_class": "temperature", "object_id": "temp-' + ardID + '-' + devID + '", \
+	"unique_id": "sensor.temp-' + ardID + '-' + devID + '"}';
 	discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-temp-' + devID + '/config';
 	
 	debug.log(4, 'mqtt', 'Publishing Temp sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
+	this.client.publish(discoveryTopic, configString, options);
+}
+
+/**
+ * Send MQTT based humidity sensor configuration to HA
+ */
+MQTT.prototype.configureHumidity = function(raspyID, ardID, devID, name) {
+	let debug = require('./debug.js');
+	let config = require('./config.js');
+	let topicPrefix = config.mqtt.topicPrefix;
+	let options = { 
+		qos: 2, 
+		retain: true 
+	};
+	let configString;
+	let discoveryString;
+	
+	configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/humidity-status", \
+	"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
+	"unit_of_measurement": "%", "device_class": "humidity", "object_id": "humidity-' + ardID + '-' + devID + '", \
+	"unique_id": "sensor.humidity-' + ardID + '-' + devID + '"}';
+	discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-humidity-' + devID + '/config';
+	
+	debug.log(4, 'mqtt', 'Publishing Humidity sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 	this.client.publish(discoveryTopic, configString, options);
 }
 
@@ -652,34 +676,48 @@ MQTT.prototype.configureLight = function(raspyID, ardID, devID, name, extType) {
 	let configString;
 	let discoveryString;
 	
-	if (extType == 0) {
+	this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].extType = extType;
+	
+	if (extType == 0) { /* light */
 		configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/status", \
-	 					"command_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/switch-cmd", \
-						"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
-						"qos": 0, "payload_on": "ON", "payload_off": "OFF", "state_on": "ON", "state_off": "OFF", \
-						"optimistic": "false", "unique_id": "light.velen-' + ardID + '-' + devID + '"}';
+	 	"command_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/switch-cmd", "object_id": "light-' + ardID + '-' + devID + '", \
+		"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
+		"qos": 0, "payload_on": "ON", "payload_off": "OFF", "state_on": "ON", "state_off": "OFF", \
+		"optimistic": "false", "unique_id": "light.velen-' + ardID + '-' + devID + '"}';
 		discoveryTopic = 'velen-discovery/light/arduino-' + ardID + '-light-' + devID + '/config';
 	
 		debug.log(4, 'mqtt', 'Publishing Light configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 		this.client.publish(discoveryTopic, configString, options);
-	} else if (extType == 1) {
+	} else if (extType == 1) { /* binary sensor */
 		configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/status", \
-				"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
-				"qos": 0, "payload_on": "ON", "payload_off": "OFF", "state_on": "ON", "state_off": "OFF", \
-				"optimistic": "false", "unique_id": "binary_sensor.sensor-' + ardID + '-' + devID + '"}';
+		"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", "object_id": "sensor-' + ardID + '-' + devID + '", \
+		"qos": 0, "payload_on": "ON", "payload_off": "OFF", "state_on": "ON", "state_off": "OFF", \
+		"optimistic": "false", "unique_id": "binary_sensor.sensor-' + ardID + '-' + devID + '"}';
 		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
 		
 		debug.log(4, 'mqtt', 'Publishing Normal Binary Sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 		this.client.publish(discoveryTopic, configString, options);
-	} else if (extType == 2) {
+	} else if (extType == 2) { /* binary sensor reversed */
 		configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/status", \
-						"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
-						"qos": 0, "payload_on": "OFF", "payload_off": "ON", "state_on": "OFF", "state_off": "ON", \
-						"optimistic": "false", "unique_id": "binary_sensor.sensor-' + ardID + '-' + devID + '"}';
+		"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", "object_id": "sensor-' + ardID + '-' + devID + '", \
+		"qos": 0, "payload_on": "OFF", "payload_off": "ON", "state_on": "OFF", "state_off": "ON", \
+		"optimistic": "false", "unique_id": "binary_sensor.sensor-' + ardID + '-' + devID + '"}';
 		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
 
 		debug.log(4, 'mqtt', 'Publishing Reversed Binary Sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 		this.client.publish(discoveryTopic, configString, options);
+	} else if (extType == 3) { /* energy meter */ 
+		configString = '{"name": "' + name + '", "state_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/status", \
+		"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", "object_id": "sensor-' + ardID + '-' + devID + '", \
+		"qos": 0, "payload_available": "online", "payload_not_available": "offline", \
+		"device_class": "energy", "unit_of_measurement": "kWh", "state_class": "total_increasing", \
+		"unique_id": "sensor.sensor-' + ardID + '-' + devID + '"}';
+		discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-sensor-' + devID + '/config';
+
+		debug.log(4, 'mqtt', 'Publishing Power Meter configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
+		this.client.publish(discoveryTopic, configString, options);
+	} else if (extType == 4) { /* water meter */ 
+		
 	} else {
 		debug.log(1, 'mqtt', 'Something went wrong when publishing MQTT configuration, wrong extType: ' + extType);
 	}
@@ -703,6 +741,10 @@ MQTT.prototype.removeLight = function(raspyID, ardID, devID, extType) {
 	} else if (extType == 1 || extType == 2) {
 		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
 		debug.log(4, 'mqtt', 'Removing Binary Sensor configuration of ardID: ' + ardID + ', devID: ' + devID);
+		this.client.publish(discoveryTopic, configString, options);
+	} else if (extType == 3 || extType == 4) {
+		discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-sensor-' + devID + '/config';
+		debug.log(4, 'mqtt', 'Removing Meter (Sensor) configuration of ardID: ' + ardID + ', devID: ' + devID);
 		this.client.publish(discoveryTopic, configString, options);
 	} else {
 		debug.log(1, 'mqtt', 'Something went wrong when removing MQTT configuration, wrong extType: ' + extType);
@@ -729,6 +771,7 @@ MQTT.prototype.configureShade = function(raspyID, ardID, devID, name) {
 	
 	let configString = '{"name": "' + name + '", \
 	"unique_id": "cover.velen-' + ardID + '-' + devID + '", \
+	"object_id": "shade-' + ardID + '-' + devID + '", \
 	"command_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/direction-cmd", \
 	"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
 	"set_position_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/position-cmd", \
@@ -941,15 +984,21 @@ MQTT.prototype.publishLightStatus = function(raspyID, ardID, devID, status) {
 		debug.log(4, 'mqtt', 'Not publishing due to disabled MQTT by configuration.');
 		return;
 	}
+	extType = this.MQTTDevices.raspys[raspyID].arduinos[ardID].devices[devID].extType;
 	
-	if (status == 0) {
-		debug.log(4, 'mqtt', 'Publishing payload: OFF to light/sensor status topic: ' + statusTopic);
-		this.client.publish(statusTopic, 'OFF', options);
-	} else if (status == 1) {
-		debug.log(4, 'mqtt', 'Publishing payload: ON to light/sensor status topic: ' + statusTopic);
-		this.client.publish(statusTopic, 'ON', options);
-	} else {
-		debug.log(1, 'mqtt', 'Incorrect status value on: ' + statusTopic + ', status: ' + status);
+	if (extType == 0 || extType == 1 || extType == 2) { /* lights and binary sensors */
+		if (status == 0) {
+			debug.log(4, 'mqtt', 'Publishing payload: OFF to light/sensor status topic: ' + statusTopic);
+			this.client.publish(statusTopic, 'OFF', options);
+		} else if (status == 1) {
+			debug.log(4, 'mqtt', 'Publishing payload: ON to light/sensor status topic: ' + statusTopic);
+			this.client.publish(statusTopic, 'ON', options);
+		} else {
+			debug.log(1, 'mqtt', 'Incorrect status value on: ' + statusTopic + ', status: ' + status);
+		}
+	} else if (extType == 3 || extType == 4) { /* meters */
+		debug.log(4, 'mqtt', 'Publishing payload: ' + status + ' to meter (sensor) status topic: ' + statusTopic);
+		this.client.publish(statusTopic, status, options);
 	}
 }
 

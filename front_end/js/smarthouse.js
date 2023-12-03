@@ -27,6 +27,23 @@ const BFP_DEVICE_COMMAND = 'BFP_DEVICE_COMMAND';
 const BFP_CLOUD_SETTINGS = 'BFP_CLOUD_SETTINGS';
 const BFP_SYNC_HA = 'BFP_SYNC_HA';
 
+/* ctrlON settings */
+const DEVICE_CTRLON_ENABLED = 1;
+const DEVICE_CTRLON_DISABLED = 0;
+
+/* device types */
+const DEVICE_LIGHTTYPE_CLASSIC = 0;
+const DEVICE_LIGHTTYPE_TIMER = 1;
+const DEVICE_LIGHTTYPE_SIMPLE_HEAT = 2;
+const DEVICE_LIGHTTYPE_BINARY_SENSOR = 3;
+const DEVICE_LIGHTTYPE_METER = 4;
+
+const DEVICE_EXTTYPE_BINARY_SENSOR_NORMAL = 1;
+const DEVICE_EXTTYPE_BINARY_SENSOR_REVERSED = 2;
+const DEVICE_EXTTYPE_METER_ENERGY = 3;
+const DEVICE_EXTTYPE_METER_WATER = 4;
+
+
 var devices = {};
 
 var command = {};
@@ -147,6 +164,14 @@ function setDeviceCommandOn(device) {
 	devices[device.raspyID][device.ardID][device.devID].command = COMMAND_ON;
 }
 
+function isDeviceCommandOn(device) {
+	if (devices[device.raspyID][device.ardID][device.devID].command == COMMAND_ON) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 function setDeviceCommandClear(device) {
 	devices[device.raspyID][device.ardID][device.devID].command = COMMAND_CLEAR;
 }
@@ -157,7 +182,18 @@ function onCommandTimeout(device) {
 		console.log('timeout');
 		displayErrorMsg('Timeout while waiting for device status: ' + getDeviceDesc(device) + ' (3)');
 		enableLightButton(device);
-		setDeviceCommandClear(device)
+		setDeviceCommandClear(device);
+	} else {
+		// nothing to do
+	}
+}
+
+function onConfigSaveTimeout(device) {
+	if (getDeviceCommandStatus(device) == COMMAND_ON) {
+		console.log('timeout');
+		displayErrorMsg('Timeout while saving device settings: ' + getDeviceDesc(device) + ' (3)');
+		//enableLightButton(device);
+		setDeviceCommandClear(device);
 	} else {
 		// nothing to do
 	}
@@ -363,5 +399,18 @@ function BFPCreateSyncHA() {
 	return message;
 }
 
-
+function getDeviceConfigurationURL(devType) {
+	var redirectPage = 'null-page';
+	
+	if (devType == 'digitOUT' || devType == 'digitIN') 
+		redirectPage = 'device-configuration-single';
+	else if (devType == 'shade')
+		redirectPage = 'device-configuration-shade';
+	else if (devType == 'temp')
+		redirectPage = 'device-configuration-temp';
+	else if (devType == 'humidity')
+		redirectPage == 'device-configuration-humidity';
+	
+	return redirectPage;
+}
 	  

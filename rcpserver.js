@@ -52,13 +52,14 @@ function onRCPError(error) {
 }
 
 function onHeartbeat(req, res) {
+	var mem = require('./mem.js');
 	authRCP(req, res, function(error){
 		if (error == null){
 			vpnid = req.get('iot-raspyid');
 			accountID = vpnid.split('-')[0]
 			raspyID = vpnid.split('-')[1]
-			require('./mem.js').updateRaspyIP(accountID, raspyID, req.connection.remoteAddress);
-			require('./mem.js').clearRaspyDeadCounter(accountID, raspyID);
+			mem.updateRaspyIP(accountID, raspyID, req.connection.remoteAddress);
+			mem.clearRaspyDeadCounter(accountID, raspyID);
 			res.writeHead(200, { 'Content-Type' : 'text/plain'});
 			res.end('HB ok');
 		}
@@ -96,15 +97,15 @@ function onUplink(req, res) {
 			if (BFPMessage.header) {
 				switch (BFPMessage.header.code) {
 					case 'BFP_DEVICE_STATUS':
-						debug.log(1, 'rcpserver', 'Code BFP_DEVICE_STATUS received, passing to mem');
+						debug.logVPN(1, 'rcpserver', vpnid, 'Code BFP_DEVICE_STATUS received, passing to mem');
 						/* commented out as it was causing crashes */
 						//mem.setDeviceStatus(accountID, req.body);
 						break;
 					case undefined: 
-						debug.log(1, 'rcpserver', 'Undefined Code in BFP, dropping message!');
+						debug.logVPN(1, 'rcpserver', vpnid, 'Undefined Code in BFP, dropping message!');
 						break;
 					default: 
-						debug.log(1, 'rcpserver', 'Unrecognized Code in BFP: ' + BFPMessage.header.code + ', dropping message!');
+						debug.logVPN(1, 'rcpserver', vpnid, 'Unrecognized Code in BFP: ' + BFPMessage.header.code + ', dropping message!');
 				}
 			}
 			
@@ -125,7 +126,7 @@ function onRequestVPNKey(req, res) {
 	let bfp = require('./bfp.js');
 	let db = require('./configdb.js');
 	
-	debug.log(4, 'rcpserver', 'Received RCP message: request VPNKey from:');
+	debug.log(4, 'rcpserver', 'Received RCP message: request VPNKey');
 	authRCP(req, res, function(error) {
 		if (error == null) {
 			var vpnid = req.get('iot-raspyid');
@@ -292,7 +293,7 @@ function authRCP(req, res, callback) {
 					callback(2)
 				}
 			} else {
-				debug.logVPN.log(1, 'rcpserver', vpnid, 'failed to obtain vpnKey from mem.');
+				debug.logVPN(1, 'rcpserver', vpnid, 'failed to obtain vpnKey from mem.');
 				res.writeHead(500, { 'Content-Type' : 'text/plain'});
 				res.end('Raspy DB cannot be accessed');
 				callback(3)
@@ -312,16 +313,16 @@ function onPreAuth(req, res, next) {
 		let srcip = req.connection.remoteAddress;
 	
 		if (!vpnid || !vpnkey) {
-			debug.log(3, 'rcpserver', 'Request POST did not contain auth headers from: ' + srcip);
+			debug.logVPN(3, 'rcpserver', vpnid, 'Request POST did not contain auth headers from: ' + srcip);
 			//res.writeHead(401, { 'Content-Type' : 'text/plain'});
 			let BFPMessage = bfp.BFPVPNKeyResponse(null, false, 'no auth headers');
 			res.json(BFPMessage);
 		} else {
-			debug.log(5, 'rcpserver', '/request-vpnkey special URL detected. Obtaining keys from DB.')
+			debug.log(5, 'rcpserver', vpnid, '/request-vpnkey special URL detected. Obtaining keys from DB.')
 			mem.getLatestVPNKey(accountID, raspyID, function(error, vpnKey, initVpnKey) {
 				if (!error) {
 					if (initVpnKey.trim() == vpnkey.trim()) {
-						debug.log(5, 'rcpserver', '/request-vpnkey RCP packet authenticated successfully from: ' + srcip);
+						debug.logVPN(5, 'rcpserver', vpnid, '/request-vpnkey RCP packet authenticated successfully from: ' + srcip);
 						next();
 					} else {
 						require('./debug.js').log(3, 'rcpserver', '/request-vpnkey RCP packet authentication failed from: ' + srcip);
@@ -330,7 +331,7 @@ function onPreAuth(req, res, next) {
 						res.json(BFPMessage);
 					}
 				} else {
-					require('./debug.js').log(1, 'rcpserver', '/request-vpnkey RCP packet authentication failed, unable to obtain VPN credentails from DB: ' + srcip);
+					debug.logVPN(1, 'rcpserver', vpnid, '/request-vpnkey RCP packet authentication failed, unable to obtain VPN credentails from DB: ' + srcip);
 				}
 			});
 		}

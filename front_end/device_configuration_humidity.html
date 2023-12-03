@@ -137,11 +137,13 @@
 	</div>
 	<div class="row justify-content-md-center top-buffer">
 		<div class="col-sm text-white conf-button-panel">
-			<button type="button" class="btn text-white conf-button" onclick="location.href='/device-discovery?cmd=dev-save-success';" id="save-button">
-				<span class="fa fa-floppy-o" aria-hidden="true"></span>	
+			<button type="button" class="btn text-white conf-button" onclick="location.href='/device-configuration?cmd=dev-save-success';" id="save-button">
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-save2" viewBox="0 0 16 16">
+				  <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v4.5h2a.5.5 0 0 1 .354.854l-2.5 2.5a.5.5 0 0 1-.708 0l-2.5-2.5A.5.5 0 0 1 5.5 6.5h2V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1H2z"/>
+				</svg>
 				Save
 			</button>
-			<button type="button" class="btn text-white conf-button" onclick="location.href='/device-discovery';">
+			<button type="button" class="btn text-white conf-button" onclick="location.href='/device-configuration';">
 				Back
 			</button>
 		</div>
@@ -150,8 +152,12 @@
 
 </body>
 <script>
-	$('document').ready(loadNavbar('device-discovery'));
+	$('document').ready(loadNavbar('device-configuration'));
     var socket = io('/iot');
+	var device = {};
+	
+	/* variable to hold info on received device data, to make sure the GUI is updated only once */
+	device.received = false;
 	
 	// set connection actions
 	socket.on('connect', onConnect);
@@ -165,16 +171,21 @@
 	
 	function onDeviceStatus(BFPDeviceStatus) {
 		updateDevice(BFPDeviceStatus.body);
-		var raspyID = BFPDeviceStatus.body.raspyID;
-		var devID = BFPDeviceStatus.body.devID;
-		var ardID = BFPDeviceStatus.body.ardID;
-
-		var FID = raspyID + '-' + devID + '-' + ardID;
-		if (raspyID == urlParams['raspyID'] && ardID == urlParams['ardID'] && devID == urlParams['devID']) {
+		
+		var FID = BFPDeviceStatus.body.raspyID + '-' + BFPDeviceStatus.body.devID + '-' + BFPDeviceStatus.body.ardID;
+		if (BFPDeviceStatus.body.raspyID == urlParams['raspyID'] && BFPDeviceStatus.body.ardID == urlParams['ardID'] && BFPDeviceStatus.body.devID == urlParams['devID'] && device.received == false) {
+			device.received = true;
+			console.log("Device: " + JSON.stringify(BFPDeviceStatus));
 			$("#enabled").attr("checked", BFPDeviceStatus.body.activated);
-			if (BFPDeviceStatus.body.desc != '')
+			if (BFPDeviceStatus.body.desc != '') {
 				$("#name-input").attr("placeholder", BFPDeviceStatus.body.desc);
+				device.desc = BFPDeviceStatus.body.desc;
+			}
+			
 		}
+		
+		//device.desc = BFPDeviceStatus.body.desc;
+		console.log("desc incoming: " + device.desc);
 	}
 	
 	/* setting the right devID */
@@ -187,16 +198,23 @@
 	
 	$("#save-button").click(function() {
 		console.log('save button pressed. desc = ' + $('#name-input').val() + ' enabled: ' + $('#enabled').val());
-		var device = {};
+		var updateDevice = {};
 		var enabled = false;
 		if ($('#enabled').val() == "on")
 			enabled = true;
-		device.raspyID = urlParams['raspyID'];
-		device.ardID = urlParams['ardID'];
-		device.devID = urlParams['devID'];
-		device.desc = $('#name-input').val();
-		device.activated = $('#enabled').is(':checked');
-		socket.emit('device_settings', device);
+		updateDevice.raspyID = urlParams['raspyID'];
+		updateDevice.ardID = urlParams['ardID'];
+		updateDevice.devID = urlParams['devID'];
+		//device.desc = $('#name-input').val();
+		if ($('#name-input').val() != '')
+			updateDevice.desc = $('#name-input').val();
+		else
+			updateDevice.desc = device.desc;
+		
+		updateDevice.activated = $('#enabled').is(':checked');
+		updateDevice.devType = 'humidity';
+		
+		socket.emit('device_settings', updateDevice);
 	});
 
 	
@@ -213,5 +231,7 @@
 		//console.log(JSON.stringify(msg));
 	}
 	//function update
+	
+
 </script>
 </html>
