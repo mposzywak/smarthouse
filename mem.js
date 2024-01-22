@@ -290,14 +290,30 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 		mqtt.subscribeLight(BFPDeviceStatus.body.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
 		debug.log(5, 'mem', identityLog + 'DigitOUT device type received at mem.');
 		device.dataType = BFPDeviceStatus.body.dataType;
-		if (isDeviceNew) {
-			this.db.insertDevice(accountID, device);
-		} else {
-			var oldValue = device.value;
-			device.value = BFPDeviceStatus.body.value;
-			device.date = BFPDeviceStatus.body.date;
-			if (oldValue != device.value) {
-				this.db.updateDevice(accountID, device);
+		if (device.extType == 3) { /* power meter */
+			if (isDeviceNew) {
+				device.value = calculatekWh(device.timer, BFPDeviceStatus.body.value);
+				this.db.insertDevice(accountID, device);
+			} else {
+				var oldValue = device.value;
+				device.value = calculatekWh(device.timer, BFPDeviceStatus.body.value);
+				device.date = BFPDeviceStatus.body.date;
+				if (oldValue != device.value) {
+					this.db.updateDevice(accountID, device);
+				}
+			}
+		} else if (device.extType == 4) { /* water meter */
+			
+		} else { /* all other extTypes */
+			if (isDeviceNew) {
+				this.db.insertDevice(accountID, device);
+			} else {
+				var oldValue = device.value;
+				device.value = BFPDeviceStatus.body.value;
+				device.date = BFPDeviceStatus.body.date;
+				if (oldValue != device.value) {
+					this.db.updateDevice(accountID, device);
+				}
 			}
 		}
 	} else if (BFPDeviceStatus.body.devType == 'shade') { /* shades specific handling */
@@ -330,6 +346,17 @@ Mem.prototype.setDeviceStatus = function(accountID, BFPDeviceStatus) {
 	} else if (BFPDeviceStatus.body.devType == 'temp') { /* temp sensor specific handling */
 		mqtt.subscribeTemp(BFPDeviceStatus.body.raspyID, BFPDeviceStatus.body.ardID, BFPDeviceStatus.body.devID);
 		debug.log(5, 'mem', identityLog + 'Temperature sensor device type received at mem.');
+		if (BFPDeviceStatus.body.dataType == 'float') {
+			device.value = BFPDeviceStatus.body.value;
+			device.dataType = 'float';
+		}
+		if (isDeviceNew) {
+			this.db.insertDevice(accountID, device);
+		} else {
+			this.db.updateDevice(accountID, device);
+		}
+	} else if (BFPDeviceStatus.body.devType == 'humidity') { /* humidity sensor specific handling */
+		debug.log(5, 'mem', identityLog + 'Humidity sensor device type received at mem.');
 		if (BFPDeviceStatus.body.dataType == 'float') {
 			device.value = BFPDeviceStatus.body.value;
 			device.dataType = 'float';
@@ -417,6 +444,9 @@ Mem.prototype.setDevice = function(accountID, devID, ardID, devType, date, IP, c
 	}
 }
 
+/*
+ * function triggered by ARiF protocol when settings message comes in.
+ */
 Mem.prototype.setLightSettings = function(accountID, BFPLightSettings) {
 	let raspyID = BFPLightSettings.body.raspyID;
 	let ardID = BFPLightSettings.body.ardID;
@@ -791,6 +821,11 @@ function onArduinoChange(accountID, raspyID, ardID) {
 	arduinoToSend.mac = arduino.mac;
 	arduinoToSend.uptime = arduino.uptime;
 	arduinoToSend.restore = arduino.restore;
+	if (arduino.newlyRegistered == true) {
+		arduinoToSend.newlyRegistered = true;
+		arduino.newlyRegistered = false;
+	}
+
 	require('./debug.js').log(5, 'mem', '[' + accountID + '] Emitting Arduino data of raspyID: ' + arduino.raspyID +
 									' ardID: ' + ardID);
 	
@@ -1027,6 +1062,7 @@ Mem.prototype.clearArduinoDeadCounter = function(accountID, raspyID, ardID) {
 /* clear the Raspy dead counter (only cloud) */
 Mem.prototype.clearRaspyDeadCounter = function(accountID, raspyID) {
 	let debug = require('./debug.js');
+	let configdb = require('./configdb.js');
 	
 	if (typeof(this.devices[accountID]) == 'undefined') {
 		debug.log(1, 'mem', '[' + accountID + '] accountID not found in DB - this should not happen!');
@@ -1034,6 +1070,15 @@ Mem.prototype.clearRaspyDeadCounter = function(accountID, raspyID) {
 	}
 	this.devices[accountID].raspys[raspyID].counter = 0
 	this.setRaspyAlive(accountID, raspyID);
+	
+	const date = require('date-and-time');
+	const now =  new Date();
+	var raspy = {}
+	raspy.lastSeen = date.format(now,'YYYY-MM-DD HH:mm:ss');
+	raspy.raspyID = raspyID;
+	raspy.alive = true;
+
+	configdb.updateRaspy(accountID, raspy);
 }
 
 /* sets a given Arduino status dead and all its devices (both raspy and cloud) */
@@ -1089,24 +1134,28 @@ Mem.prototype.setArduinoAlive = function(accountID, raspyID, ardID) {
 
 /* sets give Raspy status to alive (only cloud) */
 Mem.prototype.setRaspyAlive = function(accountID, raspyID) {
+	
 	var raspy = this.devices[accountID].raspys[raspyID];
 	if (raspy.alive == false || typeof(raspy.alive) == 'undefined') {
 		raspy.alive = true;
 		require('./debug.js').log(5, 'mem', '[' + accountID + '] raspyID and its devices alive: ' + raspyID);
 	}
-	// we don't want this as Raspy can be alive but Arduinos still dead.
-	/*for (var ardID in raspy.arduinos) {
-		if (raspy.arduinos.hasOwnProperty(ardID))
-			this.setArduinoAlive(accountID, raspyID, ardID);
-	}*/
+	
 }
 
 /* sets give Raspy status to dead (only cloud) */
 Mem.prototype.setRaspyDead = function(accountID, raspyID, ardID) {
+	let configdb = require('./configdb.js');
 	var raspy = this.devices[accountID].raspys[raspyID];
 	if (raspy.alive == true || typeof(raspy.alive) == 'undefined') {
 		raspy.alive = false;
 		require('./debug.js').log(5, 'mem', '[' + accountID + '] raspyID and its devices dead: ' + raspyID);
+		
+		/* putting state into the DB */
+		var raspyUpdate = {}
+		raspyUpdate.raspyID = raspyID;
+		raspyUpdate.alive = false;
+		configdb.updateRaspy(accountID, raspyUpdate);
 	}
 	
 	for (var ardID in raspy.arduinos) {
@@ -1305,6 +1354,7 @@ Mem.prototype.clearDeviceDiscovered = function(accountID, raspyID, ardID, devID)
 Mem.prototype.updateArduinoMAC = function(accountID, raspyID, ardID, MAC) {
 	let arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID]
 	arduino.mac = MAC;
+	arduino.newlyRegistered = true;
 	let updateArduino = {};
 	require('./debug.js').log(4, 'mem', 'Updating Arduino MAC entry: ' + MAC + ', ardID: ' + ardID);
 	updateArduino.mac = MAC;
@@ -1529,9 +1579,19 @@ function connectVPN() {
 			}
 		}
 	});
+}
 
-		
-
+/*
+ * Function to calculate kWh from reported W over time
+ */
+function calculatekWh(timer, value) {
+	var hourFraction;
+	var multiplier = require('./config.js').mem.wattMultiplier;
+	var Watts = value * multiplier;
+	hourFraction = timer / 3600000;
+	var kWh = Watts * hourFraction / 1000;
+	debug.log(5, 'mem', 'Recalculated kWh value: ' + kWh + ' from value: ' + value + ' and multiplier: ' + multiplier);
+	return kWh;
 }
 
 

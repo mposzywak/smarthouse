@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>Device Configuration - Shade</title>
+	<title>Device Configuration - Humidity</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="css/bootstrap.min-4.2.1.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
@@ -130,22 +130,6 @@
 	</div>
 	<div class="row justify-content-md-center top-buffer">
 		<div class="col-sm text-white conf-data-panel">
-			<div class="conf-data-panel-text"><strong>Shade Timer (sec): </strong></div>
-		</div>
-		<div class="col-sm text-white conf-data-panel">
-			<input type="text" class="form-control" id="pos-timer-input" aria-describedby="emailHelp" placeholder="Enter number">
-		</div>
-	</div>
-	<div class="row justify-content-md-center top-buffer">
-		<div class="col-sm text-white conf-data-panel">
-			<div class="conf-data-panel-text"><strong>Shade Tilt Timer (msec): </strong></div>
-		</div>
-		<div class="col-sm text-white conf-data-panel">
-			<input type="text" class="form-control" id="tilt-timer-input" aria-describedby="emailHelp" placeholder="Enter number">
-		</div>
-	</div>
-	<div class="row justify-content-md-center top-buffer">
-		<div class="col-sm text-white conf-data-panel">
 			<div class="conf-data-panel-checkbox">
 				<input type="checkbox" id="enabled" class="form-check-input">Enabled
 			</div>
@@ -170,8 +154,10 @@
 <script>
 	$('document').ready(loadNavbar('device-configuration'));
     var socket = io('/iot');
+	var device = {};
 	
-	device = {};
+	/* variable to hold info on received device data, to make sure the GUI is updated only once */
+	device.received = false;
 	
 	// set connection actions
 	socket.on('connect', onConnect);
@@ -187,23 +173,19 @@
 		updateDevice(BFPDeviceStatus.body);
 		
 		var FID = BFPDeviceStatus.body.raspyID + '-' + BFPDeviceStatus.body.devID + '-' + BFPDeviceStatus.body.ardID;
-		if (BFPDeviceStatus.body.raspyID == urlParams['raspyID'] && BFPDeviceStatus.body.ardID == urlParams['ardID'] && BFPDeviceStatus.body.devID == urlParams['devID']) {
+		if (BFPDeviceStatus.body.raspyID == urlParams['raspyID'] && BFPDeviceStatus.body.ardID == urlParams['ardID'] && BFPDeviceStatus.body.devID == urlParams['devID'] && device.received == false) {
+			device.received = true;
+			console.log("Device: " + JSON.stringify(BFPDeviceStatus));
 			$("#enabled").attr("checked", BFPDeviceStatus.body.activated);
-			
-			device.tiltTimer = BFPDeviceStatus.body.tiltTimer;
-			if (BFPDeviceStatus.body.positionTimer != '') {
-				$("#pos-timer-input").attr("placeholder", BFPDeviceStatus.body.positionTimer);
-				device.positionTimer = BFPDeviceStatus.body.positionTimer;
-			}
-			if (BFPDeviceStatus.body.tiltTimer != '') {
-				$("#tilt-timer-input").attr("placeholder", BFPDeviceStatus.body.tiltTimer);
-				device.tiltTimer = BFPDeviceStatus.body.tiltTimer;
-			}
 			if (BFPDeviceStatus.body.desc != '') {
 				$("#name-input").attr("placeholder", BFPDeviceStatus.body.desc);
 				device.desc = BFPDeviceStatus.body.desc;
 			}
+			
 		}
+		
+		//device.desc = BFPDeviceStatus.body.desc;
+		console.log("desc incoming: " + device.desc);
 	}
 	
 	/* setting the right devID */
@@ -223,25 +205,14 @@
 		updateDevice.raspyID = urlParams['raspyID'];
 		updateDevice.ardID = urlParams['ardID'];
 		updateDevice.devID = urlParams['devID'];
-
-		updateDevice.activated = $('#enabled').is(':checked');
-		updateDevice.devType = 'shade';
-		
+		//device.desc = $('#name-input').val();
 		if ($('#name-input').val() != '')
 			updateDevice.desc = $('#name-input').val();
 		else
 			updateDevice.desc = device.desc;
 		
-		if ($('#pos-timer-input').val() != '') {
-			updateDevice.positionTimer = $('#pos-timer-input').val();
-		} else {
-			updateDevice.positionTimer = device.positionTimer;
-		}
-		if ($('#tilt-timer-input').val() != '') {
-			updateDevice.tiltTimer = $('#tilt-timer-input').val();
-		} else {
-			updateDevice.tiltTimer = device.tiltTimer;
-		}
+		updateDevice.activated = $('#enabled').is(':checked');
+		updateDevice.devType = 'humidity';
 		
 		socket.emit('device_settings', updateDevice);
 	});
@@ -260,5 +231,7 @@
 		//console.log(JSON.stringify(msg));
 	}
 	//function update
+	
+
 </script>
 </html>

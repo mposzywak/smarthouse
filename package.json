@@ -15,6 +15,7 @@
     "body-parser": "^1.15.2",
     "client-sessions": "^0.7.0",
     "cookie-parser": "^1.4.3",
+    "date-and-time": "^2.4.1",
     "ejs": "^2.5.7",
     "express": "^4.16.2",
     "express-session": "^1.15.6",

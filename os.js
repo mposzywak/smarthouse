@@ -238,38 +238,31 @@ OS.prototype.getLastVPNError = function(callback) {
  * Create an OS user with VPNID name
  * Where callback function is defined as callback(error, vpnid)
  */
-OS.prototype.createOSUser = function(vpnid, callback) {
+OS.prototype.createOSUser = function(user, callback) {
 	let debug = require('./debug.js');
-	
-	let userCheck = require('child_process').exec('id -u ' + vpnid + ' > /dev/null 2>&1', function(err, stdout, stderr) {
+	let userCheck = require('child_process').exec('id -u ' + user + ' > /dev/null 2>&1', function(err, stdout, stderr) {
 		
 	});
 	
 	userCheck.on('exit', function(code){
 		if (code == 1) {
-			debug.log(4, 'os', 'No user with: ' + vpnid + ' found.');
-			let userCreate = require('child_process').exec('adduser --force-badname --disabled-password --gecos ",,," ' + vpnid + ' > /dev/null', function(err, stdout, stderr) {
-				debug.log(4, 'os', 'User with name: ' + vpnid + ' created.');
+			debug.log(4, 'os', 'No user with: ' + user + ' name found.');
+			let userCreate = require('child_process').exec('adduser --force-badname --disabled-password --gecos ",,," ' + user + ' > /dev/null', function(err, stdout, stderr) {
+				// nothing to do here
 				
 			});
 			userCreate.on('exit', function(code) {
 				if (code == 0) {
-					debug.log(4, 'os', 'User with name: ' + vpnid + ' created successfuly.');
-					/*SSHCreateHostKey(function(success) {
-						
-					}); */
-					if (typeof(callback) != 'undefined') callback(false, vpnid);
+					debug.log(4, 'os', 'User with name: ' + user + ' created successfuly.');
+					if (typeof(callback) != 'undefined') callback(false, user);
 				} else {
-					debug.log(4, 'os', 'User with name: ' + vpnid + ' could not be created. Returned code: ' + code);
+					debug.log(4, 'os', 'User with name: ' + user + ' could not be created. Returned code: ' + code);
 					if (typeof(callback) != 'undefined') callback(true, null);
 				}
 			});
 		} else if (code == 0) {
-			debug.log(4, 'os', 'User with: ' + vpnid + ' found. No need to create.');
-			/*SSHCreateHostKey(function(success) {
-				
-			}); */
-			if (typeof(callback) != 'undefined') callback(false, vpnid);
+			debug.log(4, 'os', 'User with: ' + user + ' found. No need to create.');
+			if (typeof(callback) != 'undefined') callback(false, user);
 		}
 	});
 }
@@ -318,6 +311,7 @@ OS.prototype.sendPublicKey = function(callback) {
 	let accountID = config.cloud.id;
 	let raspyID = config.rcpclient.vpnID.split('-')[1];
 	let os = require('./os.js');
+	let localMgmtUser = config.os.localMgmtUser;
 	
 	rcpclient.sendPublicKey(hostKey, function(cloudKey) {
 		//place hostkey into /home/
@@ -328,9 +322,9 @@ OS.prototype.sendPublicKey = function(callback) {
 			if (error) {
 				debug.log(1, 'os', 'Failed to obtain vpnID from DB: ' + error.message)
 			} else {
-				os.createOSUser(vpnID, function(error) {
+				os.createOSUser(localMgmtUser, function(error) {
 					if (!error) {
-						os.appendKeyToFile('/home/' + vpnID + '/.ssh/authorized_keys', cloudKey + '\n');
+						os.appendKeyToFile('/home/' + localMgmtUser + '/.ssh/authorized_keys', cloudKey + '\n');
 					}
 				});
 			}
