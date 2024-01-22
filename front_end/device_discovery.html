@@ -172,7 +172,7 @@
 		var ardIP = BFPDeviceStatus.body.IP;
 		var raspyID = BFPDeviceStatus.body.raspyID;
 		var devType = BFPDeviceStatus.body.devType;
-		var value = BFPDeviceStatus.body.value;
+		//var value = BFPDeviceStatus.body.value;
 		var ardIPConv = ardIP.replace(/[\.\:]/g, '_');
 		var DDID = raspyID + '-' + ardID + '-' + devID + '-' + ardIPConv; //DDID - Device Discovery ID
 		var deviceIDArg = '?raspyID=' + raspyID + '&ardID=' + ardID + '&devID=' + devID;
@@ -318,10 +318,21 @@
 		
 		console.log('arduino received: ' + JSON.stringify(message));
 		console.log('arduinos: ' + JSON.stringify(arduinos));
+
 		if (typeof(arduinos[ardIPConv]) != 'undefined') {
 			if (arduinos[ardIPConv].registering == true) {
 				$("#" + ardIPConv + "_row").remove();
 				delete arduinos[ardIPConv];
+			}
+		}
+
+		if (message.newlyRegistered == true) {
+			for (var arduino in arduinos) {
+				if (arduino.registering == true) {
+					let foundArdIPConv = arduino.IP.replace(/\./g, '_');
+					$("#" + foundArdIPConv + "_row").remove();
+					delete arduinos[foundArdIPConv];
+				}
 			}
 		}
 	}

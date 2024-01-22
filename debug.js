@@ -47,7 +47,7 @@ Debug.prototype.logVPN = function(severity, facility, vpnKey, msg) {
 		if (this.components.getFacility('config')[facility].debug >= severity) {
 			date = new Date();
 			dateString = date.toString().split(' ').splice(1,4).join(' ') + ':' + date.getMilliseconds();
-			console.log(dateString + ' [' + facility + ': ' + severity + ' ][ ' + vpnKey + ' ] ' + msg);
+			console.log(dateString + ' [' + facility + ': ' + severity + '][' + vpnKey + '] ' + msg);
 		}
 	}
 }

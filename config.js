@@ -21,7 +21,7 @@ config.cloud.connection = true;
 
 // RCP client protocol settings (TODO: later credentials have to be taken from /etc/openvpn/username)
 config.rcpclient.vpnID = '00001002-001';
-config.rcpclient.host = 'localhost';
+config.rcpclient.host = '10.128.0.1';
 config.rcpclient.port = 32400;
 config.rcpclient.debug = 5;
 config.rcpclient.vpnkey = '33e9bc2d515c7923';
@@ -37,7 +37,7 @@ config.arif.port = 32302;
 config.arif.debug = 5;
 config.arif.beaconAddress = '224.1.1.1';
 config.arif.beaconPort = 5007;
-
+config.arif.partMAC = '6C:02:34:00:00:';
 
 // config of the mem cache component
 config.mem.debug = 5;
@@ -81,13 +81,16 @@ config.configdb.debug = 5;
 config.mqtt.enabled = true;
 config.mqtt.broker = 'mqtt://127.0.0.1';
 config.mqtt.topicPrefix = 'velen-mqtt';
+config.mqtt.discoveryPrefix = 'velen-discovery';
 config.mqtt.debug = 5;
 
 // config of the OS interfacing module
 config.os.vpnCredentialsFile = '/etc/openvpn/user-pass';
 config.os.vpnStatusFile = '/etc/openvpn/status';
 config.os.vpnLog = '/var/log/openvpn.log';
+config.os.vpnService = '';
 config.os.vpnTimeout = 5;
+config.os.localMgmtUser = 'ansible-cloud';
 config.os.debug = 5;
 
 // config of the Home Assistant control module

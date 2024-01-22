@@ -146,8 +146,13 @@ function sendHeartbeat(ardID, IP) {
 		debug.log(5, 'arif', 'Received heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
 		mem.clearArduinoDeadCounter(accountID, raspyID, ardID);
 	}).on('error', function(error) {
-		debug.log(1, 'arif', 'Error in heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
-		mem.increaseArduinoDeadCounter(accountID, raspyID, ardID);
+		if (error == 'Error: Parse Error: Invalid header value char') { // This is a workaround issue
+			debug.log(5, 'arif', 'Received Invalid heartbeat resp from ardID: ' + ardID + ' IP: ' + IP + ', accepting as workaround.');
+			mem.clearArduinoDeadCounter(accountID, raspyID, ardID);
+		} else {
+			debug.log(1, 'arif', 'Error in heartbeat resp from ardID: ' + ardID + ' IP: ' + IP + ' error: ' + error);
+			mem.increaseArduinoDeadCounter(accountID, raspyID, ardID);
+		}
 	}).on('timeout', function(error) {
 		debug.log(1, 'arif', 'Timeout in heartbeat resp from ardID: ' + ardID + ' IP: ' + IP);
 		mem.increaseArduinoDeadCounter(accountID, raspyID, ardID);
@@ -253,7 +258,11 @@ ARiF.prototype.sendCommand = function(device, command, callback) {
 				callback(true);
 			require('./arif.js').sendQueuedARiF(device.ardID);
 		}).on('error', function(error) {
-			debug.log(1, 'arif', 'Error in ARiF comms with: ' + device.devID + ' ardID: ' + device.ardID + ' IP: ' + device.IP);
+			if (error == 'Error: Parse Error: Invalid header value char') { // This is a workaround issue
+				debug.log(1, 'arif', 'Partial message received from: ' + device.devID + ' ardID: ' + device.ardID + ' IP: ' + device.IP + ', accepting as workaround.');
+			} else {
+				debug.log(1, 'arif', 'Error in ARiF comms with: ' + device.devID + ' ardID: ' + device.ardID + ' IP: ' + device.IP + ', error: ' + error);
+			}
 			require('./arif.js').arduinos[device.ardID].arifOngoing = false;
 			if (callback != null)
 				callback(true);
@@ -321,7 +330,11 @@ ARiF.prototype.sendRegisterCommand = function(IP, ardID, MAC, callback) {
 		debug.log(1, 'arif', 'Received Register cmd resp from IP: ' + IP);
 		callback();
 	}).on('error', function(error) {
-		debug.log(1, 'arif', 'Error in ARiF register comms with IP: ' + IP);
+		if (error == 'Error: Parse Error: Invalid header value char') { // workaround
+			callback();
+		} else {
+			debug.log(1, 'arif', 'Error in ARiF register comms with IP: ' + IP);
+		}
 	});
 	
 	req.write('');

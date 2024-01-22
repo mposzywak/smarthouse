@@ -564,7 +564,7 @@ MQTT.prototype.configureArduino = function(raspyID, ardID, name) {
 	"payload_off": "OFF", "availability_topic": "velen-mqtt/001/' + ardID + '/arduino-availability", \
 	"payload_available": "online", "payload_not_available": "offline", "qos": 0, "device_class": "connectivity"}';
 	
-	let discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '/config';
+	let discoveryTopic = config.mqtt.discoveryPrefix + '/binary_sensor/arduino-' + ardID + '/config';
 	
 	debug.log(4, 'mqtt', 'Publishing Arduino binary_sensor configuration, ardID: '+ ardID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 	this.client.publish(discoveryTopic, configString, options);
@@ -581,7 +581,7 @@ MQTT.prototype.removeArduino = function(raspyID, ardID) {
 		qos: 2, 
 		retain: true 
 	};
-	let discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '/config';
+	let discoveryTopic = config.mqtt.discoveryPrefix + '/binary_sensor/arduino-' + ardID + '/config';
 	let configString = ''
 	debug.log(4, 'mqtt', 'Removing arduino binary_sensor configuration of ardID: ' + ardID);
 	this.client.publish(discoveryTopic, configString, options);
@@ -613,7 +613,7 @@ MQTT.prototype.configureTemp = function(raspyID, ardID, devID, name) {
 	"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
 	"unit_of_measurement": "°C", "device_class": "temperature", "object_id": "temp-' + ardID + '-' + devID + '", \
 	"unique_id": "sensor.temp-' + ardID + '-' + devID + '"}';
-	discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-temp-' + devID + '/config';
+	discoveryTopic = config.mqtt.discoveryPrefix + '/sensor/arduino-' + ardID + '-temp-' + devID + '/config';
 	
 	debug.log(4, 'mqtt', 'Publishing Temp sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 	this.client.publish(discoveryTopic, configString, options);
@@ -637,7 +637,7 @@ MQTT.prototype.configureHumidity = function(raspyID, ardID, devID, name) {
 	"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
 	"unit_of_measurement": "%", "device_class": "humidity", "object_id": "humidity-' + ardID + '-' + devID + '", \
 	"unique_id": "sensor.humidity-' + ardID + '-' + devID + '"}';
-	discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-humidity-' + devID + '/config';
+	discoveryTopic = config.mqtt.discoveryPrefix + '/sensor/arduino-' + ardID + '-humidity-' + devID + '/config';
 	
 	debug.log(4, 'mqtt', 'Publishing Humidity sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 	this.client.publish(discoveryTopic, configString, options);
@@ -657,7 +657,7 @@ MQTT.prototype.removeTemp = function(raspyID, ardID, devID) {
 	let discoveryTopic;
 	let configString = ''
 	
-	discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-temp-' + devID + '/config';
+	discoveryTopic = config.mqtt.discoveryPrefix + '/sensor/arduino-' + ardID + '-temp-' + devID + '/config';
 	debug.log(4, 'mqtt', 'Removing Temp sensor configuration of ardID: ' + ardID + ', devID: ' + devID);
 	this.client.publish(discoveryTopic, configString, options);	
 }
@@ -684,7 +684,7 @@ MQTT.prototype.configureLight = function(raspyID, ardID, devID, name, extType) {
 		"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", \
 		"qos": 0, "payload_on": "ON", "payload_off": "OFF", "state_on": "ON", "state_off": "OFF", \
 		"optimistic": "false", "unique_id": "light.velen-' + ardID + '-' + devID + '"}';
-		discoveryTopic = 'velen-discovery/light/arduino-' + ardID + '-light-' + devID + '/config';
+		discoveryTopic = config.mqtt.discoveryPrefix + '/light/arduino-' + ardID + '-light-' + devID + '/config';
 	
 		debug.log(4, 'mqtt', 'Publishing Light configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 		this.client.publish(discoveryTopic, configString, options);
@@ -693,7 +693,7 @@ MQTT.prototype.configureLight = function(raspyID, ardID, devID, name, extType) {
 		"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", "object_id": "sensor-' + ardID + '-' + devID + '", \
 		"qos": 0, "payload_on": "ON", "payload_off": "OFF", "state_on": "ON", "state_off": "OFF", \
 		"optimistic": "false", "unique_id": "binary_sensor.sensor-' + ardID + '-' + devID + '"}';
-		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
+		discoveryTopic = config.mqtt.discoveryPrefix + '/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
 		
 		debug.log(4, 'mqtt', 'Publishing Normal Binary Sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 		this.client.publish(discoveryTopic, configString, options);
@@ -702,7 +702,7 @@ MQTT.prototype.configureLight = function(raspyID, ardID, devID, name, extType) {
 		"availability_topic": "velen-mqtt/001/' + ardID + '/' + devID + '/availability", "object_id": "sensor-' + ardID + '-' + devID + '", \
 		"qos": 0, "payload_on": "OFF", "payload_off": "ON", "state_on": "OFF", "state_off": "ON", \
 		"optimistic": "false", "unique_id": "binary_sensor.sensor-' + ardID + '-' + devID + '"}';
-		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
+		discoveryTopic = config.mqtt.discoveryPrefix + '/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
 
 		debug.log(4, 'mqtt', 'Publishing Reversed Binary Sensor configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 		this.client.publish(discoveryTopic, configString, options);
@@ -712,7 +712,7 @@ MQTT.prototype.configureLight = function(raspyID, ardID, devID, name, extType) {
 		"qos": 0, "payload_available": "online", "payload_not_available": "offline", \
 		"device_class": "energy", "unit_of_measurement": "kWh", "state_class": "total_increasing", \
 		"unique_id": "sensor.sensor-' + ardID + '-' + devID + '"}';
-		discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-sensor-' + devID + '/config';
+		discoveryTopic = config.mqtt.discoveryPrefix + '/sensor/arduino-' + ardID + '-sensor-' + devID + '/config';
 
 		debug.log(4, 'mqtt', 'Publishing Power Meter configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 		this.client.publish(discoveryTopic, configString, options);
@@ -735,15 +735,15 @@ MQTT.prototype.removeLight = function(raspyID, ardID, devID, extType) {
 	let configString = ''
 	
 	if (extType == 0) {
-		discoveryTopic = 'velen-discovery/light/arduino-' + ardID + '-light-' + devID + '/config';
+		discoveryTopic = config.mqtt.discoveryPrefix + '/light/arduino-' + ardID + '-light-' + devID + '/config';
 		debug.log(4, 'mqtt', 'Removing Light configuration of ardID: ' + ardID + ', devID: ' + devID);
 		this.client.publish(discoveryTopic, configString, options);
 	} else if (extType == 1 || extType == 2) {
-		discoveryTopic = 'velen-discovery/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
+		discoveryTopic = config.mqtt.discoveryPrefix + '/binary_sensor/arduino-' + ardID + '-binary-sensor-' + devID + '/config';
 		debug.log(4, 'mqtt', 'Removing Binary Sensor configuration of ardID: ' + ardID + ', devID: ' + devID);
 		this.client.publish(discoveryTopic, configString, options);
 	} else if (extType == 3 || extType == 4) {
-		discoveryTopic = 'velen-discovery/sensor/arduino-' + ardID + '-sensor-' + devID + '/config';
+		discoveryTopic = config.mqtt.discoveryPrefix + '/sensor/arduino-' + ardID + '-sensor-' + devID + '/config';
 		debug.log(4, 'mqtt', 'Removing Meter (Sensor) configuration of ardID: ' + ardID + ', devID: ' + devID);
 		this.client.publish(discoveryTopic, configString, options);
 	} else {
@@ -794,7 +794,7 @@ MQTT.prototype.configureShade = function(raspyID, ardID, devID, name) {
 	"tilt_closed_value": 0, \
 	"tilt_opened_value": 100}';
 	
-	let discoveryTopic = 'velen-discovery/cover/arduino-' + ardID + '-cover-' + devID + '/config';
+	let discoveryTopic = config.mqtt.discoveryPrefix + '/cover/arduino-' + ardID + '-cover-' + devID + '/config';
 	
 	debug.log(4, 'mqtt', 'Publishing Shade configuration, ardID: '+ ardID + ', devID: ' + devID + ' to HA: ' + configString + ', onto topic: ' + discoveryTopic);
 	this.client.publish(discoveryTopic, configString, options);
@@ -809,7 +809,7 @@ MQTT.prototype.removeShade = function(raspyID, ardID, devID) {
 		qos: 2, 
 		retain: true 
 	};
-	let discoveryTopic = 'velen-discovery/cover/arduino-' + ardID + '-cover-' + devID + '/config';
+	let discoveryTopic = config.mqtt.discoveryPrefix + '/cover/arduino-' + ardID + '-cover-' + devID + '/config';
 	let configString = ''
 
 	debug.log(4, 'mqtt', 'Removing Shade configuration of ardID: ' + ardID + ', devID: ' + devID);

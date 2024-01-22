@@ -821,6 +821,11 @@ function onArduinoChange(accountID, raspyID, ardID) {
 	arduinoToSend.mac = arduino.mac;
 	arduinoToSend.uptime = arduino.uptime;
 	arduinoToSend.restore = arduino.restore;
+	if (arduino.newlyRegistered == true) {
+		arduinoToSend.newlyRegistered = true;
+		arduino.newlyRegistered = false;
+	}
+
 	require('./debug.js').log(5, 'mem', '[' + accountID + '] Emitting Arduino data of raspyID: ' + arduino.raspyID +
 									' ardID: ' + ardID);
 	
@@ -1349,6 +1354,7 @@ Mem.prototype.clearDeviceDiscovered = function(accountID, raspyID, ardID, devID)
 Mem.prototype.updateArduinoMAC = function(accountID, raspyID, ardID, MAC) {
 	let arduino = this.devices[accountID].raspys[raspyID].arduinos[ardID]
 	arduino.mac = MAC;
+	arduino.newlyRegistered = true;
 	let updateArduino = {};
 	require('./debug.js').log(4, 'mem', 'Updating Arduino MAC entry: ' + MAC + ', ardID: ' + ardID);
 	updateArduino.mac = MAC;
